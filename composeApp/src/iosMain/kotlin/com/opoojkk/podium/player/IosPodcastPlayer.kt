@@ -23,14 +23,34 @@ class IosPodcastPlayer : PodcastPlayer {
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         withContext(Dispatchers.Main) {
-            currentEpisode = episode
-            val item = AVPlayerItem.playerItemWithURL(NSURL(string = episode.audioUrl))
-            player.replaceCurrentItemWithPlayerItem(item)
-            val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
-            player.seekToTime(seekTime) { _ ->
-                player.play()
+            try {
+                // Validate audioUrl before attempting to create NSURL
+                if (episode.audioUrl.isBlank()) {
+                    _state.value = PlaybackState(null, 0L, false)
+                    return@withContext
+                }
+                
+                currentEpisode = episode
+                val url = NSURL(string = episode.audioUrl)
+                
+                // Check if URL creation was successful
+                if (url == null) {
+                    _state.value = PlaybackState(null, 0L, false)
+                    return@withContext
+                }
+                
+                val item = AVPlayerItem.playerItemWithURL(url)
+                player.replaceCurrentItemWithPlayerItem(item)
+                val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
+                player.seekToTime(seekTime) { _ ->
+                    player.play()
+                }
+                _state.value = PlaybackState(episode, startPositionMs, true)
+            } catch (e: Exception) {
+                // Handle any errors during AVPlayer setup or URL creation
+                _state.value = PlaybackState(null, 0L, false)
+                currentEpisode = null
             }
-            _state.value = PlaybackState(episode, startPositionMs, true)
         }
     }
 

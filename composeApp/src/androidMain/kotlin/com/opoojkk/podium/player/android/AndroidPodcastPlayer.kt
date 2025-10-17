@@ -22,22 +22,39 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         withContext(Dispatchers.Main) {
-            releasePlayer()
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(context, Uri.parse(episode.audioUrl))
-                setOnPreparedListener { player ->
-                    player.seekTo(startPositionMs.toInt())
-                    player.start()
-                    _state.value = PlaybackState(episode, player.currentPosition.toLong(), true)
-                }
-                setOnCompletionListener {
+            try {
+                // Validate audioUrl before attempting to parse
+                if (episode.audioUrl.isBlank()) {
                     _state.value = PlaybackState(null, 0L, false)
-                    releasePlayer()
+                    return@withContext
                 }
-                prepareAsync()
+                
+                releasePlayer()
+                mediaPlayer = MediaPlayer().apply {
+                    setDataSource(context, Uri.parse(episode.audioUrl))
+                    setOnPreparedListener { player ->
+                        player.seekTo(startPositionMs.toInt())
+                        player.start()
+                        _state.value = PlaybackState(episode, player.currentPosition.toLong(), true)
+                    }
+                    setOnCompletionListener {
+                        _state.value = PlaybackState(null, 0L, false)
+                        releasePlayer()
+                    }
+                    setOnErrorListener { _, what, extra ->
+                        _state.value = PlaybackState(null, 0L, false)
+                        releasePlayer()
+                        true
+                    }
+                    prepareAsync()
+                }
+                currentEpisode = episode
+                _state.value = PlaybackState(episode, startPositionMs, false)
+            } catch (e: Exception) {
+                // Handle any errors during MediaPlayer setup or URI parsing
+                _state.value = PlaybackState(null, 0L, false)
+                releasePlayer()
             }
-            currentEpisode = episode
-            _state.value = PlaybackState(episode, startPositionMs, false)
         }
     }
 
