@@ -51,7 +51,13 @@ class PodcastDao(private val database: PodcastDatabase) {
 
     suspend fun upsertEpisodes(podcastId: String, episodes: List<Episode>) {
         queries.transaction {
-            queries.removeEpisodesForPodcast(podcastId)
+            // Get existing episode IDs to preserve them
+            val existingEpisodeIds = queries.selectExistingEpisodeIds(podcastId)
+                .executeAsList()
+                .map { it.id }
+                .toSet()
+            
+            // Upsert all episodes from the feed (this will update existing ones and add new ones)
             episodes.forEach { episode ->
                 queries.upsertEpisode(
                     id = episode.id,
@@ -63,6 +69,15 @@ class PodcastDao(private val database: PodcastDatabase) {
                     duration = episode.duration,
                     imageUrl = episode.imageUrl,
                 )
+            }
+            
+            // Only remove episodes that are no longer in the feed
+            // This preserves episodes that might be temporarily missing from the feed
+            val newEpisodeIds = episodes.map { it.id }.toSet()
+            val episodesToRemove = existingEpisodeIds - newEpisodeIds
+            
+            if (episodesToRemove.isNotEmpty()) {
+                queries.removeEpisodesNotInList(podcastId, episodesToRemove)
             }
         }
     }

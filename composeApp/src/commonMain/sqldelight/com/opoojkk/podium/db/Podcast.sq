@@ -91,3 +91,10 @@ SELECT episodeId, status, progress, filePath FROM downloads;
 
 selectPlaybackForEpisode:
 SELECT episodeId, positionMs, updatedAt FROM playback_state WHERE episodeId = ?;
+
+-- New queries for smart episode upsert
+selectExistingEpisodeIds:
+SELECT id FROM episodes WHERE podcastId = ?;
+
+removeEpisodesNotInList:
+DELETE FROM episodes WHERE podcastId = ? AND id NOT IN ?;
