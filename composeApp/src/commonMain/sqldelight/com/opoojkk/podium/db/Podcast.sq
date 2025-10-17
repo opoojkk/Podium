@@ -1,0 +1,92 @@
+CREATE TABLE podcasts (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    artworkUrl TEXT,
+    feedUrl TEXT NOT NULL,
+    lastUpdated INTEGER NOT NULL,
+    autoDownload INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE episodes (
+    id TEXT NOT NULL PRIMARY KEY,
+    podcastId TEXT NOT NULL REFERENCES podcasts(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    audioUrl TEXT NOT NULL,
+    publishDate INTEGER NOT NULL,
+    duration INTEGER,
+    imageUrl TEXT
+);
+
+CREATE TABLE playback_state (
+    episodeId TEXT NOT NULL PRIMARY KEY REFERENCES episodes(id) ON DELETE CASCADE,
+    positionMs INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE TABLE downloads (
+    episodeId TEXT NOT NULL PRIMARY KEY REFERENCES episodes(id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    progress REAL NOT NULL,
+    filePath TEXT
+);
+
+upsertPodcast:
+INSERT OR REPLACE INTO podcasts(id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+upsertEpisode:
+INSERT OR REPLACE INTO episodes(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+removeEpisodesForPodcast:
+DELETE FROM episodes WHERE podcastId = ?;
+
+updateAutoDownload:
+UPDATE podcasts SET autoDownload = ? WHERE id = ?;
+
+upsertPlayback:
+INSERT OR REPLACE INTO playback_state(episodeId, positionMs, updatedAt)
+VALUES (?, ?, ?);
+
+upsertDownload:
+INSERT OR REPLACE INTO downloads(episodeId, status, progress, filePath)
+VALUES (?, ?, ?, ?);
+
+selectAllPodcasts:
+SELECT id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload
+FROM podcasts
+ORDER BY lastUpdated DESC;
+
+selectEpisodesByPodcast:
+SELECT id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl
+FROM episodes
+WHERE podcastId = ?
+ORDER BY publishDate DESC;
+
+selectRecentEpisodes:
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+       p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
+       p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
+FROM episodes e
+JOIN podcasts p ON e.podcastId = p.id
+ORDER BY publishDate DESC
+LIMIT ?;
+
+selectRecentPlayback:
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+       p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
+       p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
+       ps.positionMs, ps.updatedAt
+FROM playback_state ps
+JOIN episodes e ON ps.episodeId = e.id
+JOIN podcasts p ON e.podcastId = p.id
+ORDER BY ps.updatedAt DESC
+LIMIT ?;
+
+selectDownloadStatuses:
+SELECT episodeId, status, progress, filePath FROM downloads;
+
+selectPlaybackForEpisode:
+SELECT episodeId, positionMs, updatedAt FROM playback_state WHERE episodeId = ?;

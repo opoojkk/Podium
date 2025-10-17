@@ -3,23 +3,24 @@ package com.opoojkk.podium
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
+import com.opoojkk.podium.platform.PlatformContext
 
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
-        super.onCreate(savedInstanceState)
 
+    private var environment: PodiumEnvironment? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val context = PlatformContext(this)
+        environment = createPodiumEnvironment(context)
         setContent {
-            App()
+            environment?.let { PodiumApp(it) }
         }
     }
-}
 
-@Preview
-@Composable
-fun AppAndroidPreview() {
-    App()
+    override fun onDestroy() {
+        super.onDestroy()
+        environment?.dispose()
+        environment = null
+    }
 }
