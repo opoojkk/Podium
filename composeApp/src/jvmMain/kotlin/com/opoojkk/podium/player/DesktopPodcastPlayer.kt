@@ -8,8 +8,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.net.URL
-import java.nio.file.Files
-import java.nio.file.Path
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.Clip
@@ -20,22 +18,16 @@ class DesktopPodcastPlayer : PodcastPlayer {
     private val _state = MutableStateFlow(PlaybackState(null, 0L, false))
     private var clip: Clip? = null
     private var currentEpisode: Episode? = null
-    private var cachedFile: Path? = null
 
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         withContext(Dispatchers.IO) {
             stop()
-            var tempFile: Path? = null
             try {
-                tempFile = Files.createTempFile("podium", ".audio")
-                URL(episode.audioUrl).openStream().use { input ->
-                    Files.newOutputStream(tempFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                val baseStream = AudioSystem.getAudioInputStream(tempFile.toFile())
+                // Stream directly from URL without downloading entire file
+                val audioUrl = URL(episode.audioUrl)
+                val baseStream = AudioSystem.getAudioInputStream(audioUrl)
                 val baseFormat = baseStream.format
                 val decodedFormat = AudioFormat(
                     AudioFormat.Encoding.PCM_SIGNED,
@@ -57,18 +49,14 @@ class DesktopPodcastPlayer : PodcastPlayer {
                         if (event.type == LineEvent.Type.STOP) {
                             _state.value = PlaybackState(null, 0L, false)
                             close()
-                            Files.deleteIfExists(tempFile)
                         }
                     }
                     start()
                 }
                 clip = newClip
                 currentEpisode = episode
-                cachedFile = tempFile
                 _state.value = PlaybackState(episode, startPositionMs, true)
             } catch (e: Exception) {
-                // Clean up temporary file if it was created
-                tempFile?.let { Files.deleteIfExists(it) }
                 _state.value = PlaybackState(null, 0L, false)
             }
         }
@@ -94,8 +82,6 @@ class DesktopPodcastPlayer : PodcastPlayer {
             player.close()
         }
         clip = null
-        cachedFile?.let { Files.deleteIfExists(it) }
-        cachedFile = null
         currentEpisode = null
         _state.value = PlaybackState(null, 0L, false)
     }
