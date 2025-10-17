@@ -11,6 +11,7 @@ import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.kCMTimeZero
 import platform.Foundation.NSURL
+import platform.CoreMedia.CMTimeMakeWithSeconds
 
 class IosPodcastPlayer : PodcastPlayer {
 
@@ -25,7 +26,10 @@ class IosPodcastPlayer : PodcastPlayer {
             currentEpisode = episode
             val item = AVPlayerItem.playerItemWithURL(NSURL(string = episode.audioUrl))
             player.replaceCurrentItemWithPlayerItem(item)
-            player.play()
+            val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
+            player.seekToTime(seekTime) { _ ->
+                player.play()
+            }
             _state.value = PlaybackState(episode, startPositionMs, true)
         }
     }
