@@ -27,8 +27,9 @@ class DesktopPodcastPlayer : PodcastPlayer {
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         withContext(Dispatchers.IO) {
             stop()
-            runCatching {
-                val tempFile = Files.createTempFile("podium", ".audio")
+            var tempFile: Path? = null
+            try {
+                tempFile = Files.createTempFile("podium", ".audio")
                 URL(episode.audioUrl).openStream().use { input ->
                     Files.newOutputStream(tempFile).use { output ->
                         input.copyTo(output)
@@ -65,7 +66,9 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 currentEpisode = episode
                 cachedFile = tempFile
                 _state.value = PlaybackState(episode, startPositionMs, true)
-            }.onFailure {
+            } catch (e: Exception) {
+                // Clean up temporary file if it was created
+                tempFile?.let { Files.deleteIfExists(it) }
                 _state.value = PlaybackState(null, 0L, false)
             }
         }
