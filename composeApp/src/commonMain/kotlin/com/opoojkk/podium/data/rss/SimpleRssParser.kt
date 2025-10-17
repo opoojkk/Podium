@@ -132,7 +132,10 @@ class SimpleRssParser {
                             val minutes = timezone.substring(3, 5).toInt()
                             val offsetMinutes = sign * (hours * 60 + minutes)
                             // Create a timezone with the offset (in minutes)
-                            TimeZone.of("GMT${if (offsetMinutes >= 0) "+" else ""}${offsetMinutes / 60}:${(offsetMinutes % 60).toString().padStart(2, '0')}")
+                            val offsetHours = offsetMinutes / 60
+                            val offsetMinutesRemainder = kotlin.math.abs(offsetMinutes % 60)
+                            val timezoneId = "UTC${if (offsetHours >= 0) "+" else ""}${offsetHours.toString().padStart(2, '0')}:${offsetMinutesRemainder.toString().padStart(2, '0')}"
+                            TimeZone.of(timezoneId)
                         } else {
                             // Default to UTC for unknown timezones
                             TimeZone.UTC
