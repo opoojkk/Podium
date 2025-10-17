@@ -139,6 +139,7 @@ class PodcastDao(private val database: PodcastDatabase) {
     private fun mapEpisode(
         id: String,
         podcastId: String,
+        podcastTitle: String,
         title: String,
         description: String,
         audioUrl: String,
@@ -148,7 +149,7 @@ class PodcastDao(private val database: PodcastDatabase) {
     ): Episode = Episode(
         id = id,
         podcastId = podcastId,
-        podcastTitle = "",
+        podcastTitle = podcastTitle,
         title = title,
         description = description,
         audioUrl = audioUrl,

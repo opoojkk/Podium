@@ -60,10 +60,11 @@ FROM podcasts
 ORDER BY lastUpdated DESC;
 
 selectEpisodesByPodcast:
-SELECT id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl
-FROM episodes
-WHERE podcastId = ?
-ORDER BY publishDate DESC;
+SELECT e.id, e.podcastId, p.title AS podcastTitle, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl
+FROM episodes e
+JOIN podcasts p ON e.podcastId = p.id
+WHERE e.podcastId = ?
+ORDER BY e.publishDate DESC;
 
 selectRecentEpisodes:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
