@@ -55,14 +55,14 @@ class SimpleRssParser {
     }
 
     private fun extractTag(block: String, tag: String): String? {
-        val pattern = Regex("<$tag(?: [^>]*)?>(.*?)</$tag>", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
+        val pattern = Regex("<$tag(?:\\s[^>]*)?>(.*?)</$tag>", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE, RegexOption.DOT_MATCHES_ALL))
         val raw = pattern.find(block)?.groupValues?.get(1) ?: return null
         val cdata = cdataRegex.find(raw)?.groupValues?.get(1)
         return (cdata ?: raw).trim()
     }
 
     private fun extractAttribute(block: String, tag: String, attribute: String): String? {
-        val pattern = Regex("<$tag[^>]*$attribute=\"([^\"]+)\"[^>]*/?>", RegexOption.IGNORE_CASE)
+        val pattern = Regex("<$tag[^>]*\\b$attribute\\s*=\\s*['\\\"]([^'\\\"]+)['\\\"][^>]*/?>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
         return pattern.find(block)?.groupValues?.get(1)
     }
 
@@ -178,8 +178,8 @@ class SimpleRssParser {
     }
 
     companion object {
-        private val channelRegex = Regex("<channel>(.*?)</channel>", setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE))
-        private val itemRegex = Regex("<item>(.*?)</item>", setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE))
-        private val cdataRegex = Regex("<!\\[CDATA\\[(.*?)\\]\\]>", setOf(RegexOption.MULTILINE))
+        private val channelRegex = Regex("<channel>(.*?)</channel>", setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        private val itemRegex = Regex("<item>(.*?)</item>", setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        private val cdataRegex = Regex("<!\\[CDATA\\[(.*?)\\]\\]>", setOf(RegexOption.MULTILINE, RegexOption.DOT_MATCHES_ALL))
     }
 }
