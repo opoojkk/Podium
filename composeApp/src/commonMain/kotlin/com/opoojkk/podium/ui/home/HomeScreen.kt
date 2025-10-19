@@ -24,6 +24,8 @@ fun HomeScreen(
     onPlayEpisode: (Episode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val playedIds = state.recentPlayed.map { it.episode.id }.toSet()
+    val updatesOnly = state.recentUpdates.filter { it.episode.id !in playedIds }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -46,10 +48,10 @@ fun HomeScreen(
         item {
             Section(title = "最近更新", description = "及时了解最新节目")
         }
-        if (state.recentUpdates.isEmpty()) {
+        if (updatesOnly.isEmpty()) {
             item { EmptyHint(text = "暂无新节目") }
         } else {
-            items(state.recentUpdates, key = { it.episode.id }) { item ->
+            items(updatesOnly, key = { it.episode.id }) { item ->
                 PodcastEpisodeCard(
                     episodeWithPodcast = item,
                     onPlayClick = { onPlayEpisode(item.episode) },
