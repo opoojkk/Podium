@@ -4,20 +4,13 @@ import com.opoojkk.podium.data.local.PodcastDao
 import com.opoojkk.podium.data.repository.PodcastRepository
 import com.opoojkk.podium.data.rss.PodcastFeedService
 import com.opoojkk.podium.data.rss.SimpleRssParser
-import com.opoojkk.podium.download.PodcastDownloadManager
-import com.opoojkk.podium.platform.PlatformContext
-import com.opoojkk.podium.platform.createPlatformHttpClient
-import com.opoojkk.podium.platform.provideDatabaseDriverFactory
-import com.opoojkk.podium.platform.provideDownloadManager
-import com.opoojkk.podium.platform.providePodcastPlayer
-import com.opoojkk.podium.player.PodcastPlayer
 import com.opoojkk.podium.db.PodcastDatabase
-import io.ktor.client.HttpClient
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
+import com.opoojkk.podium.download.PodcastDownloadManager
+import com.opoojkk.podium.platform.*
+import com.opoojkk.podium.player.PodcastPlayer
+import com.opoojkk.podium.presentation.PodiumController
+import io.ktor.client.*
+import kotlinx.coroutines.*
 
 class PodiumEnvironment internal constructor(
     val repository: PodcastRepository,
@@ -49,8 +42,8 @@ fun createPodiumEnvironment(context: PlatformContext): PodiumEnvironment {
     return PodiumEnvironment(repository, player, downloadManager, httpClient, scope)
 }
 
-fun PodiumEnvironment.createController(): com.opoojkk.podium.presentation.PodiumController =
-    com.opoojkk.podium.presentation.PodiumController(
+fun PodiumEnvironment.createController(): PodiumController =
+    PodiumController(
         repository = repository,
         player = player,
         downloadManager = downloadManager,

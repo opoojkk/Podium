@@ -141,6 +141,17 @@ class PodcastDao(private val database: PodcastDatabase) {
             .executeAsOneOrNull()
     }
 
+    suspend fun deletePodcast(podcastId: String) {
+        queries.deletePodcastById(podcastId)
+    }
+
+    suspend fun updatePodcastTitle(podcastId: String, newTitle: String) {
+        queries.updatePodcastTitle(
+            title = newTitle,
+            id = podcastId,
+        )
+    }
+
     private fun mapPodcast(
         id: String,
         title: String,

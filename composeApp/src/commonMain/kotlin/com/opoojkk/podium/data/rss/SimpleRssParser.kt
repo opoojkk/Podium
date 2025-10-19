@@ -44,7 +44,7 @@ class SimpleRssParser {
 
         val lastUpdated = items.firstOrNull()?.publishDate ?: Clock.System.now()
         return PodcastFeed(
-            id = title.lowercase().replace(" ", "-") + feedUrl.hashCode(),
+            id = generateUniquePodcastId(title, feedUrl),
             title = title,
             description = description,
             artworkUrl = artworkUrl,
@@ -55,14 +55,14 @@ class SimpleRssParser {
     }
 
     private fun extractTag(block: String, tag: String): String? {
-        val pattern = Regex("<$tag(?: [^>]*)?>(.*?)</$tag>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        val pattern = Regex("<$tag(?: [^>]*)?>(.*?)</$tag>", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
         val raw = pattern.find(block)?.groupValues?.get(1) ?: return null
         val cdata = cdataRegex.find(raw)?.groupValues?.get(1)
         return (cdata ?: raw).trim()
     }
 
     private fun extractAttribute(block: String, tag: String, attribute: String): String? {
-        val pattern = Regex("<$tag[^>]*$attribute=\"([^\"]+)\"[^>]*/?>", setOf(RegexOption.IGNORE_CASE))
+        val pattern = Regex("<$tag[^>]*$attribute=\"([^\"]+)\"[^>]*/?>", RegexOption.IGNORE_CASE)
         return pattern.find(block)?.groupValues?.get(1)
     }
 
@@ -164,9 +164,22 @@ class SimpleRssParser {
         }
     }
 
+    private fun generateUniquePodcastId(title: String, feedUrl: String): String {
+        // Create a more unique ID by combining title, feedUrl, and current timestamp
+        val titleHash = title.lowercase()
+            .replace(Regex("[^a-z0-9]"), "-")
+            .replace(Regex("-+"), "-")
+            .trim('-')
+        val urlHash = feedUrl.hashCode().toString().replace("-", "n")
+        val timestamp = Clock.System.now().toEpochMilliseconds().toString()
+        // Use a random number instead of System.nanoTime() for multiplatform compatibility
+        val randomSuffix = (100000..999999).random().toString()
+        return "${titleHash}-${urlHash}-${timestamp}-${randomSuffix}"
+    }
+
     companion object {
-        private val channelRegex = Regex("<channel>(.*?)</channel>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
-        private val itemRegex = Regex("<item>(.*?)</item>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
-        private val cdataRegex = Regex("<!\\[CDATA\\[(.*?)\\]\\]>", setOf(RegexOption.DOT_MATCHES_ALL))
+        private val channelRegex = Regex("<channel>(.*?)</channel>", setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE))
+        private val itemRegex = Regex("<item>(.*?)</item>", setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE))
+        private val cdataRegex = Regex("<!\\[CDATA\\[(.*?)\\]\\]>", setOf(RegexOption.MULTILINE))
     }
 }

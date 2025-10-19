@@ -98,3 +98,10 @@ SELECT id FROM episodes WHERE podcastId = ?;
 
 removeEpisodeById:
 DELETE FROM episodes WHERE id = ?;
+
+-- Subscription management
+deletePodcastById:
+DELETE FROM podcasts WHERE id = ?;
+
+updatePodcastTitle:
+UPDATE podcasts SET title = ? WHERE id = ?;

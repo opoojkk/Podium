@@ -40,7 +40,10 @@ class PodiumController(
 
     init {
         scope.launch {
-            repository.observeHomeState().collect { _homeState.value = it }
+            repository.observeHomeState().collect { homeState ->
+                println("🏠 Home state updated: ${homeState.recentUpdates.size} recent updates, ${homeState.recentPlayed.size} recent played")
+                _homeState.value = homeState
+            }
         }
         scope.launch {
             repository.observeSubscriptions().collect { podcasts ->
@@ -106,13 +109,21 @@ class PodiumController(
 
     fun subscribe(feedUrl: String) {
         scope.launch {
-            val result = repository.subscribe(feedUrl)
-            if (downloadManager.isAutoDownloadEnabled()) {
-                result.episodes.maxByOrNull { it.publishDate }?.let { latest ->
-                    downloadManager.enqueue(latest, auto = true)
+            try {
+                println("🎧 Controller: Starting subscription process for: $feedUrl")
+                val result = repository.subscribe(feedUrl)
+                println("🎧 Controller: Subscription completed, got ${result.episodes.size} episodes")
+                if (downloadManager.isAutoDownloadEnabled()) {
+                    result.episodes.maxByOrNull { it.publishDate }?.let { latest ->
+                        downloadManager.enqueue(latest, auto = true)
+                    }
                 }
+                repository.setAutoDownload(result.podcast.id, downloadManager.isAutoDownloadEnabled())
+                println("🎧 Controller: Subscription process finished successfully")
+            } catch (e: Exception) {
+                println("❌ Controller: Subscription failed: ${e.message}")
+                e.printStackTrace()
             }
-            repository.setAutoDownload(result.podcast.id, downloadManager.isAutoDownloadEnabled())
         }
     }
 
@@ -138,4 +149,16 @@ class PodiumController(
     }
 
     suspend fun exportOpml(): String = repository.exportOpml()
+
+    fun deleteSubscription(podcastId: String) {
+        scope.launch {
+            repository.deleteSubscription(podcastId)
+        }
+    }
+
+    fun renameSubscription(podcastId: String, newTitle: String) {
+        scope.launch {
+            repository.renameSubscription(podcastId, newTitle)
+        }
+    }
 }

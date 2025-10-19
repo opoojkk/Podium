@@ -55,6 +55,9 @@ fun PodiumApp(environment: PodiumEnvironment) {
                     PodiumDestination.Subscriptions -> SubscriptionsScreen(
                         state = subscriptionsState,
                         onRefresh = controller::refreshSubscriptions,
+                        onAddSubscription = controller::subscribe,
+                        onEditSubscription = controller::renameSubscription,
+                        onDeleteSubscription = controller::deleteSubscription,
                     )
 
                     PodiumDestination.Profile -> ProfileScreen(

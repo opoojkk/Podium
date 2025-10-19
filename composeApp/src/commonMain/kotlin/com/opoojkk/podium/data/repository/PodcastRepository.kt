@@ -54,12 +54,17 @@ class PodcastRepository(
     )
 
     suspend fun subscribe(feedUrl: String, autoDownload: Boolean = true): SubscriptionResult {
-        val feed = feedService.fetch(feedUrl)
-        val podcast = feed.toPodcast(autoDownload)
-        val episodes = feed.episodes.map { it.toEpisode(podcast) }
-        dao.upsertPodcast(podcast)
-        dao.upsertEpisodes(podcast.id, episodes)
-        return SubscriptionResult(podcast, episodes)
+        try {
+            val feed = feedService.fetch(feedUrl)
+            val podcast = feed.toPodcast(autoDownload)
+            val episodes = feed.episodes.map { it.toEpisode(podcast) }
+            dao.upsertPodcast(podcast)
+            dao.upsertEpisodes(podcast.id, episodes)
+            return SubscriptionResult(podcast, episodes)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
+        }
     }
 
     suspend fun refreshSubscriptions() {
@@ -122,6 +127,14 @@ class PodcastRepository(
             progress = progress,
             filePath = path,
         )
+    }
+
+    suspend fun deleteSubscription(podcastId: String) {
+        dao.deletePodcast(podcastId)
+    }
+
+    suspend fun renameSubscription(podcastId: String, newTitle: String) {
+        dao.updatePodcastTitle(podcastId, newTitle)
     }
 
     private fun com.opoojkk.podium.data.rss.PodcastFeed.toPodcast(autoDownload: Boolean): Podcast = Podcast(
