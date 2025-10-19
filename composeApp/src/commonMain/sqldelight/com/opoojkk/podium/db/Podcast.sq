@@ -96,5 +96,5 @@ SELECT episodeId, positionMs, updatedAt FROM playback_state WHERE episodeId = ?;
 selectExistingEpisodeIds:
 SELECT id FROM episodes WHERE podcastId = ?;
 
-removeEpisodesNotInList:
-DELETE FROM episodes WHERE podcastId = ? AND id NOT IN ?;
+removeEpisodeById:
+DELETE FROM episodes WHERE id = ?;

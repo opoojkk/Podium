@@ -14,25 +14,33 @@ import kotlinx.datetime.Instant
 
 class PodcastDao(private val database: PodcastDatabase) {
 
-    private val queries = database.podcastDatabaseQueries
+    private val queries = database.podcastQueries
 
     fun observePodcasts(): Flow<List<Podcast>> =
-        queries.selectAllPodcasts(::mapPodcast)
+        queries.selectAllPodcasts { id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload ->
+            mapPodcast(id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload)
+        }
             .asFlow()
             .mapToList(Dispatchers.Default)
 
     fun observeEpisodes(podcastId: String): Flow<List<Episode>> =
-        queries.selectEpisodesByPodcast(podcastId, ::mapEpisode)
+        queries.selectEpisodesByPodcast(podcastId) { id, podcastId, podcastTitle, title, description, audioUrl, publishDate, duration, imageUrl ->
+            mapEpisode(id, podcastId, podcastTitle, title, description, audioUrl, publishDate, duration, imageUrl)
+        }
             .asFlow()
             .mapToList(Dispatchers.Default)
 
     fun observeRecentEpisodes(limit: Int): Flow<List<EpisodeWithPodcast>> =
-        queries.selectRecentEpisodes(limit.toLong(), ::mapEpisodeWithPodcast)
+        queries.selectRecentEpisodes(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        }
             .asFlow()
             .mapToList(Dispatchers.Default)
 
     fun observeRecentListening(limit: Int): Flow<List<EpisodeWithPodcast>> =
-        queries.selectRecentPlayback(limit.toLong(), ::mapPlaybackWithEpisode)
+        queries.selectRecentPlayback(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, updatedAt ->
+            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, updatedAt)
+        }
             .asFlow()
             .mapToList(Dispatchers.Default)
             .map { list -> list.map { it.first } }
@@ -54,7 +62,6 @@ class PodcastDao(private val database: PodcastDatabase) {
             // Get existing episode IDs to preserve them
             val existingEpisodeIds = queries.selectExistingEpisodeIds(podcastId)
                 .executeAsList()
-                .map { it.id }
                 .toSet()
             
             // Upsert all episodes from the feed (this will update existing ones and add new ones)
@@ -77,7 +84,9 @@ class PodcastDao(private val database: PodcastDatabase) {
             val episodesToRemove = existingEpisodeIds - newEpisodeIds
             
             if (episodesToRemove.isNotEmpty()) {
-                queries.removeEpisodesNotInList(podcastId, episodesToRemove)
+                episodesToRemove.forEach { episodeId ->
+                    queries.removeEpisodeById(episodeId)
+                }
             }
         }
     }
@@ -98,13 +107,13 @@ class PodcastDao(private val database: PodcastDatabase) {
     }
 
     fun observeDownloads(): Flow<Map<String, Triple<String, Float, String?>>> =
-        queries.selectDownloadStatuses()
+        queries.selectDownloadStatuses { episodeId, status, progress, filePath ->
+            episodeId to Triple(status, progress.toFloat(), filePath)
+        }
             .asFlow()
             .mapToList(Dispatchers.Default)
             .map { rows ->
-                rows.associate { row ->
-                    row.episodeId to Triple(row.status, row.progress, row.filePath)
-                }
+                rows.associate { it }
             }
 
     suspend fun upsertDownloadStatus(
@@ -116,21 +125,20 @@ class PodcastDao(private val database: PodcastDatabase) {
         queries.upsertDownload(
             episodeId = episodeId,
             status = status,
-            progress = progress,
+            progress = progress.toDouble(),
             filePath = filePath,
         )
     }
 
     suspend fun playbackForEpisode(episodeId: String): PlaybackProgress? {
-        return queries.selectPlaybackForEpisode(episodeId)
+        return queries.selectPlaybackForEpisode(episodeId) { episodeId_, positionMs, updatedAt ->
+            PlaybackProgress(
+                episodeId = episodeId_,
+                positionMs = positionMs,
+                updatedAt = Instant.fromEpochMilliseconds(updatedAt),
+            )
+        }
             .executeAsOneOrNull()
-            ?.let { row ->
-                PlaybackProgress(
-                    episodeId = row.episodeId,
-                    positionMs = row.positionMs,
-                    updatedAt = Instant.fromEpochMilliseconds(row.updatedAt),
-                )
-            }
     }
 
     private fun mapPodcast(

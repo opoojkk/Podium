@@ -12,7 +12,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -21,35 +20,29 @@ import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.presentation.SubscriptionsUiState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionsScreen(
     state: SubscriptionsUiState,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PullToRefreshBox(
-        isRefreshing = state.isRefreshing,
-        onRefresh = onRefresh,
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.fillMaxSize(),
     ) {
-        LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (state.subscriptions.isEmpty()) {
-                item {
-                    Text(
-                        text = "还没有订阅任何播客",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(32.dp),
-                    )
-                }
-            } else {
-                items(state.subscriptions, key = { it.id }) { podcast ->
-                    SubscriptionCard(podcast)
-                }
+        if (state.subscriptions.isEmpty()) {
+            item {
+                Text(
+                    text = "还没有订阅任何播客",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(32.dp),
+                )
+            }
+        } else {
+            items(state.subscriptions, key = { it.id }) { podcast ->
+                SubscriptionCard(podcast)
             }
         }
     }

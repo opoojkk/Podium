@@ -35,6 +35,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android)
+            implementation(libs.ktor.serialization.kotlinx.xml)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -50,7 +51,6 @@ kotlin {
             implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.serialization.kotlinx.json)
-            implementation(libs.ktor.serialization.kotlinx.xml)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
             implementation(libs.sqldelight.async)
@@ -68,6 +68,7 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.ktor.client.cio)
             implementation(libs.sqldelight.jvm)
+            implementation(libs.ktor.serialization.kotlinx.xml)
         }
     }
 }
@@ -119,6 +120,7 @@ sqldelight {
     databases {
         create("PodcastDatabase") {
             packageName.set("com.opoojkk.podium.db")
+            schemaOutputDirectory.set(file("src/commonMain/sqldelight"))
         }
     }
 }
