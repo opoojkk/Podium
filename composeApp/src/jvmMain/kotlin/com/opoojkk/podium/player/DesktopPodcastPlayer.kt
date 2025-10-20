@@ -22,12 +22,18 @@ class DesktopPodcastPlayer : PodcastPlayer {
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
+        println("🎵 DesktopPodcastPlayer: Starting playback for episode: ${episode.title}")
+        println("🎵 DesktopPodcastPlayer: Audio URL: ${episode.audioUrl}")
         withContext(Dispatchers.IO) {
             stop()
             try {
-                // Stream directly from URL without downloading entire file
+                // Download the audio file first, then play it
                 val audioUrl = URL(episode.audioUrl)
-                val baseStream = AudioSystem.getAudioInputStream(audioUrl)
+                println("🎵 DesktopPodcastPlayer: Downloading audio file...")
+                val connection = audioUrl.openConnection()
+                connection.setRequestProperty("User-Agent", "Podium/1.0")
+                val inputStream = connection.getInputStream()
+                val baseStream = AudioSystem.getAudioInputStream(inputStream)
                 val baseFormat = baseStream.format
                 val decodedFormat = AudioFormat(
                     AudioFormat.Encoding.PCM_SIGNED,
@@ -40,6 +46,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 )
                 val decodedStream = AudioSystem.getAudioInputStream(decodedFormat, baseStream)
                 val newClip = AudioSystem.getClip().apply {
+                    println("🎵 DesktopPodcastPlayer: Opening audio stream")
                     open(decodedStream)
                     if (startPositionMs > 0) {
                         val positionFrames = ((startPositionMs / 1000f) * decodedFormat.frameRate).toInt()
@@ -47,16 +54,21 @@ class DesktopPodcastPlayer : PodcastPlayer {
                     }
                     addLineListener { event ->
                         if (event.type == LineEvent.Type.STOP) {
+                            println("🎵 DesktopPodcastPlayer: Playback stopped")
                             _state.value = PlaybackState(null, 0L, false)
                             close()
                         }
                     }
+                    println("🎵 DesktopPodcastPlayer: Starting playback")
                     start()
                 }
                 clip = newClip
                 currentEpisode = episode
                 _state.value = PlaybackState(episode, startPositionMs, true)
+                println("🎵 DesktopPodcastPlayer: State updated to playing")
             } catch (e: Exception) {
+                println("🎵 DesktopPodcastPlayer: Exception occurred: ${e.message}")
+                e.printStackTrace()
                 _state.value = PlaybackState(null, 0L, false)
             }
         }

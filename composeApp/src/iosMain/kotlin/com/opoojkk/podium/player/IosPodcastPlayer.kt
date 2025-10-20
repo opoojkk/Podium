@@ -44,8 +44,9 @@ class IosPodcastPlayer : PodcastPlayer {
                 val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
                 player.seekToTime(seekTime) { _ ->
                     player.play()
+                    _state.value = PlaybackState(episode, startPositionMs, true)
                 }
-                _state.value = PlaybackState(episode, startPositionMs, true)
+                _state.value = PlaybackState(episode, startPositionMs, false)
             } catch (e: Exception) {
                 // Handle any errors during AVPlayer setup or URL creation
                 _state.value = PlaybackState(null, 0L, false)

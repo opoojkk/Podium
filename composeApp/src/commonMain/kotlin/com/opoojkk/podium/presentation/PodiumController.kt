@@ -78,9 +78,12 @@ class PodiumController(
     }
 
     fun playEpisode(episode: Episode) {
+        println("🎵 PodiumController: playEpisode called for: ${episode.title}")
+        println("🎵 PodiumController: Audio URL: ${episode.audioUrl}")
         scope.launch {
             val progress = repository.playbackForEpisode(episode.id)
             val startPosition = progress?.positionMs ?: 0L
+            println("🎵 PodiumController: Starting playback at position: $startPosition")
             player.play(episode, startPosition)
             repository.savePlayback(
                 PlaybackProgress(
