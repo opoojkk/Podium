@@ -22,15 +22,6 @@ class PodiumEnvironment internal constructor(
     fun dispose() {
         scope.cancel()
         httpClient.close()
-        // Release VLCJ resources if it's a DesktopPodcastPlayer
-        try {
-            if (player::class.simpleName == "DesktopPodcastPlayer") {
-                val releaseMethod = player::class.java.getMethod("release")
-                releaseMethod.invoke(player)
-            }
-        } catch (e: Exception) {
-            // Ignore if release method doesn't exist
-        }
     }
 }
 
