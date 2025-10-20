@@ -4,11 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -82,21 +78,20 @@ fun PodiumApp(environment: PodiumEnvironment) {
                         )
                     }
                 }
-                
-                // Playback bar at the bottom
-                PlaybackBar(
-                    playbackState = playbackState,
-                    onPlayPauseClick = {
-                        if (playbackState.isPlaying) {
-                            controller.pause()
-                        } else {
-                            controller.resume()
-                        }
-                    },
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .padding(bottom = paddingValues.calculateBottomPadding())
-                )
+                    // Playback bar at the bottom
+                    PlaybackBar(
+                        playbackState = playbackState,
+                        onPlayPauseClick = {
+                            if (playbackState.isPlaying) {
+                                controller.pause()
+                            } else {
+                                controller.resume()
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .padding(bottom = paddingValues.calculateBottomPadding())
+                    )
             }
         }
     }

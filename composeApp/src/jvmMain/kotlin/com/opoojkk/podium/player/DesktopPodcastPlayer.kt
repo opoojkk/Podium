@@ -2,7 +2,7 @@ package com.opoojkk.podium.player
 
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaybackState
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +18,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
     private val _state = MutableStateFlow(PlaybackState(null, 0L, false))
     private var clip: Clip? = null
     private var currentEpisode: Episode? = null
+    private var positionUpdateJob: Job? = null
 
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
@@ -65,6 +66,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 clip = newClip
                 currentEpisode = episode
                 _state.value = PlaybackState(episode, startPositionMs, true)
+                startPositionUpdates()
                 println("🎵 DesktopPodcastPlayer: State updated to playing")
             } catch (e: Exception) {
                 println("🎵 DesktopPodcastPlayer: Exception occurred: ${e.message}")
@@ -77,6 +79,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
     override fun pause() {
         clip?.let { player ->
             player.stop()
+            stopPositionUpdates()
             _state.value = PlaybackState(currentEpisode, position(), false)
         }
     }
@@ -84,11 +87,13 @@ class DesktopPodcastPlayer : PodcastPlayer {
     override fun resume() {
         clip?.let { player ->
             player.start()
+            startPositionUpdates()
             _state.value = PlaybackState(currentEpisode, position(), true)
         }
     }
 
     override fun stop() {
+        stopPositionUpdates()
         clip?.let { player ->
             player.stop()
             player.close()
@@ -106,4 +111,20 @@ class DesktopPodcastPlayer : PodcastPlayer {
             0L
         }
     } ?: 0L
+
+    private fun startPositionUpdates() {
+        stopPositionUpdates() // Stop any existing updates
+        positionUpdateJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isActive && clip?.isActive == true) {
+                val currentPosition = position()
+                _state.value = PlaybackState(currentEpisode, currentPosition, true)
+                delay(1000) // Update every second
+            }
+        }
+    }
+
+    private fun stopPositionUpdates() {
+        positionUpdateJob?.cancel()
+        positionUpdateJob = null
+    }
 }
