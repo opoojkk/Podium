@@ -16,7 +16,7 @@ import platform.CoreMedia.CMTimeMakeWithSeconds
 class IosPodcastPlayer : PodcastPlayer {
 
     private val player = AVPlayer()
-    private val _state = MutableStateFlow(PlaybackState(null, 0L, false))
+    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null))
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
 
@@ -27,7 +27,7 @@ class IosPodcastPlayer : PodcastPlayer {
             try {
                 // Validate audioUrl before attempting to create NSURL
                 if (episode.audioUrl.isBlank()) {
-                    _state.value = PlaybackState(null, 0L, false)
+                    _state.value = PlaybackState(null, 0L, false, null)
                     return@withContext
                 }
                 
@@ -36,7 +36,7 @@ class IosPodcastPlayer : PodcastPlayer {
                 
                 // Check if URL creation was successful
                 if (url == null) {
-                    _state.value = PlaybackState(null, 0L, false)
+                    _state.value = PlaybackState(null, 0L, false, null)
                     return@withContext
                 }
                 
@@ -45,10 +45,10 @@ class IosPodcastPlayer : PodcastPlayer {
                 val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
                 player.seekToTime(seekTime) { _ ->
                     player.play()
-                    _state.value = PlaybackState(episode, startPositionMs, true)
+                    _state.value = PlaybackState(episode, startPositionMs, true, duration())
                     startPositionUpdates()
                 }
-                _state.value = PlaybackState(episode, startPositionMs, false)
+                _state.value = PlaybackState(episode, startPositionMs, false, duration())
             } catch (e: Exception) {
                 // Handle any errors during AVPlayer setup or URL creation
                 stopPositionUpdates()
@@ -61,13 +61,13 @@ class IosPodcastPlayer : PodcastPlayer {
     override fun pause() {
         player.pause()
         stopPositionUpdates()
-        _state.value = PlaybackState(currentEpisode, currentPosition(), false)
+        _state.value = PlaybackState(currentEpisode, currentPosition(), false, duration())
     }
 
     override fun resume() {
         player.play()
         startPositionUpdates()
-        _state.value = PlaybackState(currentEpisode, currentPosition(), true)
+        _state.value = PlaybackState(currentEpisode, currentPosition(), true, duration())
     }
 
     override fun stop() {
@@ -75,7 +75,7 @@ class IosPodcastPlayer : PodcastPlayer {
         player.pause()
         player.seekToTime(kCMTimeZero)
         currentEpisode = null
-        _state.value = PlaybackState(null, 0L, false)
+        _state.value = PlaybackState(null, 0L, false, null)
     }
 
     private fun currentPosition(): Long {
@@ -92,7 +92,7 @@ class IosPodcastPlayer : PodcastPlayer {
         positionUpdateJob = CoroutineScope(Dispatchers.Main).launch {
             while (isActive && player.rate > 0.0) {
                 val currentPosition = currentPosition()
-                _state.value = PlaybackState(currentEpisode, currentPosition, true)
+                _state.value = PlaybackState(currentEpisode, currentPosition, true, duration())
                 delay(1000) // Update every second
             }
         }
@@ -101,5 +101,14 @@ class IosPodcastPlayer : PodcastPlayer {
     private fun stopPositionUpdates() {
         positionUpdateJob?.cancel()
         positionUpdateJob = null
+    }
+
+    private fun duration(): Long? {
+        val currentItem = player.currentItem
+        val time = currentItem?.duration
+        return if (time != null && time.timescale != 0L) {
+            val ms = (time.value * 1000L) / time.timescale
+            if (ms > 0) ms else null
+        } else null
     }
 }

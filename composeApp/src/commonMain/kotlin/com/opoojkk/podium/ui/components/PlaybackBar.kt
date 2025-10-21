@@ -38,8 +38,15 @@ fun PlaybackBar(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
-        if (playbackState.episode != null) {
-            // Show episode info when playing
+        val durationMs = playbackState.episode.duration ?: playbackState.durationMs
+        val timeText = buildString {
+            append(formatTime(playbackState.positionMs))
+            append("/")
+            append(durationMs?.let { formatTime(it) } ?: "--:--")
+        }
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Top content row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -80,11 +87,33 @@ fun PlaybackBar(
                     )
                 }
 
-                // Position info
+                // Time info: 当前/总时长
                 Text(
-                    text = formatTime(playbackState.positionMs),
+                    text = timeText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
+
+            // Bottom progress bar
+            if (durationMs != null && durationMs > 0) {
+                val progress = (playbackState.positionMs.toFloat() / durationMs.toFloat())
+                    .coerceIn(0f, 1f)
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+                )
+            } else {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
                 )
             }
         }
@@ -92,8 +121,13 @@ fun PlaybackBar(
 }
 
 private fun formatTime(milliseconds: Long): String {
-    val totalSeconds = milliseconds / 1000
-    val minutes = totalSeconds / 60
+    val totalSeconds = (if (milliseconds < 0) 0 else milliseconds) / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-    return "${minutes}:${seconds.toString().padStart(2, '0')}"
+    return if (hours > 0) {
+        "${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+    } else {
+        "${minutes}:${seconds.toString().padStart(2, '0')}"
+    }
 }

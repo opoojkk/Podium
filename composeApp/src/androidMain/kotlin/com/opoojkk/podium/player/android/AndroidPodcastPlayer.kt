@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
 
 class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 
-    private val _state = MutableStateFlow(PlaybackState(episode = null, positionMs = 0L, isPlaying = false))
+    private val _state = MutableStateFlow(PlaybackState(episode = null, positionMs = 0L, isPlaying = false, durationMs = null))
     private var mediaPlayer: MediaPlayer? = null
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
@@ -36,28 +36,33 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     setOnPreparedListener { player ->
                         player.seekTo(startPositionMs.toInt())
                         player.start()
-                        _state.value = PlaybackState(episode, player.currentPosition.toLong(), true)
+                        _state.value = PlaybackState(
+                            episode = episode,
+                            positionMs = player.currentPosition.toLong(),
+                            isPlaying = true,
+                            durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 }
+                        )
                         startPositionUpdates()
                     }
                     setOnCompletionListener {
                         stopPositionUpdates()
-                        _state.value = PlaybackState(null, 0L, false)
+                        _state.value = PlaybackState(null, 0L, false, null)
                         releasePlayer()
                     }
                     setOnErrorListener { _, what, extra ->
                         stopPositionUpdates()
-                        _state.value = PlaybackState(null, 0L, false)
+                        _state.value = PlaybackState(null, 0L, false, null)
                         releasePlayer()
                         true
                     }
                     prepareAsync()
                 }
                 currentEpisode = episode
-                _state.value = PlaybackState(episode, startPositionMs, false)
+                _state.value = PlaybackState(episode, startPositionMs, false, episode.duration)
             } catch (e: Exception) {
                 // Handle any errors during MediaPlayer setup or URI parsing
                 stopPositionUpdates()
-                _state.value = PlaybackState(null, 0L, false)
+                _state.value = PlaybackState(null, 0L, false, null)
                 releasePlayer()
             }
         }
@@ -68,7 +73,12 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
             if (player.isPlaying) {
                 player.pause()
                 stopPositionUpdates()
-                _state.value = PlaybackState(currentEpisode, player.currentPosition.toLong(), false)
+                _state.value = PlaybackState(
+                    episode = currentEpisode,
+                    positionMs = player.currentPosition.toLong(),
+                    isPlaying = false,
+                    durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration
+                )
             }
         }
     }
@@ -78,7 +88,12 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
             if (!player.isPlaying) {
                 player.start()
                 startPositionUpdates()
-                _state.value = PlaybackState(currentEpisode, player.currentPosition.toLong(), true)
+                _state.value = PlaybackState(
+                    episode = currentEpisode,
+                    positionMs = player.currentPosition.toLong(),
+                    isPlaying = true,
+                    durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration
+                )
             }
         }
     }
@@ -89,7 +104,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
             player.stop()
         }
         releasePlayer()
-        _state.value = PlaybackState(null, 0L, false)
+        _state.value = PlaybackState(null, 0L, false, null)
     }
 
     private fun releasePlayer() {
@@ -103,8 +118,15 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
         stopPositionUpdates() // Stop any existing updates
         positionUpdateJob = CoroutineScope(Dispatchers.Main).launch {
             while (isActive && mediaPlayer?.isPlaying == true) {
-                val currentPosition = mediaPlayer?.currentPosition?.toLong() ?: 0L
-                _state.value = PlaybackState(currentEpisode, currentPosition, true)
+                val player = mediaPlayer
+                val currentPosition = player?.currentPosition?.toLong() ?: 0L
+                val duration = player?.let { runCatching { it.duration.toLong() }.getOrNull() }?.takeIf { it > 0 }
+                _state.value = PlaybackState(
+                    episode = currentEpisode,
+                    positionMs = currentPosition,
+                    isPlaying = true,
+                    durationMs = duration ?: currentEpisode?.duration
+                )
                 delay(1000) // Update every second
             }
         }

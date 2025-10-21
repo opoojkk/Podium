@@ -54,6 +54,7 @@ data class PlaybackState(
     val episode: Episode?,
     val positionMs: Long,
     val isPlaying: Boolean,
+    val durationMs: Long? = null,
 )
 
 sealed interface DownloadStatus {

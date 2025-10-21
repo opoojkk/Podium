@@ -15,7 +15,7 @@ import javax.sound.sampled.LineEvent
 
 class DesktopPodcastPlayer : PodcastPlayer {
 
-    private val _state = MutableStateFlow(PlaybackState(null, 0L, false))
+    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null))
     private var clip: Clip? = null
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
@@ -56,7 +56,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
                     addLineListener { event ->
                         if (event.type == LineEvent.Type.STOP) {
                             println("🎵 DesktopPodcastPlayer: Playback stopped")
-                            _state.value = PlaybackState(null, 0L, false)
+                            _state.value = PlaybackState(null, 0L, false, null)
                             close()
                         }
                     }
@@ -65,13 +65,13 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 }
                 clip = newClip
                 currentEpisode = episode
-                _state.value = PlaybackState(episode, startPositionMs, true)
+                _state.value = PlaybackState(episode, startPositionMs, true, duration())
                 startPositionUpdates()
                 println("🎵 DesktopPodcastPlayer: State updated to playing")
             } catch (e: Exception) {
                 println("🎵 DesktopPodcastPlayer: Exception occurred: ${e.message}")
                 e.printStackTrace()
-                _state.value = PlaybackState(null, 0L, false)
+                _state.value = PlaybackState(null, 0L, false, null)
             }
         }
     }
@@ -80,7 +80,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
         clip?.let { player ->
             player.stop()
             stopPositionUpdates()
-            _state.value = PlaybackState(currentEpisode, position(), false)
+            _state.value = PlaybackState(currentEpisode, position(), false, duration())
         }
     }
 
@@ -88,7 +88,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
         clip?.let { player ->
             player.start()
             startPositionUpdates()
-            _state.value = PlaybackState(currentEpisode, position(), true)
+            _state.value = PlaybackState(currentEpisode, position(), true, duration())
         }
     }
 
@@ -100,7 +100,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
         }
         clip = null
         currentEpisode = null
-        _state.value = PlaybackState(null, 0L, false)
+        _state.value = PlaybackState(null, 0L, false, null)
     }
 
     private fun position(): Long = clip?.let { player ->
@@ -117,7 +117,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
         positionUpdateJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive && clip?.isActive == true) {
                 val currentPosition = position()
-                _state.value = PlaybackState(currentEpisode, currentPosition, true)
+                _state.value = PlaybackState(currentEpisode, currentPosition, true, duration())
                 delay(1000) // Update every second
             }
         }
@@ -126,5 +126,12 @@ class DesktopPodcastPlayer : PodcastPlayer {
     private fun stopPositionUpdates() {
         positionUpdateJob?.cancel()
         positionUpdateJob = null
+    }
+
+    private fun duration(): Long? = clip?.let { player ->
+        val format = player.format
+        if (format != null && format.frameRate > 0) {
+            (player.frameLength / format.frameRate * 1000).toLong()
+        } else null
     }
 }
