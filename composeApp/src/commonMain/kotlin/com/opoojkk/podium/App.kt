@@ -3,6 +3,7 @@ package com.opoojkk.podium
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -10,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
@@ -32,22 +34,43 @@ fun PodiumApp(environment: PodiumEnvironment) {
 
     MaterialTheme {
         Scaffold(
+            containerColor = Color.Transparent,
             bottomBar = {
-                NavigationBar {
-                    PodiumDestination.entries.forEach { destination ->
-                        val selected = destination == appState.currentDestination
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = { appState.navigateTo(destination) },
-                            icon = { androidx.compose.material3.Icon(destination.icon, contentDescription = destination.label) },
-                            label = { Text(destination.label) },
-                        )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Playback bar just above the navigation bar
+                    PlaybackBar(
+                        playbackState = playbackState,
+                        onPlayPauseClick = {
+                            if (playbackState.isPlaying) {
+                                controller.pause()
+                            } else {
+                                controller.resume()
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+
+                    NavigationBar {
+                        PodiumDestination.entries.forEach { destination ->
+                            val selected = destination == appState.currentDestination
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = { appState.navigateTo(destination) },
+                                icon = { androidx.compose.material3.Icon(destination.icon, contentDescription = destination.label) },
+                                label = { Text(destination.label) },
+                            )
+                        }
                     }
                 }
             },
         ) { paddingValues ->
             Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.weight(1f).padding(paddingValues)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(top = paddingValues.calculateTopPadding())
+                ) {
                     when (appState.currentDestination) {
                         PodiumDestination.Home -> HomeScreen(
                             state = homeState,
@@ -78,20 +101,6 @@ fun PodiumApp(environment: PodiumEnvironment) {
                         )
                     }
                 }
-                    // Playback bar at the bottom
-                    PlaybackBar(
-                        playbackState = playbackState,
-                        onPlayPauseClick = {
-                            if (playbackState.isPlaying) {
-                                controller.pause()
-                            } else {
-                                controller.resume()
-                            }
-                        },
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .padding(bottom = paddingValues.calculateBottomPadding())
-                    )
             }
         }
     }

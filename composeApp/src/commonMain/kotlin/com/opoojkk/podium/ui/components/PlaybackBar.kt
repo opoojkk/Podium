@@ -31,9 +31,9 @@ fun PlaybackBar(
             .fillMaxWidth()
             .then(if (playbackState.episode != null) Modifier.clickable { onPlayPauseClick() } else Modifier),
         colors = CardDefaults.cardColors(
-            containerColor = if (playbackState.episode != null) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
+            containerColor = if (playbackState.episode != null)
+                MaterialTheme.colorScheme.primaryContainer
+            else
                 MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
