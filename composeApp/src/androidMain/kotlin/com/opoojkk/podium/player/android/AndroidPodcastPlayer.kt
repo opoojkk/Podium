@@ -30,69 +30,95 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     return@withContext
                 }
                 
-                releasePlayer()
-                mediaPlayer = MediaPlayer().apply {
+				releasePlayer()
+				mediaPlayer = MediaPlayer().apply {
                     setDataSource(context, Uri.parse(episode.audioUrl))
                     setOnPreparedListener { player ->
                         player.seekTo(startPositionMs.toInt())
                         player.start()
-                        _state.value = PlaybackState(
+						_state.value = PlaybackState(
                             episode = episode,
                             positionMs = player.currentPosition.toLong(),
                             isPlaying = true,
-                            durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 }
+							durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 },
+							isBuffering = false,
                         )
                         startPositionUpdates()
                     }
+					setOnInfoListener { mp, what, extra ->
+						when (what) {
+							MediaPlayer.MEDIA_INFO_BUFFERING_START -> {
+								_state.value = PlaybackState(
+									episode = currentEpisode,
+									positionMs = mp.currentPosition.toLong(),
+									isPlaying = false,
+									durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
+									isBuffering = true,
+								)
+							}
+							MediaPlayer.MEDIA_INFO_BUFFERING_END -> {
+								_state.value = PlaybackState(
+									episode = currentEpisode,
+									positionMs = mp.currentPosition.toLong(),
+									isPlaying = mp.isPlaying,
+									durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
+									isBuffering = false,
+								)
+							}
+						}
+						true
+					}
                     setOnCompletionListener {
                         stopPositionUpdates()
-                        _state.value = PlaybackState(null, 0L, false, null)
+						_state.value = PlaybackState(null, 0L, false, null, false)
                         releasePlayer()
                     }
                     setOnErrorListener { _, what, extra ->
                         stopPositionUpdates()
-                        _state.value = PlaybackState(null, 0L, false, null)
+						_state.value = PlaybackState(null, 0L, false, null, false)
                         releasePlayer()
                         true
                     }
                     prepareAsync()
                 }
                 currentEpisode = episode
-                _state.value = PlaybackState(episode, startPositionMs, false, episode.duration)
+				_state.value = PlaybackState(episode, startPositionMs, false, episode.duration, true)
             } catch (e: Exception) {
                 // Handle any errors during MediaPlayer setup or URI parsing
                 stopPositionUpdates()
-                _state.value = PlaybackState(null, 0L, false, null)
+				_state.value = PlaybackState(null, 0L, false, null, false)
                 releasePlayer()
             }
         }
     }
 
-    override fun pause() {
+	override fun pause() {
         mediaPlayer?.let { player ->
             if (player.isPlaying) {
                 player.pause()
                 stopPositionUpdates()
-                _state.value = PlaybackState(
+				_state.value = PlaybackState(
                     episode = currentEpisode,
                     positionMs = player.currentPosition.toLong(),
                     isPlaying = false,
-                    durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration
+					durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
+					isBuffering = false,
                 )
             }
         }
     }
 
-    override fun resume() {
+	override fun resume() {
         mediaPlayer?.let { player ->
             if (!player.isPlaying) {
                 player.start()
                 startPositionUpdates()
-                _state.value = PlaybackState(
+				_state.value = PlaybackState(
                     episode = currentEpisode,
                     positionMs = player.currentPosition.toLong(),
                     isPlaying = true,
-                    durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration
+					durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
+					isBuffering = false,
                 )
             }
         }
@@ -114,18 +140,19 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
         currentEpisode = null
     }
 
-    private fun startPositionUpdates() {
+	private fun startPositionUpdates() {
         stopPositionUpdates() // Stop any existing updates
         positionUpdateJob = CoroutineScope(Dispatchers.Main).launch {
             while (isActive && mediaPlayer?.isPlaying == true) {
                 val player = mediaPlayer
                 val currentPosition = player?.currentPosition?.toLong() ?: 0L
                 val duration = player?.let { runCatching { it.duration.toLong() }.getOrNull() }?.takeIf { it > 0 }
-                _state.value = PlaybackState(
+				_state.value = PlaybackState(
                     episode = currentEpisode,
                     positionMs = currentPosition,
                     isPlaying = true,
-                    durationMs = duration ?: currentEpisode?.duration
+					durationMs = duration ?: currentEpisode?.duration,
+					isBuffering = false,
                 )
                 delay(1000) // Update every second
             }

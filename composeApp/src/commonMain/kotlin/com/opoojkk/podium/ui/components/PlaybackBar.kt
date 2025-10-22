@@ -54,16 +54,24 @@ fun PlaybackBar(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Play/Pause button
-                IconButton(
-                    onClick = onPlayPauseClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                // Play/Pause or Buffering indicator
+                if (playbackState.isBuffering) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        strokeWidth = 3.dp
                     )
+                } else {
+                    IconButton(
+                        onClick = onPlayPauseClick,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
 
                 // Episode info
@@ -88,8 +96,9 @@ fun PlaybackBar(
                 }
 
                 // Time info: 当前/总时长
+                val rightText = if (playbackState.isBuffering) "加载中…" else timeText
                 Text(
-                    text = timeText,
+                    text = rightText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )

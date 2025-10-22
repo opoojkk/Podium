@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
+import platform.AVFoundation.AVPlayerTimeControlStatusPaused
+import platform.AVFoundation.AVPlayerTimeControlStatusPlaying
+import platform.AVFoundation.AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate
 import platform.AVFoundation.kCMTimeZero
 import platform.Foundation.NSURL
 import platform.CoreMedia.CMTimeMakeWithSeconds
@@ -16,7 +19,7 @@ import platform.CoreMedia.CMTimeMakeWithSeconds
 class IosPodcastPlayer : PodcastPlayer {
 
     private val player = AVPlayer()
-    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null))
+    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null, false))
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
 
@@ -43,16 +46,18 @@ class IosPodcastPlayer : PodcastPlayer {
                 val item = AVPlayerItem.playerItemWithURL(url)
                 player.replaceCurrentItemWithPlayerItem(item)
                 val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
+                // Emit buffering state while preparing/seek
+                _state.value = PlaybackState(episode, startPositionMs, false, duration(), true)
                 player.seekToTime(seekTime) { _ ->
                     player.play()
-                    _state.value = PlaybackState(episode, startPositionMs, true, duration())
+                    _state.value = PlaybackState(episode, startPositionMs, true, duration(), false)
                     startPositionUpdates()
                 }
-                _state.value = PlaybackState(episode, startPositionMs, false, duration())
+                _state.value = PlaybackState(episode, startPositionMs, false, duration(), true)
             } catch (e: Exception) {
                 // Handle any errors during AVPlayer setup or URL creation
                 stopPositionUpdates()
-                _state.value = PlaybackState(null, 0L, false)
+                _state.value = PlaybackState(null, 0L, false, null, false)
                 currentEpisode = null
             }
         }
@@ -61,13 +66,13 @@ class IosPodcastPlayer : PodcastPlayer {
     override fun pause() {
         player.pause()
         stopPositionUpdates()
-        _state.value = PlaybackState(currentEpisode, currentPosition(), false, duration())
+        _state.value = PlaybackState(currentEpisode, currentPosition(), false, duration(), false)
     }
 
     override fun resume() {
         player.play()
         startPositionUpdates()
-        _state.value = PlaybackState(currentEpisode, currentPosition(), true, duration())
+        _state.value = PlaybackState(currentEpisode, currentPosition(), true, duration(), false)
     }
 
     override fun stop() {
@@ -75,7 +80,7 @@ class IosPodcastPlayer : PodcastPlayer {
         player.pause()
         player.seekToTime(kCMTimeZero)
         currentEpisode = null
-        _state.value = PlaybackState(null, 0L, false, null)
+        _state.value = PlaybackState(null, 0L, false, null, false)
     }
 
     private fun currentPosition(): Long {
@@ -90,10 +95,13 @@ class IosPodcastPlayer : PodcastPlayer {
     private fun startPositionUpdates() {
         stopPositionUpdates() // Stop any existing updates
         positionUpdateJob = CoroutineScope(Dispatchers.Main).launch {
-            while (isActive && player.rate > 0.0) {
+            while (isActive) {
                 val currentPosition = currentPosition()
-                _state.value = PlaybackState(currentEpisode, currentPosition, true, duration())
-                delay(1000) // Update every second
+                val timeControl = player.timeControlStatus
+                val isBuffering = (timeControl == AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate)
+                val isPlayingNow = (timeControl == AVPlayerTimeControlStatusPlaying) && player.rate > 0.0
+                _state.value = PlaybackState(currentEpisode, currentPosition, isPlayingNow, duration(), isBuffering)
+                delay(500)
             }
         }
     }

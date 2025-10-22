@@ -55,6 +55,7 @@ data class PlaybackState(
     val positionMs: Long,
     val isPlaying: Boolean,
     val durationMs: Long? = null,
+    val isBuffering: Boolean = false,
 )
 
 sealed interface DownloadStatus {
