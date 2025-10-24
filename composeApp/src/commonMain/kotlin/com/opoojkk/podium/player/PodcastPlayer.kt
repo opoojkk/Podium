@@ -11,4 +11,6 @@ interface PodcastPlayer {
     fun pause()
     fun resume()
     fun stop()
+    fun seekTo(positionMs: Long)
+    fun seekBy(deltaMs: Long)
 }

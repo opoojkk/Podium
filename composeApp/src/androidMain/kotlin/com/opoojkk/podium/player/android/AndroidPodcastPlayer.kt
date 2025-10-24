@@ -133,6 +133,33 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
         _state.value = PlaybackState(null, 0L, false, null)
     }
 
+	override fun seekTo(positionMs: Long) {
+		mediaPlayer?.let { player ->
+			val duration = runCatching { player.duration.toLong() }.getOrNull() ?: currentEpisode?.duration
+			val clamped = duration?.let { positionMs.coerceIn(0L, it) } ?: positionMs.coerceAtLeast(0L)
+			player.seekTo(clamped.toInt())
+			val isPlayingNow = player.isPlaying
+			_state.value = PlaybackState(
+				episode = currentEpisode,
+				positionMs = clamped,
+				isPlaying = isPlayingNow,
+				durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
+				isBuffering = false,
+			)
+			if (isPlayingNow) startPositionUpdates()
+		}
+	}
+
+	override fun seekBy(deltaMs: Long) {
+		mediaPlayer?.let { player ->
+			val current = player.currentPosition.toLong()
+			val duration = runCatching { player.duration.toLong() }.getOrNull() ?: currentEpisode?.duration
+			val target = (current + deltaMs)
+			val clamped = duration?.let { target.coerceIn(0L, it) } ?: target.coerceAtLeast(0L)
+			seekTo(clamped)
+		}
+	}
+
     private fun releasePlayer() {
         stopPositionUpdates()
         mediaPlayer?.release()

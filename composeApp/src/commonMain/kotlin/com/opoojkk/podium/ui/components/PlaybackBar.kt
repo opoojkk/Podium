@@ -17,6 +17,7 @@ import com.opoojkk.podium.data.model.PlaybackState
 fun PlaybackBar(
     playbackState: PlaybackState,
     onPlayPauseClick: () -> Unit,
+    onBarClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Debug: Always show the playback bar to see the state
@@ -29,12 +30,9 @@ fun PlaybackBar(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (playbackState.episode != null) Modifier.clickable { onPlayPauseClick() } else Modifier),
+            .then(Modifier.clickable { onBarClick() }),
         colors = CardDefaults.cardColors(
-            containerColor = if (playbackState.episode != null)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {

@@ -103,6 +103,25 @@ class DesktopPodcastPlayer : PodcastPlayer {
         _state.value = PlaybackState(null, 0L, false, null)
     }
 
+    override fun seekTo(positionMs: Long) {
+        clip?.let { player ->
+            val format = player.format ?: return
+            if (format.frameRate <= 0) return
+            val durationMs = duration()
+            val clamped = durationMs?.let { positionMs.coerceIn(0L, it) } ?: positionMs.coerceAtLeast(0L)
+            val frames = ((clamped / 1000f) * format.frameRate).toInt()
+            player.framePosition = frames
+            val isPlayingNow = player.isRunning
+            _state.value = PlaybackState(currentEpisode, clamped, isPlayingNow, duration())
+            if (isPlayingNow) startPositionUpdates()
+        }
+    }
+
+    override fun seekBy(deltaMs: Long) {
+        val current = position()
+        seekTo(current + deltaMs)
+    }
+
     private fun position(): Long = clip?.let { player ->
         val format = player.format
         if (format != null && format.frameRate > 0) {

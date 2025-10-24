@@ -101,6 +101,10 @@ class PodiumController(
 
     fun stop() = player.stop()
 
+    fun seekTo(positionMs: Long) = player.seekTo(positionMs)
+
+    fun seekBy(deltaMs: Long) = player.seekBy(deltaMs)
+
     fun refreshSubscriptions() {
         if (refreshJob?.isActive == true) return
         _subscriptionsState.value = _subscriptionsState.value.copy(isRefreshing = true)

@@ -83,6 +83,21 @@ class IosPodcastPlayer : PodcastPlayer {
         _state.value = PlaybackState(null, 0L, false, null, false)
     }
 
+    override fun seekTo(positionMs: Long) {
+        val duration = duration()
+        val clamped = duration?.let { positionMs.coerceIn(0L, it) } ?: positionMs.coerceAtLeast(0L)
+        val seekTime = CMTimeMakeWithSeconds(clamped.toDouble() / 1000.0, 1000)
+        player.seekToTime(seekTime) { _ ->
+            val isPlayingNow = player.timeControlStatus == AVPlayerTimeControlStatusPlaying && player.rate > 0.0
+            _state.value = PlaybackState(currentEpisode, clamped, isPlayingNow, duration(), false)
+        }
+    }
+
+    override fun seekBy(deltaMs: Long) {
+        val current = currentPosition()
+        seekTo(current + deltaMs)
+    }
+
     private fun currentPosition(): Long {
         val time = player.currentTime()
         return if (time.timescale != 0L) {
