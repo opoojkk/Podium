@@ -26,6 +26,15 @@ kotlin {
             isStatic = true
         }
     }
+    
+    // Set iOS deployment target
+    targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
+        compilations.configureEach {
+            compilerOptions.configure {
+                freeCompilerArgs.add("-Xoverride-konan-properties=osVersionMin.ios_simulator_arm64=15.0;osVersionMin.ios_arm64=15.0")
+            }
+        }
+    }
 
     jvm()
 

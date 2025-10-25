@@ -2,20 +2,17 @@ package com.opoojkk.podium.player
 
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaybackState
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
-import platform.AVFoundation.AVPlayer
-import platform.AVFoundation.AVPlayerItem
-import platform.AVFoundation.AVPlayerTimeControlStatusPaused
-import platform.AVFoundation.AVPlayerTimeControlStatusPlaying
-import platform.AVFoundation.AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate
-import platform.AVFoundation.kCMTimeZero
-import platform.Foundation.NSURL
+import platform.AVFoundation.*
 import platform.CoreMedia.CMTimeMakeWithSeconds
+import platform.Foundation.NSURL
 
+@OptIn(ExperimentalForeignApi::class)
 class IosPodcastPlayer : PodcastPlayer {
 
     private val player = AVPlayer()
@@ -78,7 +75,7 @@ class IosPodcastPlayer : PodcastPlayer {
     override fun stop() {
         stopPositionUpdates()
         player.pause()
-        player.seekToTime(kCMTimeZero)
+        player.seekToTime(CMTimeMakeWithSeconds(0.0, 1))
         currentEpisode = null
         _state.value = PlaybackState(null, 0L, false, null, false)
     }
@@ -100,10 +97,12 @@ class IosPodcastPlayer : PodcastPlayer {
 
     private fun currentPosition(): Long {
         val time = player.currentTime()
-        return if (time.timescale != 0L) {
-            (time.value * 1000L) / time.timescale
-        } else {
-            0L
+        return time.useContents {
+            if (timescale != 0) {
+                (value * 1000L) / timescale
+            } else {
+                0L
+            }
         }
     }
 
@@ -129,9 +128,13 @@ class IosPodcastPlayer : PodcastPlayer {
     private fun duration(): Long? {
         val currentItem = player.currentItem
         val time = currentItem?.duration
-        return if (time != null && time.timescale != 0L) {
-            val ms = (time.value * 1000L) / time.timescale
-            if (ms > 0) ms else null
-        } else null
+        return time?.useContents {
+            if (timescale != 0) {
+                val ms = (value * 1000L) / timescale
+                if (ms > 0) ms else null
+            } else {
+                null
+            }
+        }
     }
 }
