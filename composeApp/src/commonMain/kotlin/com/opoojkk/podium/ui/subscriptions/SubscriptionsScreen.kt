@@ -1,14 +1,20 @@
 package com.opoojkk.podium.ui.subscriptions
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -30,11 +36,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.presentation.SubscriptionsUiState
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +54,7 @@ fun SubscriptionsScreen(
     onAddSubscription: (String) -> Unit,
     onEditSubscription: (String, String) -> Unit,
     onDeleteSubscription: (String) -> Unit,
+    onPodcastClick: (Podcast) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
@@ -95,6 +106,7 @@ fun SubscriptionsScreen(
                         podcast = podcast,
                         onEdit = { newTitle -> onEditSubscription(podcast.id, newTitle) },
                         onDelete = { onDeleteSubscription(podcast.id) },
+                        onClick = { onPodcastClick(podcast) },
                     )
                 }
             }
@@ -117,6 +129,7 @@ private fun SubscriptionCard(
     podcast: Podcast,
     onEdit: (String) -> Unit,
     onDelete: () -> Unit,
+    onClick: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -124,18 +137,50 @@ private fun SubscriptionCard(
     var editTitle by remember { mutableStateOf(podcast.title) }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 左侧方形圆角图标
+            PodcastArtwork(
+                title = podcast.title,
+                modifier = Modifier.size(64.dp)
+            )
+            
+            // 右侧内容
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(text = podcast.title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = podcast.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "最后更新: ${formatLastUpdated(podcast.lastUpdated)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            
+            // 更多菜单按钮
+            Box {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "更多")
                 }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
                     DropdownMenuItem(
                         text = { Text("编辑名称") },
                         leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
@@ -155,13 +200,6 @@ private fun SubscriptionCard(
                     )
                 }
             }
-            Text(
-                text = podcast.description,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 
@@ -268,4 +306,30 @@ private fun AddSubscriptionDialog(
             }
         }
     )
+}
+
+@Composable
+private fun PodcastArtwork(title: String, modifier: Modifier = Modifier) {
+    val initials = title.trim().split(" ", limit = 2)
+        .mapNotNull { it.firstOrNull()?.uppercase() }
+        .joinToString(separator = "")
+        .takeIf { it.isNotBlank() }
+        ?: "播客"
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = initials,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    }
+}
+
+private fun formatLastUpdated(instant: kotlinx.datetime.Instant): String {
+    val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${localDateTime.year}-${localDateTime.monthNumber.toString().padStart(2, '0')}-${localDateTime.dayOfMonth.toString().padStart(2, '0')}"
 }

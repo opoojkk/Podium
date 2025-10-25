@@ -16,6 +16,7 @@ import com.opoojkk.podium.ui.player.DesktopPlayerDetailScreen
 import com.opoojkk.podium.ui.player.PlayerDetailScreen
 import com.opoojkk.podium.ui.profile.ProfileScreen
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
+import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
 import kotlinx.coroutines.launch
 
 // 查看更多页面类型
@@ -31,6 +32,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val scope = rememberCoroutineScope()
     val showPlayerDetail = remember { mutableStateOf(false) }
     val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }
+    val selectedPodcast = remember { mutableStateOf<com.opoojkk.podium.data.model.Podcast?>(null) }
 
     val homeState by controller.homeState.collectAsState()
     val subscriptionsState by controller.subscriptionsState.collectAsState()
@@ -59,6 +61,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 scope = scope,
                 showPlayerDetail = showPlayerDetail,
                 showViewMore = showViewMore,
+                selectedPodcast = selectedPodcast,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
@@ -74,6 +77,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 scope = scope,
                 showPlayerDetail = showPlayerDetail,
                 showViewMore = showViewMore,
+                selectedPodcast = selectedPodcast,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
@@ -92,6 +96,7 @@ private fun DesktopLayout(
     scope: kotlinx.coroutines.CoroutineScope,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
+    selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
@@ -137,6 +142,17 @@ private fun DesktopLayout(
                                 onSeekForward = { controller.seekBy(30_000) },
                             )
                         }
+                        selectedPodcast.value != null -> {
+                            // 显示播客单集列表
+                            val podcast = selectedPodcast.value!!
+                            val podcastEpisodes by controller.getPodcastEpisodes(podcast.id).collectAsState(emptyList())
+                            PodcastEpisodesScreen(
+                                podcast = podcast,
+                                episodes = podcastEpisodes,
+                                onPlayEpisode = controller::playEpisode,
+                                onBack = { selectedPodcast.value = null },
+                            )
+                        }
                         showViewMore.value != null -> {
                             // 显示查看更多页面
                             val viewMoreType = showViewMore.value!!
@@ -166,6 +182,7 @@ private fun DesktopLayout(
                                     onAddSubscription = controller::subscribe,
                                     onEditSubscription = controller::renameSubscription,
                                     onDeleteSubscription = controller::deleteSubscription,
+                                    onPodcastClick = { podcast -> selectedPodcast.value = podcast },
                                 )
 
                                 PodiumDestination.Profile -> ProfileScreen(
@@ -230,6 +247,7 @@ private fun MobileLayout(
     scope: kotlinx.coroutines.CoroutineScope,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
+    selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
@@ -257,31 +275,34 @@ private fun MobileLayout(
                         animationSpec = androidx.compose.animation.core.tween(300)
                     )
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        // Playback bar just above the navigation bar
-                        PlaybackBar(
-                            playbackState = playbackState,
-                            onPlayPauseClick = {
-                                if (playbackState.isPlaying) {
-                                    controller.pause()
-                                } else {
-                                    controller.resume()
-                                }
-                            },
-                            onBarClick = { showPlayerDetail.value = true },
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
+                    // 当显示播客单集列表时，隐藏底部栏
+                    if (selectedPodcast.value == null) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // Playback bar just above the navigation bar
+                            PlaybackBar(
+                                playbackState = playbackState,
+                                onPlayPauseClick = {
+                                    if (playbackState.isPlaying) {
+                                        controller.pause()
+                                    } else {
+                                        controller.resume()
+                                    }
+                                },
+                                onBarClick = { showPlayerDetail.value = true },
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
 
-                        NavigationBar {
-                            PodiumDestination.entries.forEach { destination ->
-                                val selected = destination == appState.currentDestination
-                                NavigationBarItem(
-                                    selected = selected,
-                                    onClick = { appState.navigateTo(destination) },
-                                    icon = { Icon(imageVector = destination.icon, contentDescription = destination.label) },
-                                    label = { Text(destination.label) },
-                                )
+                            NavigationBar {
+                                PodiumDestination.entries.forEach { destination ->
+                                    val selected = destination == appState.currentDestination
+                                    NavigationBarItem(
+                                        selected = selected,
+                                        onClick = { appState.navigateTo(destination) },
+                                        icon = { Icon(imageVector = destination.icon, contentDescription = destination.label) },
+                                        label = { Text(destination.label) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -290,6 +311,17 @@ private fun MobileLayout(
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             when {
+                selectedPodcast.value != null -> {
+                    // 显示播客单集列表
+                    val podcast = selectedPodcast.value!!
+                    val podcastEpisodes by controller.getPodcastEpisodes(podcast.id).collectAsState(emptyList())
+                    PodcastEpisodesScreen(
+                        podcast = podcast,
+                        episodes = podcastEpisodes,
+                        onPlayEpisode = controller::playEpisode,
+                        onBack = { selectedPodcast.value = null },
+                    )
+                }
                 showViewMore.value != null -> {
                     // 显示查看更多页面 - 不应用 padding，让 Scaffold 自己处理
                     val viewMoreType = showViewMore.value!!
@@ -329,6 +361,7 @@ private fun MobileLayout(
                                 onAddSubscription = controller::subscribe,
                                 onEditSubscription = controller::renameSubscription,
                                 onDeleteSubscription = controller::deleteSubscription,
+                                onPodcastClick = { podcast -> selectedPodcast.value = podcast },
                             )
 
                             PodiumDestination.Profile -> ProfileScreen(

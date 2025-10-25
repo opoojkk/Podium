@@ -67,6 +67,16 @@ JOIN podcasts p ON e.podcastId = p.id
 WHERE e.podcastId = ?
 ORDER BY e.publishDate DESC;
 
+-- 获取特定播客的所有单集（带完整Podcast信息）
+selectEpisodesWithPodcastByPodcastId:
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+       p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
+       p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
+FROM episodes e
+JOIN podcasts p ON e.podcastId = p.id
+WHERE e.podcastId = ?
+ORDER BY e.publishDate DESC;
+
 selectRecentEpisodes:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,

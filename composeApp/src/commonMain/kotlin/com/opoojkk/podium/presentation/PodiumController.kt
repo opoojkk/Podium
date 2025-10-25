@@ -40,6 +40,9 @@ class PodiumController(
     val allRecentListening = repository.observeAllRecentListening()
     val allRecentUpdates = repository.observeAllRecentUpdates()
 
+    // 获取特定播客的所有单集
+    fun getPodcastEpisodes(podcastId: String) = repository.observePodcastEpisodes(podcastId)
+
     private var refreshJob: Job? = null
     private var playbackSaveJob: Job? = null
 

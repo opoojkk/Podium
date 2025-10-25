@@ -30,6 +30,13 @@ class PodcastDao(private val database: PodcastDatabase) {
             .asFlow()
             .mapToList(Dispatchers.Default)
 
+    fun observeEpisodesWithPodcast(podcastId: String): Flow<List<EpisodeWithPodcast>> =
+        queries.selectEpisodesWithPodcastByPodcastId(podcastId) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        }
+            .asFlow()
+            .mapToList(Dispatchers.Default)
+
     fun observeRecentEpisodes(limit: Int): Flow<List<EpisodeWithPodcast>> =
         queries.selectRecentEpisodes(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
             mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)

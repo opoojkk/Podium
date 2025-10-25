@@ -42,6 +42,10 @@ class PodcastRepository(
 
     fun observeAllRecentUpdates(): Flow<List<EpisodeWithPodcast>> = dao.observeAllRecentEpisodes()
 
+    // 获取特定播客的所有单集
+    fun observePodcastEpisodes(podcastId: String): Flow<List<EpisodeWithPodcast>> = 
+        dao.observeEpisodesWithPodcast(podcastId)
+
     fun observeDownloads(): Flow<Map<String, DownloadStatus>> =
         dao.observeDownloads().map { rows ->
             rows.mapValues { (episodeId, statusTriple) ->
