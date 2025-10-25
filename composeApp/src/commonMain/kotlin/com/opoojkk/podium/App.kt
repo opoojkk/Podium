@@ -289,31 +289,32 @@ private fun MobileLayout(
             },
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(
-                        top = paddingValues.calculateTopPadding(),
-                        bottom = if (showPlayerDetail.value || showViewMore.value != null) 0.dp else paddingValues.calculateBottomPadding()
-                    )
-            ) {
-                when {
-                    showViewMore.value != null -> {
-                        // 显示查看更多页面
-                        val viewMoreType = showViewMore.value!!
-                        val (title, episodes) = when (viewMoreType) {
-                            ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
-                            ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
-                        }
-                        ViewMoreScreen(
-                            title = title,
-                            episodes = episodes,
-                            onPlayEpisode = controller::playEpisode,
-                            onBack = { showViewMore.value = null },
-                        )
+            when {
+                showViewMore.value != null -> {
+                    // 显示查看更多页面 - 不应用 padding，让 Scaffold 自己处理
+                    val viewMoreType = showViewMore.value!!
+                    val (title, episodes) = when (viewMoreType) {
+                        ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
+                        ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
                     }
-                    !showPlayerDetail.value -> {
-                        // 不显示详情页时的内容
+                    ViewMoreScreen(
+                        title = title,
+                        episodes = episodes,
+                        onPlayEpisode = controller::playEpisode,
+                        onBack = { showViewMore.value = null },
+                    )
+                }
+
+                !showPlayerDetail.value -> {
+                    // 不显示详情页时的内容 - 应用 padding
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                top = paddingValues.calculateTopPadding(),
+                                bottom = paddingValues.calculateBottomPadding()
+                            )
+                    ) {
                         when (appState.currentDestination) {
                             PodiumDestination.Home -> HomeScreen(
                                 state = homeState,

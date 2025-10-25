@@ -44,6 +44,7 @@ fun HomeScreen(
                     title = "最近收听",
                     description = "继续播放你喜欢的节目",
                     onViewMore = if (state.recentPlayed.isNotEmpty()) onViewMoreRecentPlayed else null,
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
                 if (state.recentPlayed.isEmpty()) {
                     EmptyHint(text = "暂无播放记录")
