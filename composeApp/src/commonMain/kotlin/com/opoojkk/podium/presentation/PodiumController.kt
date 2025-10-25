@@ -41,8 +41,51 @@ class PodiumController(
     val allRecentUpdates = repository.observeAllRecentUpdates()
 
     private var refreshJob: Job? = null
+    private var playbackSaveJob: Job? = null
 
     init {
+        // 加载上次播放的单集
+        scope.launch {
+            val lastPlayed = repository.getLastPlayedEpisode()
+            if (lastPlayed != null) {
+                val (episode, progress) = lastPlayed
+                println("🎵 PodiumController: Restoring last played episode: ${episode.title} at ${progress.positionMs}ms")
+                player.restorePlaybackState(episode, progress.positionMs)
+            }
+        }
+
+        // 监听播放状态变化，定期保存进度
+        scope.launch {
+            player.state.collect { state ->
+                if (state.episode != null && state.isPlaying) {
+                    // 启动定期保存任务
+                    if (playbackSaveJob?.isActive != true) {
+                        playbackSaveJob = scope.launch {
+                            while (state.isPlaying) {
+                                kotlinx.coroutines.delay(10_000) // 每10秒保存一次
+                                val currentState = player.state.value
+                                if (currentState.episode != null) {
+                                    repository.savePlayback(
+                                        PlaybackProgress(
+                                            episodeId = currentState.episode.id,
+                                            positionMs = currentState.positionMs,
+                                            durationMs = currentState.durationMs ?: currentState.episode.duration,
+                                            updatedAt = Clock.System.now(),
+                                        ),
+                                    )
+                                    println("🎵 PodiumController: Auto-saved playback progress: ${currentState.positionMs}ms")
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // 停止播放时取消定期保存任务
+                    playbackSaveJob?.cancel()
+                    playbackSaveJob = null
+                }
+            }
+        }
+
         scope.launch {
             repository.observeHomeState().collect { homeState ->
                 println("🏠 Home state updated: ${homeState.recentUpdates.size} recent updates, ${homeState.recentPlayed.size} recent played")
@@ -93,6 +136,7 @@ class PodiumController(
                 PlaybackProgress(
                     episodeId = episode.id,
                     positionMs = startPosition,
+                    durationMs = episode.duration,
                     updatedAt = Clock.System.now(),
                 ),
             )

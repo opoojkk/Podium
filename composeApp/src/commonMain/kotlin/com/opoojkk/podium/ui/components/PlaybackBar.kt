@@ -115,26 +115,19 @@ fun PlaybackBar(
             }
 
             // Bottom progress bar
-            if (durationMs != null && durationMs > 0) {
-                val progress = (playbackState.positionMs.toFloat() / durationMs.toFloat())
-                    .coerceIn(0f, 1f)
-                LinearProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
-                )
+            val progress = if (durationMs != null && durationMs > 0) {
+                (playbackState.positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
             } else {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
-                )
+                0f // 没有时长信息时显示0进度，而不是加载动画
             }
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp),
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+            )
         }
     }
 }

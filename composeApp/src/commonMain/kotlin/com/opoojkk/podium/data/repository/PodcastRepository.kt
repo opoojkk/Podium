@@ -116,6 +116,8 @@ class PodcastRepository(
 
     suspend fun playbackForEpisode(episodeId: String): PlaybackProgress? = dao.playbackForEpisode(episodeId)
 
+    suspend fun getLastPlayedEpisode(): Pair<Episode, PlaybackProgress>? = dao.getLastPlayedEpisode()
+
     suspend fun setAutoDownload(podcastId: String, enabled: Boolean) {
         dao.updateAutoDownload(podcastId, enabled)
     }

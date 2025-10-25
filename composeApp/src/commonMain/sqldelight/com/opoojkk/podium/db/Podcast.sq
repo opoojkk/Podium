@@ -22,6 +22,7 @@ CREATE TABLE episodes (
 CREATE TABLE playback_state (
     episodeId TEXT NOT NULL PRIMARY KEY REFERENCES episodes(id) ON DELETE CASCADE,
     positionMs INTEGER NOT NULL,
+    durationMs INTEGER,
     updatedAt INTEGER NOT NULL
 );
 
@@ -47,8 +48,8 @@ updateAutoDownload:
 UPDATE podcasts SET autoDownload = ? WHERE id = ?;
 
 upsertPlayback:
-INSERT OR REPLACE INTO playback_state(episodeId, positionMs, updatedAt)
-VALUES (?, ?, ?);
+INSERT OR REPLACE INTO playback_state(episodeId, positionMs, durationMs, updatedAt)
+VALUES (?, ?, ?, ?);
 
 upsertDownload:
 INSERT OR REPLACE INTO downloads(episodeId, status, progress, filePath)
@@ -105,7 +106,7 @@ selectRecentPlayback:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
-       ps.positionMs, ps.updatedAt
+       ps.positionMs, ps.durationMs, ps.updatedAt
 FROM playback_state ps
 JOIN episodes e ON ps.episodeId = e.id
 JOIN podcasts p ON e.podcastId = p.id
@@ -117,7 +118,7 @@ selectRecentPlaybackUnique:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
-       ps.positionMs, ps.updatedAt
+       ps.positionMs, ps.durationMs, ps.updatedAt
 FROM playback_state ps
 JOIN episodes e ON ps.episodeId = e.id
 JOIN podcasts p ON e.podcastId = p.id
@@ -137,7 +138,7 @@ selectAllRecentPlayback:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
-       ps.positionMs, ps.updatedAt
+       ps.positionMs, ps.durationMs, ps.updatedAt
 FROM playback_state ps
 JOIN episodes e ON ps.episodeId = e.id
 JOIN podcasts p ON e.podcastId = p.id
@@ -147,7 +148,7 @@ selectDownloadStatuses:
 SELECT episodeId, status, progress, filePath FROM downloads;
 
 selectPlaybackForEpisode:
-SELECT episodeId, positionMs, updatedAt FROM playback_state WHERE episodeId = ?;
+SELECT episodeId, positionMs, durationMs, updatedAt FROM playback_state WHERE episodeId = ?;
 
 -- New queries for smart episode upsert
 selectExistingEpisodeIds:

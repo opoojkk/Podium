@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
 
 class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 
-    private val _state = MutableStateFlow(PlaybackState(episode = null, positionMs = 0L, isPlaying = false, durationMs = null))
+    private val _state = MutableStateFlow(PlaybackState(episode = null, positionMs = 0L, isPlaying = false, durationMs = null, isBuffering = false))
     private var mediaPlayer: MediaPlayer? = null
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
@@ -30,9 +30,10 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     return@withContext
                 }
                 
-				releasePlayer()
+                releasePlayer()
 				mediaPlayer = MediaPlayer().apply {
-                    setDataSource(context, Uri.parse(episode.audioUrl))
+                    // 对于HTTP/HTTPS URL，直接使用URL字符串
+                    setDataSource(episode.audioUrl)
                     setOnPreparedListener { player ->
                         player.seekTo(startPositionMs.toInt())
                         player.start()
@@ -109,17 +110,27 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
     }
 
 	override fun resume() {
-        mediaPlayer?.let { player ->
-            if (!player.isPlaying) {
-                player.start()
-                startPositionUpdates()
-				_state.value = PlaybackState(
-                    episode = currentEpisode,
-                    positionMs = player.currentPosition.toLong(),
-                    isPlaying = true,
-					durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
-					isBuffering = false,
-                )
+        // 如果播放器未初始化（刚恢复状态），需要先初始化
+        if (mediaPlayer == null && currentEpisode != null) {
+            val episode = currentEpisode!!
+            val startPos = _state.value.positionMs
+            println("🎵 Android Player: MediaPlayer not initialized, starting playback from ${startPos}ms")
+            CoroutineScope(Dispatchers.Main).launch {
+                play(episode, startPos)
+            }
+        } else {
+            mediaPlayer?.let { player ->
+                if (!player.isPlaying) {
+                    player.start()
+                    startPositionUpdates()
+                    _state.value = PlaybackState(
+                        episode = currentEpisode,
+                        positionMs = player.currentPosition.toLong(),
+                        isPlaying = true,
+                        durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
+                        isBuffering = false,
+                    )
+                }
             }
         }
     }
@@ -158,6 +169,17 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 			val clamped = duration?.let { target.coerceIn(0L, it) } ?: target.coerceAtLeast(0L)
 			seekTo(clamped)
 		}
+	}
+
+	override fun restorePlaybackState(episode: Episode, positionMs: Long) {
+		currentEpisode = episode
+		_state.value = PlaybackState(
+			episode = episode,
+			positionMs = positionMs,
+			isPlaying = false,
+			durationMs = episode.duration,
+			isBuffering = false,
+		)
 	}
 
     private fun releasePlayer() {

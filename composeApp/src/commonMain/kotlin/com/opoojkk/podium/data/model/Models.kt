@@ -36,6 +36,7 @@ data class Episode(
 data class PlaybackProgress(
     val episodeId: String,
     val positionMs: Long,
+    val durationMs: Long?,
     val updatedAt: Instant,
 )
 

@@ -67,9 +67,19 @@ class IosPodcastPlayer : PodcastPlayer {
     }
 
     override fun resume() {
-        player.play()
-        startPositionUpdates()
-        _state.value = PlaybackState(currentEpisode, currentPosition(), true, duration(), false)
+        // 如果播放器未初始化内容（刚恢复状态），需要先加载
+        if (player.currentItem == null && currentEpisode != null) {
+            val episode = currentEpisode!!
+            val startPos = _state.value.positionMs
+            println("🎵 iOS Player: Player not initialized, starting playback from ${startPos}ms")
+            CoroutineScope(Dispatchers.Main).launch {
+                play(episode, startPos)
+            }
+        } else {
+            player.play()
+            startPositionUpdates()
+            _state.value = PlaybackState(currentEpisode, currentPosition(), true, duration(), false)
+        }
     }
 
     override fun stop() {
@@ -93,6 +103,17 @@ class IosPodcastPlayer : PodcastPlayer {
     override fun seekBy(deltaMs: Long) {
         val current = currentPosition()
         seekTo(current + deltaMs)
+    }
+
+    override fun restorePlaybackState(episode: Episode, positionMs: Long) {
+        currentEpisode = episode
+        _state.value = PlaybackState(
+            episode = episode,
+            positionMs = positionMs,
+            isPlaying = false,
+            durationMs = episode.duration,
+            isBuffering = false,
+        )
     }
 
     private fun currentPosition(): Long {

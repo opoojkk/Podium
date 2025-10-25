@@ -35,7 +35,7 @@ import javax.sound.sampled.SourceDataLine
  */
 class DesktopPodcastPlayer : PodcastPlayer {
 
-    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null))
+    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null, false))
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
     private var playerJob: Job? = null
@@ -325,26 +325,37 @@ class DesktopPodcastPlayer : PodcastPlayer {
     }
 
     override fun resume() {
-        if (isPaused && currentEpisode != null) {
+        if (currentEpisode != null) {
             println("🎵 Desktop Player: Resuming playback from ${pausedAtMs}ms")
             val episode = currentEpisode!!
-            isPaused = false
             
-            // Launch a coroutine to resume playback
-            CoroutineScope(Dispatchers.IO).launch {
-                // For MP3, we need to restart from the paused position
-                // For other formats, the playback loop will continue
-                if (episode.audioUrl.lowercase().contains(".mp3") ||
-                    episode.audioUrl.lowercase().contains("mpeg")) {
-                    // Restart MP3 playback from paused position
-                    startPositionMs = pausedAtMs
+            // 如果播放器还未初始化（刚恢复状态），则需要从头初始化
+            if (playerJob == null || !playerJob!!.isActive) {
+                println("🎵 Desktop Player: Player not initialized, starting playback")
+                isPaused = false
+                CoroutineScope(Dispatchers.IO).launch {
                     play(episode, pausedAtMs)
-                } else {
-                    // For other formats, just update the state and timing
-                    isPlaying = true
-                    playbackStartTime = System.currentTimeMillis() - pausedAtMs
-                    updateState()
-                    startPositionUpdates()
+                }
+            } else if (isPaused) {
+                // 播放器已初始化，只是暂停了
+                isPaused = false
+                
+                // Launch a coroutine to resume playback
+                CoroutineScope(Dispatchers.IO).launch {
+                    // For MP3, we need to restart from the paused position
+                    // For other formats, the playback loop will continue
+                    if (episode.audioUrl.lowercase().contains(".mp3") ||
+                        episode.audioUrl.lowercase().contains("mpeg")) {
+                        // Restart MP3 playback from paused position
+                        startPositionMs = pausedAtMs
+                        play(episode, pausedAtMs)
+                    } else {
+                        // For other formats, just update the state and timing
+                        isPlaying = true
+                        playbackStartTime = System.currentTimeMillis() - pausedAtMs
+                        updateState()
+                        startPositionUpdates()
+                    }
                 }
             }
         }
@@ -401,6 +412,24 @@ class DesktopPodcastPlayer : PodcastPlayer {
     override fun seekBy(deltaMs: Long) {
         val current = position()
         seekTo(current + deltaMs)
+    }
+
+    override fun restorePlaybackState(episode: Episode, positionMs: Long) {
+        println("🎵 Desktop Player: Restoring playback state for episode: ${episode.title} at ${positionMs}ms")
+        // 直接设置状态，不准备播放器
+        // 播放器会在用户点击播放按钮时通过 play() 或 resume() 方法初始化
+        currentEpisode = episode
+        startPositionMs = positionMs
+        pausedAtMs = positionMs
+        isPaused = true
+        isPlaying = false
+        _state.value = PlaybackState(
+            episode = episode,
+            positionMs = positionMs,
+            isPlaying = false,
+            durationMs = episode.duration,
+            isBuffering = false,
+        )
     }
 
     private fun position(): Long {

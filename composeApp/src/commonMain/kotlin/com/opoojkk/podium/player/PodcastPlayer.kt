@@ -13,4 +13,9 @@ interface PodcastPlayer {
     fun stop()
     fun seekTo(positionMs: Long)
     fun seekBy(deltaMs: Long)
+    
+    /**
+     * 恢复播放状态，但不自动开始播放
+     */
+    fun restorePlaybackState(episode: Episode, positionMs: Long)
 }
