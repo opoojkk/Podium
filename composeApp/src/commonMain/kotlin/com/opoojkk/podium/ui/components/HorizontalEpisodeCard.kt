@@ -26,8 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -72,7 +74,7 @@ private fun HorizontalEpisodeCard(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // 播客封面/占位符
+            // 播客封面
             Box(
                 modifier = Modifier
                     .size(136.dp)
@@ -80,6 +82,7 @@ private fun HorizontalEpisodeCard(
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
+                val artworkUrl = episodeWithPodcast.podcast.artworkUrl
                 val initials = episodeWithPodcast.podcast.title
                     .trim()
                     .split(" ", limit = 2)
@@ -88,11 +91,35 @@ private fun HorizontalEpisodeCard(
                     .takeIf { it.isNotBlank() }
                     ?: "播客"
 
-                Text(
-                    text = initials,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                // 加载图片或显示占位符
+                if (!artworkUrl.isNullOrBlank()) {
+                    SubcomposeAsyncImage(
+                        model = artworkUrl,
+                        contentDescription = episodeWithPodcast.podcast.title,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        },
+                        error = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    )
+                } else {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
 
                 // 播放按钮
                 IconButton(

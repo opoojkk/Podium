@@ -2,27 +2,17 @@ package com.opoojkk.podium.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -48,8 +38,9 @@ fun PodcastEpisodeCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ArtworkPlaceholder(
+                artworkUrl = episodeWithPodcast.podcast.artworkUrl,
                 title = episodeWithPodcast.podcast.title,
-                modifier = Modifier.size(72.dp),
+                modifier = Modifier.size(80.dp),
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -86,22 +77,53 @@ fun PodcastEpisodeCard(
 }
 
 @Composable
-private fun ArtworkPlaceholder(title: String, modifier: Modifier = Modifier) {
+private fun ArtworkPlaceholder(
+    artworkUrl: String?,
+    title: String,
+    modifier: Modifier = Modifier
+) {
     val initials = title.trim().split(" ", limit = 2)
         .mapNotNull { it.firstOrNull()?.uppercase() }
         .joinToString(separator = "")
         .takeIf { it.isNotBlank() }
         ?: "播客"
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = initials,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
+        if (!artworkUrl.isNullOrBlank()) {
+            SubcomposeAsyncImage(
+                model = artworkUrl,
+                contentDescription = title,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                loading = {
+                    // 加载中显示占位符
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                },
+                error = {
+                    // 加载失败显示占位符
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            )
+        } else {
+            // 没有图片URL时显示占位符
+            Text(
+                text = initials,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
     }
 }

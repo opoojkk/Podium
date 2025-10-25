@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.SubcomposeAsyncImage
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -150,6 +152,7 @@ private fun SubscriptionCard(
         ) {
             // 左侧方形圆角图标
             PodcastArtwork(
+                artworkUrl = podcast.artworkUrl,
                 title = podcast.title,
                 modifier = Modifier.size(64.dp)
             )
@@ -309,23 +312,59 @@ private fun AddSubscriptionDialog(
 }
 
 @Composable
-private fun PodcastArtwork(title: String, modifier: Modifier = Modifier) {
+private fun PodcastArtwork(
+    artworkUrl: String?,
+    title: String,
+    modifier: Modifier = Modifier
+) {
     val initials = title.trim().split(" ", limit = 2)
         .mapNotNull { it.firstOrNull()?.uppercase() }
         .joinToString(separator = "")
         .takeIf { it.isNotBlank() }
         ?: "播客"
+    
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = initials,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
+        if (!artworkUrl.isNullOrBlank()) {
+            // 调试日志
+            println("🖼️ Loading podcast artwork: $artworkUrl")
+            
+            SubcomposeAsyncImage(
+                model = artworkUrl,
+                contentDescription = title,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                loading = {
+                    // 加载中显示占位符
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                },
+                error = { error ->
+                    // 加载失败显示占位符
+                    println("❌ Failed to load image: $artworkUrl, error: ${error.result.throwable?.message}")
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            )
+        } else {
+            // 没有图片URL时显示占位符
+            println("⚠️ No artwork URL for podcast: $title")
+            Text(
+                text = initials,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
     }
 }
 

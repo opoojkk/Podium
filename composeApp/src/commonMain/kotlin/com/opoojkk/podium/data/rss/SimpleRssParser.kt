@@ -18,7 +18,7 @@ class SimpleRssParser {
         val channelBlock = channelRegex.find(xml)?.groupValues?.get(1) ?: xml
         val title = extractTag(channelBlock, "title") ?: feedUrl
         val description = extractTag(channelBlock, "description") ?: ""
-        val artworkUrl = extractImage(channelBlock)
+        val artworkUrl = extractImage(channelBlock) ?: extractItunesImage(channelBlock)
         val items = itemRegex.findAll(channelBlock).map { match ->
             val itemBlock = match.groupValues[1]
             val guid = extractTag(itemBlock, "guid") ?: extractTag(itemBlock, "id") ?: extractTag(itemBlock, "link") ?: itemBlock.hashCode().toString()

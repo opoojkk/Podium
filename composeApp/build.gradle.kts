@@ -45,6 +45,7 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android)
             implementation(libs.ktor.serialization.kotlinx.xml)
+            implementation(libs.coil.network.okhttp)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -64,6 +65,7 @@ kotlin {
             implementation(libs.sqldelight.coroutines)
             implementation(libs.sqldelight.async)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.coil.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

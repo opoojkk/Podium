@@ -19,6 +19,7 @@ sqldelight = "2.0.2"
 kotlinx-datetime = "0.6.1"
 vlcj = "4.8.2"
 jlayer = "1.0.1.4"
+coil = "3.0.4"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -50,6 +51,8 @@ sqldelight-jvm = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "
 sqldelight-async = { module = "app.cash.sqldelight:async-extensions", version.ref = "sqldelight" }
 vlcj-core = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
 jlayer = { module = "com.googlecode.soundlibs:jlayer", version.ref = "jlayer" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
