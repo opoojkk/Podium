@@ -2,6 +2,8 @@ package com.opoojkk.podium.player
 
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaybackState
+import javazoom.jl.decoder.Bitstream
+import javazoom.jl.decoder.Header
 import javazoom.jl.decoder.JavaLayerException
 import javazoom.jl.player.advanced.AdvancedPlayer
 import javazoom.jl.player.advanced.PlaybackEvent
@@ -52,6 +54,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
     private var startPositionMs: Long = 0
     private var pausedAtMs: Long = 0
     private var playbackStartTime: Long = 0
+    private var detectedDurationMs: Long? = null
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         println("🎵 Desktop Player: Starting playback for episode: ${episode.title}")
@@ -67,6 +70,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 currentEpisode = episode
                 shouldStop = false
                 isPaused = false
+                detectedDurationMs = null // Reset detected duration
                 
                 // Determine audio format from URL
                 val isMp3 = episode.audioUrl.lowercase().contains(".mp3") ||
@@ -88,6 +92,11 @@ class DesktopPodcastPlayer : PodcastPlayer {
     }
 
     private suspend fun playMp3Stream(url: String) {
+        // Try to detect MP3 duration before playback if Episode doesn't have it
+        if (currentEpisode?.duration == null) {
+            tryDetectMp3Duration(url)
+        }
+        
         playerJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val connection = URL(url).openConnection()
@@ -144,6 +153,52 @@ class DesktopPodcastPlayer : PodcastPlayer {
         }
     }
 
+    /**
+     * Try to detect MP3 duration by analyzing the stream headers.
+     * This works best for files with constant bitrate or proper VBR headers.
+     */
+    private suspend fun tryDetectMp3Duration(url: String) {
+        withContext(Dispatchers.IO) {
+            var bitstream: Bitstream? = null
+            try {
+                println("🎵 Desktop Player: Attempting to detect MP3 duration...")
+                val connection = URL(url).openConnection()
+                connection.setRequestProperty("User-Agent", "Podium/1.0")
+                
+                // Try to get content length for estimation
+                val contentLength = connection.contentLengthLong
+                
+                val inputStream = BufferedInputStream(connection.getInputStream())
+                bitstream = Bitstream(inputStream)
+                
+                // Read first frame to get bitrate
+                val firstHeader = bitstream.readFrame()
+                if (firstHeader != null) {
+                    val bitrate = firstHeader.bitrate() // in bps
+                    
+                    if (contentLength > 0 && bitrate > 0) {
+                        // Estimate duration: (file size in bytes * 8 bits/byte) / bitrate
+                        val estimatedDurationSeconds = (contentLength * 8.0) / bitrate
+                        detectedDurationMs = (estimatedDurationSeconds * 1000).toLong()
+                        println("🎵 Desktop Player: Estimated MP3 duration: ${detectedDurationMs}ms (based on file size: ${contentLength} bytes, bitrate: ${bitrate} bps)")
+                    } else {
+                        println("🎵 Desktop Player: Could not estimate duration (contentLength: $contentLength, bitrate: $bitrate)")
+                    }
+                }
+                
+                bitstream.close()
+            } catch (e: Exception) {
+                println("🎵 Desktop Player: Could not detect MP3 duration: ${e.message}")
+            } finally {
+                try {
+                    bitstream?.close()
+                } catch (e: Exception) {
+                    // Ignore close errors
+                }
+            }
+        }
+    }
+
     private suspend fun playOtherFormat(url: String) {
         playerJob = CoroutineScope(Dispatchers.IO).launch {
             var line: SourceDataLine? = null
@@ -170,6 +225,24 @@ class DesktopPodcastPlayer : PodcastPlayer {
                     AudioSystem.getAudioInputStream(decodedFormat, audioInputStream)
                 } else {
                     audioInputStream
+                }
+                
+                // Try to detect duration from audio stream if Episode doesn't have it
+                if (currentEpisode?.duration == null) {
+                    try {
+                        val frameLength = decodedStream.frameLength
+                        val frameRate = decodedStream.format.frameRate
+                        if (frameLength > 0 && frameRate > 0) {
+                            detectedDurationMs = ((frameLength / frameRate) * 1000).toLong()
+                            println("🎵 Desktop Player: Detected duration: ${detectedDurationMs}ms")
+                        } else {
+                            println("🎵 Desktop Player: Could not detect duration (frameLength: $frameLength, frameRate: $frameRate)")
+                        }
+                    } catch (e: Exception) {
+                        println("🎵 Desktop Player: Could not detect duration: ${e.message}")
+                    }
+                } else {
+                    println("🎵 Desktop Player: Using duration from Episode data: ${currentEpisode?.duration}ms")
                 }
                 
                 line = AudioSystem.getSourceDataLine(decodedStream.format)
@@ -296,6 +369,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
         currentEpisode = null
         startPositionMs = 0
         pausedAtMs = 0
+        detectedDurationMs = null
         _state.value = PlaybackState(null, 0L, false, null)
     }
 
@@ -326,11 +400,14 @@ class DesktopPodcastPlayer : PodcastPlayer {
     }
 
     private fun updateState() {
+        // 优先从 Episode 数据获取时长，如果没有则使用播放器检测到的时长
+        val duration = currentEpisode?.duration ?: detectedDurationMs
+        
         _state.value = PlaybackState(
             episode = currentEpisode,
             positionMs = position(),
             isPlaying = isPlaying,
-            durationMs = null // Duration unknown in streaming mode
+            durationMs = duration
         )
     }
 
