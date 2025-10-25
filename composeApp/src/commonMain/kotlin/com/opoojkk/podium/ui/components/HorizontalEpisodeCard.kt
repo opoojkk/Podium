@@ -78,8 +78,7 @@ private fun HorizontalEpisodeCard(
             Box(
                 modifier = Modifier
                     .size(136.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 val artworkUrl = episodeWithPodcast.podcast.artworkUrl
@@ -96,7 +95,9 @@ private fun HorizontalEpisodeCard(
                     SubcomposeAsyncImage(
                         model = artworkUrl,
                         contentDescription = episodeWithPodcast.podcast.title,
-                        modifier = Modifier.matchParentSize(),
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(RoundedCornerShape(12.dp)),
                         contentScale = ContentScale.Crop,
                         loading = {
                             Text(
@@ -126,7 +127,7 @@ private fun HorizontalEpisodeCard(
                     onClick = onPlayClick,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(4.dp)
+                        .padding(6.dp)
                         .size(36.dp)
                         .background(
                             MaterialTheme.colorScheme.primary,
