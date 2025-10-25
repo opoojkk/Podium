@@ -1,25 +1,18 @@
 package com.opoojkk.podium
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
+import com.opoojkk.podium.ui.components.DesktopNavigationRail
+import com.opoojkk.podium.ui.components.DesktopPlaybackBar
 import com.opoojkk.podium.ui.components.PlaybackBar
-import com.opoojkk.podium.ui.player.PlayerDetailScreen
 import com.opoojkk.podium.ui.home.HomeScreen
+import com.opoojkk.podium.ui.player.DesktopPlayerDetailScreen
+import com.opoojkk.podium.ui.player.PlayerDetailScreen
 import com.opoojkk.podium.ui.profile.ProfileScreen
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import kotlinx.coroutines.launch
@@ -36,49 +29,84 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val profileState by controller.profileState.collectAsState()
     val playbackState by controller.playbackState.collectAsState()
 
-    MaterialTheme {
-        Scaffold(
-            bottomBar = {
-                if (!showPlayerDetail.value) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            // Playback bar just above the navigation bar
-                            PlaybackBar(
-                                playbackState = playbackState,
-                                onPlayPauseClick = {
-                                    if (playbackState.isPlaying) {
-                                        controller.pause()
-                                    } else {
-                                        controller.resume()
-                                    }
-                                },
-                                onBarClick = { showPlayerDetail.value = true },
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                            )
+    // 检测当前平台
+    val platform = remember { getPlatform() }
+    val isDesktop = remember(platform) {
+        val isDesktopPlatform = platform.name.contains("JVM", ignoreCase = true) ||
+                platform.name.contains("Desktop", ignoreCase = true) ||
+                platform.name.contains("Java", ignoreCase = true)
+        println("🖥️ Platform detected: ${platform.name}")
+        println("🎨 Using ${if (isDesktopPlatform) "Desktop" else "Mobile"} Layout")
+        isDesktopPlatform
+    }
 
-                            NavigationBar {
-                                PodiumDestination.entries.forEach { destination ->
-                                    val selected = destination == appState.currentDestination
-                                    NavigationBarItem(
-                                        selected = selected,
-                                        onClick = { appState.navigateTo(destination) },
-                                        icon = { Icon(imageVector = destination.icon, contentDescription = destination.label) },
-                                        label = { Text(destination.label) },
-                                    )
-                                }
-                            }
-                        }
-                } else null
-            },
-        ) { paddingValues ->
-            Column(modifier = Modifier.fillMaxSize()) {
+    MaterialTheme {
+        if (isDesktop) {
+            // 桌面平台：使用Spotify风格布局（侧边导航 + 底部播放控制器）
+            DesktopLayout(
+                appState = appState,
+                controller = controller,
+                scope = scope,
+                showPlayerDetail = showPlayerDetail,
+                homeState = homeState,
+                subscriptionsState = subscriptionsState,
+                profileState = profileState,
+                playbackState = playbackState
+            )
+        } else {
+            // 移动平台：使用传统底部导航栏布局
+            MobileLayout(
+                appState = appState,
+                controller = controller,
+                scope = scope,
+                showPlayerDetail = showPlayerDetail,
+                homeState = homeState,
+                subscriptionsState = subscriptionsState,
+                profileState = profileState,
+                playbackState = playbackState
+            )
+        }
+    }
+}
+
+@Composable
+private fun DesktopLayout(
+    appState: com.opoojkk.podium.presentation.PodiumAppState,
+    controller: com.opoojkk.podium.presentation.PodiumController,
+    scope: kotlinx.coroutines.CoroutineScope,
+    showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
+    homeState: com.opoojkk.podium.presentation.HomeUiState,
+    subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
+    profileState: com.opoojkk.podium.presentation.ProfileUiState,
+    playbackState: com.opoojkk.podium.data.model.PlaybackState,
+) {
+    // 侧边栏展开状态
+    var isNavigationExpanded by remember { mutableStateOf(true) }
+
+    // Material3 风格的背景
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.weight(1f)) {
+                // 左侧导航栏 - 始终显示
+                DesktopNavigationRail(
+                    currentDestination = appState.currentDestination,
+                    onNavigate = { appState.navigateTo(it) },
+                    isExpanded = isNavigationExpanded,
+                    onToggleExpand = { isNavigationExpanded = !isNavigationExpanded }
+                )
+
+                // 主内容区域 - 直接切换，避免动画导致的跳动
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(top = paddingValues.calculateTopPadding())
+                        .fillMaxSize()
                 ) {
                     if (showPlayerDetail.value && playbackState.episode != null) {
-                        PlayerDetailScreen(
+                        // 桌面端使用横向布局的详情页
+                        DesktopPlayerDetailScreen(
                             playbackState = playbackState,
                             onBack = { showPlayerDetail.value = false },
                             onPlayPause = {
@@ -121,6 +149,177 @@ fun PodiumApp(environment: PodiumEnvironment) {
                     }
                 }
             }
+
+            // 底部播放控制器 - 播放详情展开时隐藏，带动画
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !showPlayerDetail.value,
+                enter = androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(300)
+                ) + androidx.compose.animation.slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = androidx.compose.animation.core.tween(300)
+                ),
+                exit = androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(300)
+                ) + androidx.compose.animation.slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = androidx.compose.animation.core.tween(300)
+                )
+            ) {
+                DesktopPlaybackBar(
+                    playbackState = playbackState,
+                    onPlayPauseClick = {
+                        if (playbackState.isPlaying) {
+                            controller.pause()
+                        } else {
+                            controller.resume()
+                        }
+                    },
+                    onSeekBack = { controller.seekBy(-15_000) },
+                    onSeekForward = { controller.seekBy(30_000) },
+                    onSeekTo = { controller.seekTo(it) },
+                    onBarClick = { showPlayerDetail.value = true }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MobileLayout(
+    appState: com.opoojkk.podium.presentation.PodiumAppState,
+    controller: com.opoojkk.podium.presentation.PodiumController,
+    scope: kotlinx.coroutines.CoroutineScope,
+    showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
+    homeState: com.opoojkk.podium.presentation.HomeUiState,
+    subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
+    profileState: com.opoojkk.podium.presentation.ProfileUiState,
+    playbackState: com.opoojkk.podium.data.model.PlaybackState,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 主内容区域
+        Scaffold(
+            bottomBar = {
+                // 底部栏带动画显示/隐藏
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = !showPlayerDetail.value,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(200)
+                    ) + androidx.compose.animation.slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = androidx.compose.animation.core.tween(300)
+                    ),
+                    exit = androidx.compose.animation.fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(200)
+                    ) + androidx.compose.animation.slideOutVertically(
+                        targetOffsetY = { it },
+                        animationSpec = androidx.compose.animation.core.tween(300)
+                    )
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Playback bar just above the navigation bar
+                        PlaybackBar(
+                            playbackState = playbackState,
+                            onPlayPauseClick = {
+                                if (playbackState.isPlaying) {
+                                    controller.pause()
+                                } else {
+                                    controller.resume()
+                                }
+                            },
+                            onBarClick = { showPlayerDetail.value = true },
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+
+                        NavigationBar {
+                            PodiumDestination.entries.forEach { destination ->
+                                val selected = destination == appState.currentDestination
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = { appState.navigateTo(destination) },
+                                    icon = { Icon(imageVector = destination.icon, contentDescription = destination.label) },
+                                    label = { Text(destination.label) },
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.background
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = paddingValues.calculateTopPadding(),
+                        bottom = if (showPlayerDetail.value) 0.dp else paddingValues.calculateBottomPadding()
+                    )
+            ) {
+                // 不显示详情页时的内容
+                if (!showPlayerDetail.value) {
+                    when (appState.currentDestination) {
+                        PodiumDestination.Home -> HomeScreen(
+                            state = homeState,
+                            onPlayEpisode = controller::playEpisode,
+                        )
+
+                        PodiumDestination.Subscriptions -> SubscriptionsScreen(
+                            state = subscriptionsState,
+                            onRefresh = controller::refreshSubscriptions,
+                            onAddSubscription = controller::subscribe,
+                            onEditSubscription = controller::renameSubscription,
+                            onDeleteSubscription = controller::deleteSubscription,
+                        )
+
+                        PodiumDestination.Profile -> ProfileScreen(
+                            state = profileState,
+                            onImportClick = {
+                                // In a production app this would open a file picker and pass the OPML content.
+                            },
+                            onExportClick = {
+                                scope.launch {
+                                    val opml = controller.exportOpml()
+                                    println("Exported OPML:\n$opml")
+                                }
+                            },
+                            onToggleAutoDownload = controller::toggleAutoDownload,
+                            onManageDownloads = controller::refreshSubscriptions,
+                        )
+                    }
+                }
+            }
+        }
+
+        // 播放详情页 - 全屏覆盖，带动画
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showPlayerDetail.value && playbackState.episode != null,
+            enter = androidx.compose.animation.fadeIn(
+                animationSpec = androidx.compose.animation.core.tween(300)
+            ) + androidx.compose.animation.slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                    stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                )
+            ),
+            exit = androidx.compose.animation.fadeOut(
+                animationSpec = androidx.compose.animation.core.tween(250)
+            ) + androidx.compose.animation.slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = androidx.compose.animation.core.tween(300)
+            )
+        ) {
+            PlayerDetailScreen(
+                playbackState = playbackState,
+                onBack = { showPlayerDetail.value = false },
+                onPlayPause = {
+                    if (playbackState.isPlaying) controller.pause() else controller.resume()
+                },
+                onSeekTo = { controller.seekTo(it) },
+                onSeekBack = { controller.seekBy(-15_000) },
+                onSeekForward = { controller.seekBy(30_000) },
+            )
         }
     }
 }

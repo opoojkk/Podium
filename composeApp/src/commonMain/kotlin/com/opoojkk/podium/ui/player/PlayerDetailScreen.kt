@@ -1,44 +1,20 @@
 package com.opoojkk.podium.ui.player
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.PlaybackState
@@ -55,22 +31,54 @@ fun PlayerDetailScreen(
     onFavoriteClick: () -> Unit = {},
     onMoreClick: () -> Unit = {},
 ) {
-    val backgroundColor = MaterialTheme.colorScheme.surface
-
-    val durationMs = playbackState.episode?.duration ?: playbackState.durationMs
-    val currentMs = playbackState.positionMs
-    val sliderValue = remember(currentMs, durationMs) {
-        mutableStateOf(
-            if (durationMs != null && durationMs > 0) currentMs.toFloat() / durationMs.toFloat() else 0f
-        )
+    val episode = playbackState.episode ?: return
+    val durationMs = episode.duration ?: playbackState.durationMs
+    
+    // 滚动状态
+    val scrollState = rememberScrollState()
+    
+    // Slider状态管理
+    var isDragging by remember { mutableStateOf(false) }
+    var sliderPosition by remember { mutableStateOf(playbackState.positionMs.toFloat()) }
+    
+    // 更新slider位置（只在不拖动时）
+    LaunchedEffect(playbackState.positionMs) {
+        if (!isDragging) {
+            sliderPosition = playbackState.positionMs.toFloat()
+        }
     }
+    
+    // 手势支持：当滚动到顶部时，向下滑动关闭
+    var dragOffset by remember { mutableStateOf(0f) }
+    val canDismiss = scrollState.value == 0 && dragOffset > 100f
 
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(scrollState.value) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        if (canDismiss) {
+                            onBack()
+                        }
+                        dragOffset = 0f
+                    },
+                    onDragCancel = {
+                        dragOffset = 0f
+                    },
+                    onVerticalDrag = { _, dragAmount ->
+                        // 只有在滚动到顶部时才允许下拉关闭
+                        if (scrollState.value == 0 && dragAmount > 0) {
+                            dragOffset += dragAmount
+                        }
+                    }
+                )
+            },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = playbackState.episode?.podcastTitle ?: "",
+                        text = episode.podcastTitle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -82,103 +90,225 @@ fun PlayerDetailScreen(
                 },
                 actions = {
                     IconButton(onClick = onFavoriteClick) {
-                        Icon(imageVector = Icons.Default.Favorite, contentDescription = "收藏")
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "收藏",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     IconButton(onClick = onMoreClick) {
-                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = "更多")
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "更多",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 },
-                windowInsets = WindowInsets(0, 0, 0, 0),
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backgroundColor,
+                    containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface,
                 )
             )
         },
-        containerColor = backgroundColor
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // 封面
-            Box(
+            // 专辑封面
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.85f)
                     .aspectRatio(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
+                    .clip(RoundedCornerShape(16.dp)),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shadowElevation = 4.dp
             ) {
-                Text(
-                    text = playbackState.episode?.podcastTitle ?: "",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(12.dp),
-                )
-            }
-
-            // 进度条
-            Column {
-                Slider(
-                    value = sliderValue.value,
-                    onValueChange = { newValue -> sliderValue.value = newValue },
-                    onValueChangeFinished = {
-                        if (durationMs != null && durationMs > 0) {
-                            val newPos = (sliderValue.value * durationMs).toLong()
-                            onSeekTo(newPos)
-                        }
-                    },
-                    enabled = durationMs != null && durationMs > 0,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(text = formatTime(currentMs), style = MaterialTheme.typography.labelSmall)
-                    Text(
-                        text = durationMs?.let { formatTime(it) } ?: "--:--",
-                        style = MaterialTheme.typography.labelSmall
+                    Icon(
+                        imageVector = Icons.Default.Podcasts,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(80.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // 播放控制区
+            // 剧集标题
+            Text(
+                text = episode.title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 播客名称
+            Text(
+                text = episode.podcastTitle,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // 进度条区域
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (durationMs != null && durationMs > 0) {
+                    Slider(
+                        value = sliderPosition,
+                        onValueChange = { newValue ->
+                            isDragging = true
+                            sliderPosition = newValue
+                        },
+                        onValueChangeFinished = {
+                            onSeekTo(sliderPosition.toLong())
+                            isDragging = false
+                        },
+                        valueRange = 0f..durationMs.toFloat(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
+
+                // 时间显示
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = formatTime(if (isDragging) sliderPosition.toLong() else playbackState.positionMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = durationMs?.let { formatTime(it) } ?: "--:--",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 播放控制按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onSeekBack) {
+                // 后退按钮
+                IconButton(
+                    onClick = onSeekBack,
+                    modifier = Modifier.size(56.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.FastRewind,
-                        contentDescription = "回退15秒"
+                        contentDescription = "后退15秒",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(32.dp)
                     )
                 }
-                IconButton(onClick = onPlayPause, modifier = Modifier.size(72.dp)) {
+
+                // 播放/暂停按钮
+                FilledIconButton(
+                    onClick = onPlayPause,
+                    modifier = Modifier.size(72.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
                     Icon(
-                        imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        imageVector = if (playbackState.isPlaying)
+                            Icons.Default.Pause
+                        else
+                            Icons.Default.PlayArrow,
                         contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier.size(40.dp)
                     )
                 }
-                IconButton(onClick = onSeekForward) {
+
+                // 前进按钮
+                IconButton(
+                    onClick = onSeekForward,
+                    modifier = Modifier.size(56.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.FastForward,
-                        contentDescription = "前进30秒"
+                        contentDescription = "前进30秒",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(32.dp)
                     )
                 }
             }
+
+            // 剧集描述（如果有）
+            if (episode.description.isNotBlank()) {
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "剧集简介",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = episode.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.5
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

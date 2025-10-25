@@ -1,6 +1,7 @@
 package com.opoojkk.podium.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
@@ -9,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.PlaybackState
@@ -30,7 +32,17 @@ fun PlaybackBar(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .then(Modifier.clickable { onBarClick() }),
+            .clickable { onBarClick() }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onVerticalDrag = { _, dragAmount ->
+                        // 向上滑动（负值）超过阈值时触发
+                        if (dragAmount < -10) {
+                            onBarClick()
+                        }
+                    }
+                )
+            },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
