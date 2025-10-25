@@ -64,13 +64,23 @@ class DesktopPodcastPlayer : PodcastPlayer {
         
         withContext(Dispatchers.IO) {
             try {
-                // Stop any existing playback
-                stop()
+                // Check if we're resuming the same episode to avoid UI flicker
+                val isResuming = isPaused && currentEpisode == episode
+                
+                // Stop any existing playback, but preserve episode info when resuming
+                stop(clearEpisode = !isResuming)
                 
                 currentEpisode = episode
                 shouldStop = false
                 isPaused = false
-                detectedDurationMs = null // Reset detected duration
+                
+                // Only reset detected duration if it's a new episode
+                if (!isResuming) {
+                    detectedDurationMs = null
+                }
+                
+                // Update state immediately to show we're loading the episode
+                updateState()
                 
                 // Determine audio format from URL
                 val isMp3 = episode.audioUrl.lowercase().contains(".mp3") ||
@@ -341,7 +351,11 @@ class DesktopPodcastPlayer : PodcastPlayer {
     }
 
     override fun stop() {
-        println("🎵 Desktop Player: Stopping playback")
+        stop(clearEpisode = true)
+    }
+    
+    private fun stop(clearEpisode: Boolean) {
+        println("🎵 Desktop Player: Stopping playback (clearEpisode=$clearEpisode)")
         shouldStop = true
         isPaused = false
         isPlaying = false
@@ -366,11 +380,14 @@ class DesktopPodcastPlayer : PodcastPlayer {
         
         currentPlayer = null
         currentLine = null
-        currentEpisode = null
-        startPositionMs = 0
-        pausedAtMs = 0
-        detectedDurationMs = null
-        _state.value = PlaybackState(null, 0L, false, null)
+        
+        if (clearEpisode) {
+            currentEpisode = null
+            startPositionMs = 0
+            pausedAtMs = 0
+            detectedDurationMs = null
+            _state.value = PlaybackState(null, 0L, false, null)
+        }
     }
 
     override fun seekTo(positionMs: Long) {
