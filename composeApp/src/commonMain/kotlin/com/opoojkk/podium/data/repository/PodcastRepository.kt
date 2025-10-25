@@ -25,9 +25,10 @@ class PodcastRepository(
 
     fun observeRecentListening(): Flow<List<EpisodeWithPodcast>> = dao.observeRecentListening(10)
 
+    // 首页专用：最近收听显示不同播客的最多6集，最近更新显示不同播客各最新一集的最多6集
     fun observeHomeState(): Flow<HomeUiState> = combine(
-        observeRecentListening(),
-        observeRecentUpdates(),
+        dao.observeRecentListeningUnique(6),  // 每个播客只显示最近播放的一集
+        dao.observeRecentEpisodesUnique(6),   // 每个播客只显示最新的一集
     ) { listening, updates ->
         HomeUiState(
             recentPlayed = listening,
@@ -35,6 +36,11 @@ class PodcastRepository(
             isLoading = false,
         )
     }
+
+    // 查看更多页面使用
+    fun observeAllRecentListening(): Flow<List<EpisodeWithPodcast>> = dao.observeAllRecentListening()
+
+    fun observeAllRecentUpdates(): Flow<List<EpisodeWithPodcast>> = dao.observeAllRecentEpisodes()
 
     fun observeDownloads(): Flow<Map<String, DownloadStatus>> =
         dao.observeDownloads().map { rows ->

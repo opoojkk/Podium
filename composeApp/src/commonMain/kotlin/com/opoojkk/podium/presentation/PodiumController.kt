@@ -36,6 +36,10 @@ class PodiumController(
 
     val playbackState: StateFlow<com.opoojkk.podium.data.model.PlaybackState> = player.state
 
+    // 查看更多页面使用的完整列表
+    val allRecentListening = repository.observeAllRecentListening()
+    val allRecentUpdates = repository.observeAllRecentUpdates()
+
     private var refreshJob: Job? = null
 
     init {

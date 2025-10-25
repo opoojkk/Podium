@@ -11,11 +11,18 @@ import com.opoojkk.podium.ui.components.DesktopNavigationRail
 import com.opoojkk.podium.ui.components.DesktopPlaybackBar
 import com.opoojkk.podium.ui.components.PlaybackBar
 import com.opoojkk.podium.ui.home.HomeScreen
+import com.opoojkk.podium.ui.home.ViewMoreScreen
 import com.opoojkk.podium.ui.player.DesktopPlayerDetailScreen
 import com.opoojkk.podium.ui.player.PlayerDetailScreen
 import com.opoojkk.podium.ui.profile.ProfileScreen
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import kotlinx.coroutines.launch
+
+// 查看更多页面类型
+enum class ViewMoreType {
+    RECENT_PLAYED,
+    RECENT_UPDATES,
+}
 
 @Composable
 fun PodiumApp(environment: PodiumEnvironment) {
@@ -23,11 +30,14 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val controller = appState.controller
     val scope = rememberCoroutineScope()
     val showPlayerDetail = remember { mutableStateOf(false) }
+    val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }
 
     val homeState by controller.homeState.collectAsState()
     val subscriptionsState by controller.subscriptionsState.collectAsState()
     val profileState by controller.profileState.collectAsState()
     val playbackState by controller.playbackState.collectAsState()
+    val allRecentListening by controller.allRecentListening.collectAsState(emptyList())
+    val allRecentUpdates by controller.allRecentUpdates.collectAsState(emptyList())
 
     // 检测当前平台
     val platform = remember { getPlatform() }
@@ -48,10 +58,13 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 controller = controller,
                 scope = scope,
                 showPlayerDetail = showPlayerDetail,
+                showViewMore = showViewMore,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
-                playbackState = playbackState
+                playbackState = playbackState,
+                allRecentListening = allRecentListening,
+                allRecentUpdates = allRecentUpdates
             )
         } else {
             // 移动平台：使用传统底部导航栏布局
@@ -60,10 +73,13 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 controller = controller,
                 scope = scope,
                 showPlayerDetail = showPlayerDetail,
+                showViewMore = showViewMore,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
-                playbackState = playbackState
+                playbackState = playbackState,
+                allRecentListening = allRecentListening,
+                allRecentUpdates = allRecentUpdates
             )
         }
     }
@@ -75,10 +91,13 @@ private fun DesktopLayout(
     controller: com.opoojkk.podium.presentation.PodiumController,
     scope: kotlinx.coroutines.CoroutineScope,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
+    showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
+    allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
+    allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
 ) {
     // 侧边栏展开状态
     var isNavigationExpanded by remember { mutableStateOf(true) }
@@ -104,47 +123,66 @@ private fun DesktopLayout(
                         .weight(1f)
                         .fillMaxSize()
                 ) {
-                    if (showPlayerDetail.value && playbackState.episode != null) {
-                        // 桌面端使用横向布局的详情页
-                        DesktopPlayerDetailScreen(
-                            playbackState = playbackState,
-                            onBack = { showPlayerDetail.value = false },
-                            onPlayPause = {
-                                if (playbackState.isPlaying) controller.pause() else controller.resume()
-                            },
-                            onSeekTo = { controller.seekTo(it) },
-                            onSeekBack = { controller.seekBy(-15_000) },
-                            onSeekForward = { controller.seekBy(30_000) },
-                        )
-                    } else {
-                        when (appState.currentDestination) {
-                            PodiumDestination.Home -> HomeScreen(
-                                state = homeState,
+                    when {
+                        showPlayerDetail.value && playbackState.episode != null -> {
+                            // 桌面端使用横向布局的详情页
+                            DesktopPlayerDetailScreen(
+                                playbackState = playbackState,
+                                onBack = { showPlayerDetail.value = false },
+                                onPlayPause = {
+                                    if (playbackState.isPlaying) controller.pause() else controller.resume()
+                                },
+                                onSeekTo = { controller.seekTo(it) },
+                                onSeekBack = { controller.seekBy(-15_000) },
+                                onSeekForward = { controller.seekBy(30_000) },
+                            )
+                        }
+                        showViewMore.value != null -> {
+                            // 显示查看更多页面
+                            val viewMoreType = showViewMore.value!!
+                            val (title, episodes) = when (viewMoreType) {
+                                ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
+                                ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
+                            }
+                            ViewMoreScreen(
+                                title = title,
+                                episodes = episodes,
                                 onPlayEpisode = controller::playEpisode,
+                                onBack = { showViewMore.value = null },
                             )
+                        }
+                        else -> {
+                            when (appState.currentDestination) {
+                                PodiumDestination.Home -> HomeScreen(
+                                    state = homeState,
+                                    onPlayEpisode = controller::playEpisode,
+                                    onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
+                                    onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
+                                )
 
-                            PodiumDestination.Subscriptions -> SubscriptionsScreen(
-                                state = subscriptionsState,
-                                onRefresh = controller::refreshSubscriptions,
-                                onAddSubscription = controller::subscribe,
-                                onEditSubscription = controller::renameSubscription,
-                                onDeleteSubscription = controller::deleteSubscription,
-                            )
+                                PodiumDestination.Subscriptions -> SubscriptionsScreen(
+                                    state = subscriptionsState,
+                                    onRefresh = controller::refreshSubscriptions,
+                                    onAddSubscription = controller::subscribe,
+                                    onEditSubscription = controller::renameSubscription,
+                                    onDeleteSubscription = controller::deleteSubscription,
+                                )
 
-                            PodiumDestination.Profile -> ProfileScreen(
-                                state = profileState,
-                                onImportClick = {
-                                    // In a production app this would open a file picker and pass the OPML content.
-                                },
-                                onExportClick = {
-                                    scope.launch {
-                                        val opml = controller.exportOpml()
-                                        println("Exported OPML:\n$opml")
-                                    }
-                                },
-                                onToggleAutoDownload = controller::toggleAutoDownload,
-                                onManageDownloads = controller::refreshSubscriptions,
-                            )
+                                PodiumDestination.Profile -> ProfileScreen(
+                                    state = profileState,
+                                    onImportClick = {
+                                        // In a production app this would open a file picker and pass the OPML content.
+                                    },
+                                    onExportClick = {
+                                        scope.launch {
+                                            val opml = controller.exportOpml()
+                                            println("Exported OPML:\n$opml")
+                                        }
+                                    },
+                                    onToggleAutoDownload = controller::toggleAutoDownload,
+                                    onManageDownloads = controller::refreshSubscriptions,
+                                )
+                            }
                         }
                     }
                 }
@@ -191,10 +229,13 @@ private fun MobileLayout(
     controller: com.opoojkk.podium.presentation.PodiumController,
     scope: kotlinx.coroutines.CoroutineScope,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
+    showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
+    allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
+    allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 主内容区域
@@ -202,7 +243,7 @@ private fun MobileLayout(
             bottomBar = {
                 // 底部栏带动画显示/隐藏
                 androidx.compose.animation.AnimatedVisibility(
-                    visible = !showPlayerDetail.value,
+                    visible = !showPlayerDetail.value && showViewMore.value == null,
                     enter = androidx.compose.animation.fadeIn(
                         animationSpec = androidx.compose.animation.core.tween(200)
                     ) + androidx.compose.animation.slideInVertically(
@@ -253,39 +294,57 @@ private fun MobileLayout(
                     .fillMaxSize()
                     .padding(
                         top = paddingValues.calculateTopPadding(),
-                        bottom = if (showPlayerDetail.value) 0.dp else paddingValues.calculateBottomPadding()
+                        bottom = if (showPlayerDetail.value || showViewMore.value != null) 0.dp else paddingValues.calculateBottomPadding()
                     )
             ) {
-                // 不显示详情页时的内容
-                if (!showPlayerDetail.value) {
-                    when (appState.currentDestination) {
-                        PodiumDestination.Home -> HomeScreen(
-                            state = homeState,
+                when {
+                    showViewMore.value != null -> {
+                        // 显示查看更多页面
+                        val viewMoreType = showViewMore.value!!
+                        val (title, episodes) = when (viewMoreType) {
+                            ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
+                            ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
+                        }
+                        ViewMoreScreen(
+                            title = title,
+                            episodes = episodes,
                             onPlayEpisode = controller::playEpisode,
+                            onBack = { showViewMore.value = null },
                         )
+                    }
+                    !showPlayerDetail.value -> {
+                        // 不显示详情页时的内容
+                        when (appState.currentDestination) {
+                            PodiumDestination.Home -> HomeScreen(
+                                state = homeState,
+                                onPlayEpisode = controller::playEpisode,
+                                onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
+                                onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
+                            )
 
-                        PodiumDestination.Subscriptions -> SubscriptionsScreen(
-                            state = subscriptionsState,
-                            onRefresh = controller::refreshSubscriptions,
-                            onAddSubscription = controller::subscribe,
-                            onEditSubscription = controller::renameSubscription,
-                            onDeleteSubscription = controller::deleteSubscription,
-                        )
+                            PodiumDestination.Subscriptions -> SubscriptionsScreen(
+                                state = subscriptionsState,
+                                onRefresh = controller::refreshSubscriptions,
+                                onAddSubscription = controller::subscribe,
+                                onEditSubscription = controller::renameSubscription,
+                                onDeleteSubscription = controller::deleteSubscription,
+                            )
 
-                        PodiumDestination.Profile -> ProfileScreen(
-                            state = profileState,
-                            onImportClick = {
-                                // In a production app this would open a file picker and pass the OPML content.
-                            },
-                            onExportClick = {
-                                scope.launch {
-                                    val opml = controller.exportOpml()
-                                    println("Exported OPML:\n$opml")
-                                }
-                            },
-                            onToggleAutoDownload = controller::toggleAutoDownload,
-                            onManageDownloads = controller::refreshSubscriptions,
-                        )
+                            PodiumDestination.Profile -> ProfileScreen(
+                                state = profileState,
+                                onImportClick = {
+                                    // In a production app this would open a file picker and pass the OPML content.
+                                },
+                                onExportClick = {
+                                    scope.launch {
+                                        val opml = controller.exportOpml()
+                                        println("Exported OPML:\n$opml")
+                                    }
+                                },
+                                onToggleAutoDownload = controller::toggleAutoDownload,
+                                onManageDownloads = controller::refreshSubscriptions,
+                            )
+                        }
                     }
                 }
             }

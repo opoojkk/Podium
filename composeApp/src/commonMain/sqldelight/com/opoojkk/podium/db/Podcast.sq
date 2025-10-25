@@ -75,6 +75,32 @@ JOIN podcasts p ON e.podcastId = p.id
 ORDER BY publishDate DESC
 LIMIT ?;
 
+-- 最近更新的单集，每个播客只取最新的一集
+selectRecentEpisodesUnique:
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+       p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
+       p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
+FROM episodes e
+JOIN podcasts p ON e.podcastId = p.id
+WHERE e.id IN (
+    SELECT e2.id
+    FROM episodes e2
+    WHERE e2.podcastId = e.podcastId
+    ORDER BY e2.publishDate DESC
+    LIMIT 1
+)
+ORDER BY e.publishDate DESC
+LIMIT ?;
+
+-- 所有最近更新的单集（用于查看更多页面）
+selectAllRecentEpisodes:
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+       p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
+       p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
+FROM episodes e
+JOIN podcasts p ON e.podcastId = p.id
+ORDER BY e.publishDate DESC;
+
 selectRecentPlayback:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
@@ -85,6 +111,37 @@ JOIN episodes e ON ps.episodeId = e.id
 JOIN podcasts p ON e.podcastId = p.id
 ORDER BY ps.updatedAt DESC
 LIMIT ?;
+
+-- 最近收听的单集，每个播客只取最近播放的一集
+selectRecentPlaybackUnique:
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+       p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
+       p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
+       ps.positionMs, ps.updatedAt
+FROM playback_state ps
+JOIN episodes e ON ps.episodeId = e.id
+JOIN podcasts p ON e.podcastId = p.id
+WHERE ps.episodeId IN (
+    SELECT ps2.episodeId
+    FROM playback_state ps2
+    JOIN episodes e2 ON ps2.episodeId = e2.id
+    WHERE e2.podcastId = e.podcastId
+    ORDER BY ps2.updatedAt DESC
+    LIMIT 1
+)
+ORDER BY ps.updatedAt DESC
+LIMIT ?;
+
+-- 所有最近收听的单集（用于查看更多页面）
+selectAllRecentPlayback:
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+       p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
+       p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
+       ps.positionMs, ps.updatedAt
+FROM playback_state ps
+JOIN episodes e ON ps.episodeId = e.id
+JOIN podcasts p ON e.podcastId = p.id
+ORDER BY ps.updatedAt DESC;
 
 selectDownloadStatuses:
 SELECT episodeId, status, progress, filePath FROM downloads;

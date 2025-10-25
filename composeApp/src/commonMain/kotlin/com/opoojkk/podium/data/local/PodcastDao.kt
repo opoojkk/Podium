@@ -37,8 +37,38 @@ class PodcastDao(private val database: PodcastDatabase) {
             .asFlow()
             .mapToList(Dispatchers.Default)
 
+    fun observeRecentEpisodesUnique(limit: Int): Flow<List<EpisodeWithPodcast>> =
+        queries.selectRecentEpisodesUnique(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        }
+            .asFlow()
+            .mapToList(Dispatchers.Default)
+
+    fun observeAllRecentEpisodes(): Flow<List<EpisodeWithPodcast>> =
+        queries.selectAllRecentEpisodes { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        }
+            .asFlow()
+            .mapToList(Dispatchers.Default)
+
     fun observeRecentListening(limit: Int): Flow<List<EpisodeWithPodcast>> =
         queries.selectRecentPlayback(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, updatedAt ->
+            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, updatedAt)
+        }
+            .asFlow()
+            .mapToList(Dispatchers.Default)
+            .map { list -> list.map { it.first } }
+
+    fun observeRecentListeningUnique(limit: Int): Flow<List<EpisodeWithPodcast>> =
+        queries.selectRecentPlaybackUnique(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, updatedAt ->
+            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, updatedAt)
+        }
+            .asFlow()
+            .mapToList(Dispatchers.Default)
+            .map { list -> list.map { it.first } }
+
+    fun observeAllRecentListening(): Flow<List<EpisodeWithPodcast>> =
+        queries.selectAllRecentPlayback { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, updatedAt ->
             mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, updatedAt)
         }
             .asFlow()
