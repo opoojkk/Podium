@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
+import com.opoojkk.podium.platform.copyTextToClipboard
 import com.opoojkk.podium.ui.components.DesktopNavigationRail
 import com.opoojkk.podium.ui.components.DesktopPlaybackBar
 import com.opoojkk.podium.ui.components.PlaybackBar
@@ -16,6 +17,8 @@ import com.opoojkk.podium.ui.player.DesktopPlayerDetailScreen
 import com.opoojkk.podium.ui.player.PlayerDetailScreen
 import com.opoojkk.podium.ui.profile.ProfileScreen
 import com.opoojkk.podium.ui.profile.CacheManagementScreen
+import com.opoojkk.podium.ui.profile.ExportOpmlDialog
+import com.opoojkk.podium.ui.profile.ImportOpmlDialog
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
 import kotlinx.coroutines.launch
@@ -35,6 +38,17 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }
     val selectedPodcast = remember { mutableStateOf<com.opoojkk.podium.data.model.Podcast?>(null) }
     val showCacheManagement = remember { mutableStateOf(false) }
+    val showImportDialog = remember { mutableStateOf(false) }
+    val showExportDialog = remember { mutableStateOf(false) }
+    val importText = remember { mutableStateOf("") }
+    val importInProgress = remember { mutableStateOf(false) }
+    val importResultState = remember { mutableStateOf<com.opoojkk.podium.data.repository.PodcastRepository.OpmlImportResult?>(null) }
+    val importErrorMessage = remember { mutableStateOf<String?>(null) }
+    val exportInProgress = remember { mutableStateOf(false) }
+    val exportContent = remember { mutableStateOf<String?>(null) }
+    val exportErrorMessage = remember { mutableStateOf<String?>(null) }
+
+    val platformContext = remember { environment.platformContext }
 
     val homeState by controller.homeState.collectAsState()
     val subscriptionsState by controller.subscriptionsState.collectAsState()
@@ -42,6 +56,71 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val playbackState by controller.playbackState.collectAsState()
     val allRecentListening by controller.allRecentListening.collectAsState(emptyList())
     val allRecentUpdates by controller.allRecentUpdates.collectAsState(emptyList())
+
+    val loadExportContent: () -> Unit = {
+        exportInProgress.value = true
+        exportErrorMessage.value = null
+        exportContent.value = null
+        scope.launch {
+            val result = runCatching { controller.exportOpml() }
+            result.onSuccess { opml ->
+                exportContent.value = opml
+            }.onFailure { throwable ->
+                exportContent.value = null
+                exportErrorMessage.value = throwable.message ?: "导出失败，请稍后重试。"
+            }
+            exportInProgress.value = false
+        }
+    }
+
+    val handleImportClick = {
+        showImportDialog.value = true
+        importText.value = ""
+        importResultState.value = null
+        importErrorMessage.value = null
+        importInProgress.value = false
+    }
+
+    val handleExportClick = {
+        showExportDialog.value = true
+        loadExportContent()
+    }
+
+    val handleImportConfirm: () -> Unit = {
+        val content = importText.value.trim()
+        if (content.isNotEmpty() && !importInProgress.value) {
+            importInProgress.value = true
+            importResultState.value = null
+            importErrorMessage.value = null
+            scope.launch {
+                val result = runCatching { controller.importOpml(content) }
+                result.onSuccess { importResultState.value = it }
+                    .onFailure { throwable ->
+                        importErrorMessage.value = throwable.message ?: "导入失败，请稍后重试。"
+                    }
+                importInProgress.value = false
+            }
+        }
+    }
+
+    val handleImportDismiss: () -> Unit = {
+        showImportDialog.value = false
+        importText.value = ""
+        importResultState.value = null
+        importErrorMessage.value = null
+        importInProgress.value = false
+    }
+
+    val handleExportDismiss: () -> Unit = {
+        showExportDialog.value = false
+        exportContent.value = null
+        exportErrorMessage.value = null
+        exportInProgress.value = false
+    }
+
+    val copyOpmlToClipboard: (String) -> Boolean = remember(platformContext) {
+        { text -> copyTextToClipboard(platformContext, text) }
+    }
 
     // 检测当前平台
     val platform = remember { getPlatform() }
@@ -60,7 +139,6 @@ fun PodiumApp(environment: PodiumEnvironment) {
             DesktopLayout(
                 appState = appState,
                 controller = controller,
-                scope = scope,
                 showPlayerDetail = showPlayerDetail,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
@@ -70,14 +148,15 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 profileState = profileState,
                 playbackState = playbackState,
                 allRecentListening = allRecentListening,
-                allRecentUpdates = allRecentUpdates
+                allRecentUpdates = allRecentUpdates,
+                onImportClick = handleImportClick,
+                onExportClick = handleExportClick,
             )
         } else {
             // 移动平台：使用传统底部导航栏布局
             MobileLayout(
                 appState = appState,
                 controller = controller,
-                scope = scope,
                 showPlayerDetail = showPlayerDetail,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
@@ -87,7 +166,31 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 profileState = profileState,
                 playbackState = playbackState,
                 allRecentListening = allRecentListening,
-                allRecentUpdates = allRecentUpdates
+                allRecentUpdates = allRecentUpdates,
+                onImportClick = handleImportClick,
+                onExportClick = handleExportClick,
+            )
+        }
+
+        if (showImportDialog.value) {
+            ImportOpmlDialog(
+                opmlText = importText.value,
+                onOpmlTextChange = { importText.value = it },
+                isProcessing = importInProgress.value,
+                result = importResultState.value,
+                errorMessage = importErrorMessage.value,
+                onConfirm = handleImportConfirm,
+                onDismiss = handleImportDismiss,
+            )
+        }
+        if (showExportDialog.value) {
+            ExportOpmlDialog(
+                isProcessing = exportInProgress.value,
+                opmlContent = exportContent.value,
+                errorMessage = exportErrorMessage.value,
+                onRetry = loadExportContent,
+                onDismiss = handleExportDismiss,
+                onCopy = copyOpmlToClipboard,
             )
         }
     }
@@ -97,7 +200,6 @@ fun PodiumApp(environment: PodiumEnvironment) {
 private fun DesktopLayout(
     appState: com.opoojkk.podium.presentation.PodiumAppState,
     controller: com.opoojkk.podium.presentation.PodiumController,
-    scope: kotlinx.coroutines.CoroutineScope,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
@@ -108,6 +210,8 @@ private fun DesktopLayout(
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
+    onImportClick: () -> Unit,
+    onExportClick: () -> Unit,
 ) {
     // 侧边栏展开状态
     var isNavigationExpanded by remember { mutableStateOf(true) }
@@ -202,15 +306,8 @@ private fun DesktopLayout(
 
                                 PodiumDestination.Profile -> ProfileScreen(
                                     state = profileState,
-                                    onImportClick = {
-                                        // In a production app this would open a file picker and pass the OPML content.
-                                    },
-                                    onExportClick = {
-                                        scope.launch {
-                                            val opml = controller.exportOpml()
-                                            println("Exported OPML:\n$opml")
-                                        }
-                                    },
+                                    onImportClick = onImportClick,
+                                    onExportClick = onExportClick,
                                     onCacheManagementClick = { showCacheManagement.value = true },
                                 )
                             }
@@ -258,7 +355,6 @@ private fun DesktopLayout(
 private fun MobileLayout(
     appState: com.opoojkk.podium.presentation.PodiumAppState,
     controller: com.opoojkk.podium.presentation.PodiumController,
-    scope: kotlinx.coroutines.CoroutineScope,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
@@ -269,6 +365,8 @@ private fun MobileLayout(
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
+    onImportClick: () -> Unit,
+    onExportClick: () -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 主内容区域
@@ -391,15 +489,8 @@ private fun MobileLayout(
 
                             PodiumDestination.Profile -> ProfileScreen(
                                 state = profileState,
-                                onImportClick = {
-                                    // In a production app this would open a file picker and pass the OPML content.
-                                },
-                                onExportClick = {
-                                    scope.launch {
-                                        val opml = controller.exportOpml()
-                                        println("Exported OPML:\n$opml")
-                                    }
-                                },
+                                onImportClick = onImportClick,
+                                onExportClick = onExportClick,
                                 onCacheManagementClick = { showCacheManagement.value = true },
                             )
                         }

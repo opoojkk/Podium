@@ -69,23 +69,16 @@ fun ProfileScreen(
             supportingContent = { Text("支持从其他客户端导入 RSS 列表") },
             leadingContent = { Icon(Icons.Default.FileUpload, contentDescription = null) },
             modifier = Modifier
-                .fillMaxWidth(),
-            trailingContent = {
-                IconButton(onClick = onImportClick) {
-                    Icon(Icons.Default.FileUpload, contentDescription = "导入")
-                }
-            },
+                .fillMaxWidth()
+                .clickable { onImportClick() },
         )
         ListItem(
             headlineContent = { Text("导出订阅") },
             supportingContent = { Text("生成 OPML 文件，方便备份") },
             leadingContent = { Icon(Icons.Default.Podcasts, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth(),
-            trailingContent = {
-                IconButton(onClick = onExportClick) {
-                    Icon(Icons.Default.FileUpload, contentDescription = "导出")
-                }
-            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onExportClick() },
         )
         ListItem(
             headlineContent = { Text("关于 Podium") },

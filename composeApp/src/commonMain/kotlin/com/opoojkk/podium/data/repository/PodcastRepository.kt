@@ -69,6 +69,19 @@ class PodcastRepository(
         val episodes: List<Episode>,
     )
 
+    data class OpmlImportResult(
+        val imported: Int,
+        val skipped: Int,
+        val failures: List<OpmlImportError>,
+    ) {
+        val hasErrors: Boolean get() = failures.isNotEmpty()
+    }
+
+    data class OpmlImportError(
+        val feedUrl: String,
+        val reason: String?,
+    )
+
     suspend fun subscribe(feedUrl: String, autoDownload: Boolean = true): SubscriptionResult {
         try {
             // Check if a podcast with this feedUrl already exists
@@ -135,17 +148,62 @@ class PodcastRepository(
         return newEpisodesByPodcast
     }
 
-    suspend fun importOpml(opml: String) {
-        val urls = opmlOutlineRegex.findAll(opml)
-            .mapNotNull { it.groups[1]?.value }
-            .toSet()
-        urls.forEach { url -> subscribe(url) }
+    suspend fun importOpml(opml: String): OpmlImportResult {
+        val urls = extractOpmlFeedUrls(opml)
+        if (urls.isEmpty()) {
+            return OpmlImportResult(
+                imported = 0,
+                skipped = 0,
+                failures = emptyList(),
+            )
+        }
+
+        var imported = 0
+        var skipped = 0
+        val failures = mutableListOf<OpmlImportError>()
+
+        for (url in urls) {
+            val normalizedUrl = url.trim()
+            if (normalizedUrl.isEmpty()) continue
+
+            val alreadySubscribed = dao.getPodcastByFeedUrl(normalizedUrl) != null
+            if (alreadySubscribed) {
+                skipped += 1
+                continue
+            }
+
+            runCatching {
+                subscribe(normalizedUrl)
+                imported += 1
+            }.onFailure { throwable ->
+                when (throwable) {
+                    is DuplicateSubscriptionException -> {
+                        skipped += 1
+                    }
+
+                    else -> {
+                        failures += OpmlImportError(
+                            feedUrl = normalizedUrl,
+                            reason = throwable.message,
+                        )
+                    }
+                }
+            }
+        }
+
+        return OpmlImportResult(
+            imported = imported,
+            skipped = skipped,
+            failures = failures.toList(),
+        )
     }
 
     suspend fun exportOpml(): String {
         val podcasts = observeSubscriptions().first()
         val outlines = podcasts.joinToString(separator = "\n") { podcast ->
-            "    <outline type=\"rss\" text=\"${podcast.title}\" xmlUrl=\"${podcast.feedUrl}\"/>"
+            val escapedTitle = escapeXml(podcast.title)
+            val escapedUrl = escapeXml(podcast.feedUrl)
+            "    <outline type=\"rss\" text=\"$escapedTitle\" title=\"$escapedTitle\" xmlUrl=\"$escapedUrl\" />"
         }
         return """
             |<?xml version="1.0" encoding="UTF-8"?>
@@ -218,6 +276,77 @@ class PodcastRepository(
     )
 
     companion object {
-        private val opmlOutlineRegex = Regex("xmlUrl=\"([^\"]+)\"")
+        private val outlineTagRegex = Regex("<outline\\b[^>]*>", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
+        private val outlineAttributeRegex = Regex("([A-Za-z_:][\\w:.-]*)\\s*=\\s*(['\"])(.*?)\\2", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        private val numericEntityRegex = Regex("&#(x?[0-9A-Fa-f]+);")
+
+        private fun extractOpmlFeedUrls(opml: String): List<String> {
+            val urls = LinkedHashSet<String>()
+            outlineTagRegex.findAll(opml).forEach { match ->
+                val attributes = buildMap {
+                    outlineAttributeRegex.findAll(match.value).forEach { attr ->
+                        val key = attr.groupValues[1].lowercase()
+                        val value = decodeXmlEntities(attr.groupValues[3])
+                        put(key, value)
+                    }
+                }
+                val xmlUrl = attributes["xmlurl"] ?: attributes["url"] ?: attributes["rssurl"]
+                if (!xmlUrl.isNullOrBlank()) {
+                    urls += xmlUrl.trim()
+                }
+            }
+            return urls.toList()
+        }
+
+        private fun escapeXml(raw: String): String =
+            buildString(raw.length) {
+                raw.forEach { ch ->
+                    when (ch) {
+                        '&' -> append("&amp;")
+                        '<' -> append("&lt;")
+                        '>' -> append("&gt;")
+                        '"' -> append("&quot;")
+                        '\'' -> append("&apos;")
+                        else -> append(ch)
+                    }
+                }
+            }
+
+        private fun decodeXmlEntities(raw: String): String {
+            val namedDecoded = raw
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&apos;", "'")
+                .replace("&amp;", "&")
+
+            return numericEntityRegex.replace(namedDecoded) { match ->
+                val value = match.groupValues[1]
+                val codePoint = if (value.startsWith("x") || value.startsWith("X")) {
+                    value.substring(1).toIntOrNull(16)
+                } else {
+                    value.toIntOrNull()
+                }
+                codePoint?.let { cp -> codePointToString(cp) } ?: match.value
+            }
+        }
+
+        private fun codePointToString(codePoint: Int): String? = when {
+            codePoint < 0 -> null
+            codePoint <= 0xFFFF -> runCatching { codePoint.toChar().toString() }.getOrNull()
+            codePoint <= 0x10FFFF -> {
+                val high = ((codePoint - 0x10000) shr 10) + 0xD800
+                val low = ((codePoint - 0x10000) and 0x3FF) + 0xDC00
+                if (high in 0xD800..0xDBFF && low in 0xDC00..0xDFFF) {
+                    buildString(2) {
+                        append(high.toChar())
+                        append(low.toChar())
+                    }
+                } else {
+                    null
+                }
+            }
+            else -> null
+        }
     }
 }

@@ -18,6 +18,7 @@ class PodiumEnvironment internal constructor(
     val downloadManager: PodcastDownloadManager,
     val httpClient: HttpClient,
     internal val scope: CoroutineScope,
+    val platformContext: PlatformContext,
 ) {
     fun dispose() {
         scope.cancel()
@@ -39,7 +40,7 @@ fun createPodiumEnvironment(context: PlatformContext): PodiumEnvironment {
     val downloadManager = provideDownloadManager(context, scope) { status ->
         scope.launch { repository.saveDownloadStatus(status) }
     }
-    return PodiumEnvironment(repository, player, downloadManager, httpClient, scope)
+    return PodiumEnvironment(repository, player, downloadManager, httpClient, scope, context)
 }
 
 fun PodiumEnvironment.createController(): PodiumController =

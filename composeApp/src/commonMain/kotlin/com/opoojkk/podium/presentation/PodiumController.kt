@@ -313,9 +313,8 @@ class PodiumController(
         downloadManager.cancel(episodeId)
     }
 
-    suspend fun importOpml(opml: String) {
+    suspend fun importOpml(opml: String): PodcastRepository.OpmlImportResult =
         repository.importOpml(opml)
-    }
 
     suspend fun exportOpml(): String = repository.exportOpml()
 
