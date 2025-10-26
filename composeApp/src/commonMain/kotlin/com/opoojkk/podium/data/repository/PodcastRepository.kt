@@ -58,6 +58,12 @@ class PodcastRepository(
             }
         }
 
+    suspend fun getEpisodeIdsForPodcast(podcastId: String): List<String> =
+        dao.getEpisodeIdsForPodcast(podcastId)
+
+    suspend fun getEpisodeWithPodcast(episodeId: String): EpisodeWithPodcast? =
+        dao.getEpisodeWithPodcast(episodeId)
+
     data class SubscriptionResult(
         val podcast: Podcast,
         val episodes: List<Episode>,

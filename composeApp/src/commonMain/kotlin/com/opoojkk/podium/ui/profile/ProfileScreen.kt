@@ -39,7 +39,24 @@ fun ProfileScreen(
         // 缓存管理入口
         ListItem(
             headlineContent = { Text("缓存管理") },
-            supportingContent = { Text("已缓存 ${state.cacheSizeInMb} MB") },
+            supportingContent = {
+                val cachedCount = state.cachedDownloads.size
+                val downloadingCount = state.inProgressDownloads.size
+                val queuedCount = state.queuedDownloads.size
+                val description = buildString {
+                    append("已缓存 ${state.cacheSizeInMb} MB")
+                    if (cachedCount > 0) {
+                        append(" · 已缓存 $cachedCount 项")
+                    }
+                    if (downloadingCount > 0) {
+                        append(" · 正在缓存 $downloadingCount 项")
+                    }
+                    if (queuedCount > 0) {
+                        append(" · 排队 $queuedCount 项")
+                    }
+                }
+                Text(description)
+            },
             leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
             trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
             modifier = Modifier

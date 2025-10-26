@@ -17,6 +17,7 @@ interface PodcastDownloadManager {
     fun isAutoDownloadEnabled(): Boolean = autoDownloadEnabled.value
     fun cancel(episodeId: String)
     fun enqueue(episode: Episode, auto: Boolean = false)
+    fun clearDownloads(episodeIds: Collection<String>)
 }
 
 class DefaultPodcastDownloadManager(
@@ -56,5 +57,10 @@ class DefaultPodcastDownloadManager(
                 delay(500)
             }
         }
+    }
+
+    override fun clearDownloads(episodeIds: Collection<String>) {
+        if (episodeIds.isEmpty()) return
+        _downloads.value = _downloads.value - episodeIds
     }
 }

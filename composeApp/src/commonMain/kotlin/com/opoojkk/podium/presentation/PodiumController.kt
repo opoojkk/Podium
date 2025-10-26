@@ -2,14 +2,19 @@ package com.opoojkk.podium.presentation
 
 import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.Episode
+import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.PlaybackProgress
 import com.opoojkk.podium.data.repository.PodcastRepository
 import com.opoojkk.podium.download.PodcastDownloadManager
+import com.opoojkk.podium.platform.fileLastModifiedMillis
+import com.opoojkk.podium.platform.fileSizeInBytes
 import com.opoojkk.podium.player.PodcastPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 
 class PodiumController(
@@ -30,6 +35,9 @@ class PodiumController(
 
     private val _downloads = MutableStateFlow<Map<String, DownloadStatus>>(emptyMap())
     val downloads: StateFlow<Map<String, DownloadStatus>> = _downloads.asStateFlow()
+
+    private val downloadEpisodeCache = mutableMapOf<String, EpisodeWithPodcast?>()
+    private val downloadEpisodeCacheMutex = Mutex()
 
     val playbackState: StateFlow<com.opoojkk.podium.data.model.PlaybackState> = player.state
 
@@ -111,9 +119,75 @@ class PodiumController(
                 persisted + runtime
             }.collect { combined ->
                 _downloads.value = combined
-                val cachedCount = combined.values.count { it is DownloadStatus.Completed }
+                val bytesPerMb = 1024L * 1024L
+                val defaultEpisodeSizeBytes = 50L * bytesPerMb
+
+                var totalCacheBytes = 0L
+                val cachedItems = mutableListOf<ProfileCachedItem>()
+                val inProgressItems = mutableListOf<ProfileDownloadItem>()
+                val queuedItems = mutableListOf<ProfileDownloadItem>()
+
+                for (status in combined.values) {
+                    when (status) {
+                        is DownloadStatus.Completed -> {
+                            val sizeBytes = status.filePath.takeIf { it.isNotBlank() }?.let { fileSizeInBytes(it) }
+                            val resolvedSize = sizeBytes ?: defaultEpisodeSizeBytes
+                            totalCacheBytes += resolvedSize
+
+                            val details = episodeDetailsForDownload(status.episodeId)
+                            if (details != null) {
+                                val completedAt = status.filePath.takeIf { it.isNotBlank() }?.let { fileLastModifiedMillis(it) }
+                                cachedItems += ProfileCachedItem(
+                                    episodeId = details.episode.id,
+                                    episodeTitle = details.episode.title,
+                                    podcastTitle = details.podcast.title,
+                                    sizeBytes = resolvedSize,
+                                    filePath = status.filePath.takeIf { it.isNotBlank() },
+                                    completedAtMillis = completedAt,
+                                )
+                            }
+                        }
+
+                        is DownloadStatus.InProgress -> {
+                            val details = episodeDetailsForDownload(status.episodeId) ?: continue
+                            inProgressItems += ProfileDownloadItem(
+                                episodeId = details.episode.id,
+                                episodeTitle = details.episode.title,
+                                podcastTitle = details.podcast.title,
+                                status = status,
+                            )
+                        }
+
+                        is DownloadStatus.Idle, is DownloadStatus.Failed -> {
+                            val details = episodeDetailsForDownload(status.episodeId) ?: continue
+                            queuedItems += ProfileDownloadItem(
+                                episodeId = details.episode.id,
+                                episodeTitle = details.episode.title,
+                                podcastTitle = details.podcast.title,
+                                status = status,
+                            )
+                        }
+                    }
+                }
+
+                val cacheSizeInMb = if (totalCacheBytes == 0L) 0 else {
+                    val roundedUp = (totalCacheBytes + bytesPerMb - 1) / bytesPerMb
+                    roundedUp.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                }
+
+                cachedItems.sortWith(
+                    compareByDescending<ProfileCachedItem> { it.completedAtMillis ?: Long.MIN_VALUE }
+                        .thenByDescending { it.sizeBytes }
+                        .thenBy { it.episodeTitle.lowercase() }
+                )
+                inProgressItems.sortByDescending { (it.status as? DownloadStatus.InProgress)?.progress ?: 0f }
+                queuedItems.sortBy { it.episodeTitle.lowercase() }
+
                 _profileState.value = _profileState.value.copy(
-                    cacheSizeInMb = cachedCount * 50,
+                    cacheSizeInMb = cacheSizeInMb,
+                    cachedDownloads = cachedItems.toList(),
+                    inProgressDownloads = inProgressItems.toList(),
+                    queuedDownloads = queuedItems.toList(),
                 )
             }
         }
@@ -243,8 +317,36 @@ class PodiumController(
 
     fun deleteSubscription(podcastId: String) {
         scope.launch {
+            val episodeIds = repository.getEpisodeIdsForPodcast(podcastId)
             repository.deleteSubscription(podcastId)
+            if (episodeIds.isNotEmpty()) {
+                downloadManager.clearDownloads(episodeIds)
+                downloadEpisodeCacheMutex.withLock {
+                    episodeIds.forEach { downloadEpisodeCache.remove(it) }
+                }
+            }
+            val currentEpisode = player.state.value.episode
+            if (currentEpisode?.podcastId == podcastId) {
+                player.stop()
+            }
         }
+    }
+
+    private suspend fun episodeDetailsForDownload(episodeId: String): EpisodeWithPodcast? {
+        val cached = downloadEpisodeCacheMutex.withLock {
+            downloadEpisodeCache[episodeId]
+        }
+        if (cached != null) return cached
+
+        val fetched = repository.getEpisodeWithPodcast(episodeId)
+        downloadEpisodeCacheMutex.withLock {
+            if (fetched == null) {
+                downloadEpisodeCache.remove(episodeId)
+            } else {
+                downloadEpisodeCache[episodeId] = fetched
+            }
+        }
+        return fetched
     }
 
     fun renameSubscription(podcastId: String, newTitle: String) {

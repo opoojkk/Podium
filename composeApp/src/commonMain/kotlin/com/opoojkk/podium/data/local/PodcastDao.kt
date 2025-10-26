@@ -154,6 +154,16 @@ class PodcastDao(private val database: PodcastDatabase) {
                 rows.associate { it }
             }
 
+    suspend fun getEpisodeIdsForPodcast(podcastId: String): List<String> =
+        queries.selectExistingEpisodeIds(podcastId)
+            .executeAsList()
+
+    suspend fun getEpisodeWithPodcast(episodeId: String): EpisodeWithPodcast? =
+        queries.selectEpisodeWithPodcastByEpisodeId(episodeId) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        }
+            .executeAsOneOrNull()
+
     suspend fun upsertDownloadStatus(
         episodeId: String,
         status: String,
@@ -191,7 +201,12 @@ class PodcastDao(private val database: PodcastDatabase) {
     }
 
     suspend fun deletePodcast(podcastId: String) {
-        queries.deletePodcastById(podcastId)
+        queries.transaction {
+            queries.deleteDownloadsByPodcastId(podcastId)
+            queries.deletePlaybackByPodcastId(podcastId)
+            queries.removeEpisodesForPodcast(podcastId)
+            queries.deletePodcastById(podcastId)
+        }
     }
 
     suspend fun updatePodcastTitle(podcastId: String, newTitle: String) {

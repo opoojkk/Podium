@@ -1,5 +1,6 @@
 package com.opoojkk.podium.presentation
 
+import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.Podcast
 
 /**
@@ -8,4 +9,23 @@ import com.opoojkk.podium.data.model.Podcast
 data class ProfileUiState(
     val subscribedPodcasts: List<Podcast> = emptyList(),
     val cacheSizeInMb: Int = 0,
+    val cachedDownloads: List<ProfileCachedItem> = emptyList(),
+    val inProgressDownloads: List<ProfileDownloadItem> = emptyList(),
+    val queuedDownloads: List<ProfileDownloadItem> = emptyList(),
+)
+
+data class ProfileDownloadItem(
+    val episodeId: String,
+    val episodeTitle: String,
+    val podcastTitle: String,
+    val status: DownloadStatus,
+)
+
+data class ProfileCachedItem(
+    val episodeId: String,
+    val episodeTitle: String,
+    val podcastTitle: String,
+    val sizeBytes: Long,
+    val filePath: String?,
+    val completedAtMillis: Long?,
 )
