@@ -32,9 +32,7 @@ class IosPodcastPlayer : PodcastPlayer {
                 }
                 
                 currentEpisode = episode
-                val url = NSURL(string = episode.audioUrl)
-                
-                // Check if URL creation was successful
+                val url = createUrlForPlayback(episode.audioUrl)
                 if (url == null) {
                     _state.value = PlaybackState(null, 0L, false, null)
                     return@withContext
@@ -156,6 +154,17 @@ class IosPodcastPlayer : PodcastPlayer {
             } else {
                 null
             }
+        }
+    }
+
+    private fun createUrlForPlayback(location: String): NSURL? {
+        return when {
+            location.startsWith("file://") -> {
+                val path = location.removePrefix("file://")
+                NSURL.fileURLWithPath(path)
+            }
+            location.contains("://") -> NSURL(string = location)
+            else -> NSURL.fileURLWithPath(location)
         }
     }
 }

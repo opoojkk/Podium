@@ -197,10 +197,14 @@ class PodiumController(
         println("🎵 PodiumController: playEpisode called for: ${episode.title}")
         println("🎵 PodiumController: Audio URL: ${episode.audioUrl}")
         scope.launch {
+            val (episodeToPlay, cachePath) = resolvePlaybackEpisode(episode)
+            if (cachePath != null) {
+                println("🎵 PodiumController: Playing cached file at $cachePath")
+            }
             val progress = repository.playbackForEpisode(episode.id)
             val startPosition = progress?.positionMs ?: 0L
             println("🎵 PodiumController: Starting playback at position: $startPosition")
-            player.play(episode, startPosition)
+            player.play(episodeToPlay, startPosition)
             repository.savePlayback(
                 PlaybackProgress(
                     episodeId = episode.id,
@@ -353,5 +357,24 @@ class PodiumController(
         scope.launch {
             repository.renameSubscription(podcastId, newTitle)
         }
+    }
+
+    private fun resolvePlaybackEpisode(episode: Episode): Pair<Episode, String?> {
+        val completed = downloads.value[episode.id] as? DownloadStatus.Completed
+        val filePath = completed?.filePath?.takeIf { it.isNotBlank() }
+        if (filePath != null) {
+            val exists = fileSizeInBytes(filePath) != null
+            if (exists) {
+                return episode.copy(audioUrl = toPlayableUri(filePath)) to filePath
+            }
+        }
+        return episode to null
+    }
+
+    private fun toPlayableUri(path: String): String = when {
+        path.startsWith("file://") -> path
+        path.startsWith("content://") -> path
+        path.startsWith("/") -> "file://$path"
+        else -> path
     }
 }
