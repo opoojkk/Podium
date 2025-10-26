@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
+import com.opoojkk.podium.platform.SetStatusBarColor
 import com.opoojkk.podium.platform.copyTextToClipboard
 import com.opoojkk.podium.platform.openUrl
 import com.opoojkk.podium.ui.components.DesktopNavigationRail
@@ -141,6 +143,11 @@ fun PodiumApp(environment: PodiumEnvironment) {
     }
 
     MaterialTheme {
+        val colorScheme = MaterialTheme.colorScheme
+        val statusBarColor = colorScheme.background
+        val useDarkIcons = statusBarColor.luminance() > 0.5f
+        SetStatusBarColor(statusBarColor, darkIcons = useDarkIcons)
+
         // About Dialog
         if (showAboutDialog.value) {
             AboutDialog(
