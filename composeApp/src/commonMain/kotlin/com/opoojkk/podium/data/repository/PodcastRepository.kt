@@ -77,16 +77,32 @@ class PodcastRepository(
         }
     }
 
-    suspend fun refreshSubscriptions() {
+    suspend fun refreshSubscriptions(): Map<String, List<Episode>> {
         val podcasts = observeSubscriptions().first()
+        val newEpisodesByPodcast = mutableMapOf<String, List<Episode>>()
+        
         podcasts.forEach { podcast ->
             runCatching {
+                // 获取当前已有的节目ID列表
+                val existingEpisodes = observePodcastEpisodes(podcast.id).first()
+                val existingEpisodeIds = existingEpisodes.map { it.episode.id }.toSet()
+                
                 val feed = feedService.fetch(podcast.feedUrl)
                 val updatedPodcast = feed.toPodcast(podcast.autoDownload)
+                val allEpisodes = feed.episodes.map { it.toEpisode(updatedPodcast) }
+                
+                // 找出新的节目
+                val newEpisodes = allEpisodes.filter { it.id !in existingEpisodeIds }
+                if (newEpisodes.isNotEmpty()) {
+                    newEpisodesByPodcast[podcast.id] = newEpisodes
+                }
+                
                 dao.upsertPodcast(updatedPodcast)
-                dao.upsertEpisodes(updatedPodcast.id, feed.episodes.map { it.toEpisode(updatedPodcast) })
+                dao.upsertEpisodes(updatedPodcast.id, allEpisodes)
             }
         }
+        
+        return newEpisodesByPodcast
     }
 
     suspend fun importOpml(opml: String) {

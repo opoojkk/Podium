@@ -1,26 +1,21 @@
 package com.opoojkk.podium.ui.profile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Podcasts
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -32,8 +27,7 @@ fun ProfileScreen(
     state: ProfileUiState,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
-    onToggleAutoDownload: (Boolean) -> Unit,
-    onManageDownloads: () -> Unit,
+    onCacheManagementClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -42,12 +36,17 @@ fun ProfileScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        SubscriptionCard(state)
-        SettingsCard(
-            state = state,
-            onToggleAutoDownload = onToggleAutoDownload,
-            onManageDownloads = onManageDownloads,
+        // 缓存管理入口
+        ListItem(
+            headlineContent = { Text("缓存管理") },
+            supportingContent = { Text("已缓存 ${state.cacheSizeInMb} MB") },
+            leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
+            trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onCacheManagementClick() },
         )
+        
         ListItem(
             headlineContent = { Text("导入订阅 (OPML)") },
             supportingContent = { Text("支持从其他客户端导入 RSS 列表") },
@@ -77,72 +76,5 @@ fun ProfileScreen(
             leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
             modifier = Modifier.fillMaxWidth(),
         )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun SubscriptionCard(state: ProfileUiState) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("已订阅播客", style = MaterialTheme.typography.titleMedium)
-            if (state.subscribedPodcasts.isEmpty()) {
-                Text(
-                    text = "暂未订阅任何播客",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    state.subscribedPodcasts.forEach { podcast ->
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                            Text(
-                                text = podcast.title,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsCard(
-    state: ProfileUiState,
-    onToggleAutoDownload: (Boolean) -> Unit,
-    onManageDownloads: () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("缓存设置", style = MaterialTheme.typography.titleMedium)
-            ListItem(
-                headlineContent = { Text("自动缓存最新一期") },
-                leadingContent = { Icon(Icons.Default.Settings, contentDescription = null) },
-                trailingContent = {
-                    Switch(checked = state.autoDownload, onCheckedChange = onToggleAutoDownload)
-                },
-                supportingContent = { Text("启用后将自动下载每个播客的最新节目") },
-            )
-            ListItem(
-                headlineContent = { Text("已缓存 ${state.cacheSizeInMb} MB") },
-                leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
-                trailingContent = {
-                    IconButton(onClick = onManageDownloads) {
-                        Icon(Icons.Default.Download, contentDescription = "管理缓存")
-                    }
-                },
-                supportingContent = { Text("手动管理下载或清理空间") },
-            )
-        }
     }
 }

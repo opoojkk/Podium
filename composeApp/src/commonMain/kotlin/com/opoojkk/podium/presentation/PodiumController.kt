@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -120,11 +121,6 @@ class PodiumController(
                 )
             }
         }
-        scope.launch {
-            downloadManager.autoDownloadEnabled.collect { enabled ->
-                _profileState.value = _profileState.value.copy(autoDownload = enabled)
-            }
-        }
     }
 
     fun playEpisode(episode: Episode) {
@@ -160,7 +156,19 @@ class PodiumController(
         if (refreshJob?.isActive == true) return
         _subscriptionsState.value = _subscriptionsState.value.copy(isRefreshing = true)
         refreshJob = scope.launch {
-            repository.refreshSubscriptions()
+            val newEpisodesByPodcast = repository.refreshSubscriptions()
+            
+            // 对于启用自动下载的播客，下载新节目
+            val podcasts = repository.observeSubscriptions().first()
+            newEpisodesByPodcast.forEach { (podcastId, newEpisodes) ->
+                val podcast = podcasts.find { it.id == podcastId }
+                if (podcast?.autoDownload == true) {
+                    newEpisodes.forEach { episode ->
+                        downloadManager.enqueue(episode, auto = true)
+                    }
+                }
+            }
+            
             _subscriptionsState.value = _subscriptionsState.value.copy(isRefreshing = false)
         }
     }
@@ -171,12 +179,15 @@ class PodiumController(
                 println("🎧 Controller: Starting subscription process for: $feedUrl")
                 val result = repository.subscribe(feedUrl)
                 println("🎧 Controller: Subscription completed, got ${result.episodes.size} episodes")
-                if (downloadManager.isAutoDownloadEnabled()) {
-                    result.episodes.maxByOrNull { it.publishDate }?.let { latest ->
-                        downloadManager.enqueue(latest, auto = true)
+                
+                // 如果启用自动下载，下载该播客的所有节目
+                if (result.podcast.autoDownload) {
+                    result.episodes.forEach { episode ->
+                        downloadManager.enqueue(episode, auto = true)
                     }
                 }
-                repository.setAutoDownload(result.podcast.id, downloadManager.isAutoDownloadEnabled())
+                
+                repository.setAutoDownload(result.podcast.id, result.podcast.autoDownload)
                 println("🎧 Controller: Subscription process finished successfully")
             } catch (e: Exception) {
                 println("❌ Controller: Subscription failed: ${e.message}")
@@ -190,6 +201,19 @@ class PodiumController(
         scope.launch {
             _profileState.value.subscribedPodcasts.forEach { podcast ->
                 repository.setAutoDownload(podcast.id, enabled)
+            }
+        }
+    }
+
+    fun togglePodcastAutoDownload(podcastId: String, enabled: Boolean) {
+        scope.launch {
+            repository.setAutoDownload(podcastId, enabled)
+            // 如果启用自动缓存，下载该播客的所有节目
+            if (enabled) {
+                val episodes = repository.observePodcastEpisodes(podcastId).first()
+                episodes.forEach { episodeWithPodcast ->
+                    downloadManager.enqueue(episodeWithPodcast.episode, auto = true)
+                }
             }
         }
     }

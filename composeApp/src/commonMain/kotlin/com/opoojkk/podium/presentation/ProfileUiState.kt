@@ -7,6 +7,5 @@ import com.opoojkk.podium.data.model.Podcast
  */
 data class ProfileUiState(
     val subscribedPodcasts: List<Podcast> = emptyList(),
-    val autoDownload: Boolean = true,
     val cacheSizeInMb: Int = 0,
 )

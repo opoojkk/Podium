@@ -15,6 +15,7 @@ import com.opoojkk.podium.ui.home.ViewMoreScreen
 import com.opoojkk.podium.ui.player.DesktopPlayerDetailScreen
 import com.opoojkk.podium.ui.player.PlayerDetailScreen
 import com.opoojkk.podium.ui.profile.ProfileScreen
+import com.opoojkk.podium.ui.profile.CacheManagementScreen
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
 import kotlinx.coroutines.launch
@@ -33,6 +34,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val showPlayerDetail = remember { mutableStateOf(false) }
     val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }
     val selectedPodcast = remember { mutableStateOf<com.opoojkk.podium.data.model.Podcast?>(null) }
+    val showCacheManagement = remember { mutableStateOf(false) }
 
     val homeState by controller.homeState.collectAsState()
     val subscriptionsState by controller.subscriptionsState.collectAsState()
@@ -62,6 +64,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 showPlayerDetail = showPlayerDetail,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
+                showCacheManagement = showCacheManagement,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
@@ -78,6 +81,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 showPlayerDetail = showPlayerDetail,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
+                showCacheManagement = showCacheManagement,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
@@ -97,6 +101,7 @@ private fun DesktopLayout(
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
+    showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
@@ -129,6 +134,15 @@ private fun DesktopLayout(
                         .fillMaxSize()
                 ) {
                     when {
+                        showCacheManagement.value -> {
+                            // 显示缓存管理页面
+                            CacheManagementScreen(
+                                state = profileState,
+                                onBackClick = { showCacheManagement.value = false },
+                                onTogglePodcastAutoDownload = controller::togglePodcastAutoDownload,
+                                onClearCache = { /* TODO: 实现清除缓存功能 */ },
+                            )
+                        }
                         showPlayerDetail.value && playbackState.episode != null -> {
                             // 桌面端使用横向布局的详情页
                             DesktopPlayerDetailScreen(
@@ -196,8 +210,7 @@ private fun DesktopLayout(
                                             println("Exported OPML:\n$opml")
                                         }
                                     },
-                                    onToggleAutoDownload = controller::toggleAutoDownload,
-                                    onManageDownloads = controller::refreshSubscriptions,
+                                    onCacheManagementClick = { showCacheManagement.value = true },
                                 )
                             }
                         }
@@ -248,6 +261,7 @@ private fun MobileLayout(
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
+    showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
@@ -261,7 +275,7 @@ private fun MobileLayout(
             bottomBar = {
                 // 底部栏带动画显示/隐藏
                 androidx.compose.animation.AnimatedVisibility(
-                    visible = !showPlayerDetail.value && showViewMore.value == null,
+                    visible = !showPlayerDetail.value && showViewMore.value == null && !showCacheManagement.value,
                     enter = androidx.compose.animation.fadeIn(
                         animationSpec = androidx.compose.animation.core.tween(200)
                     ) + androidx.compose.animation.slideInVertically(
@@ -311,6 +325,15 @@ private fun MobileLayout(
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             when {
+                showCacheManagement.value -> {
+                    // 显示缓存管理页面 - 不应用 padding，让 CacheManagementScreen 的 Scaffold 自己处理
+                    CacheManagementScreen(
+                        state = profileState,
+                        onBackClick = { showCacheManagement.value = false },
+                        onTogglePodcastAutoDownload = controller::togglePodcastAutoDownload,
+                        onClearCache = { /* TODO: 实现清除缓存功能 */ },
+                    )
+                }
                 selectedPodcast.value != null -> {
                     // 显示播客单集列表
                     val podcast = selectedPodcast.value!!
@@ -375,8 +398,7 @@ private fun MobileLayout(
                                         println("Exported OPML:\n$opml")
                                     }
                                 },
-                                onToggleAutoDownload = controller::toggleAutoDownload,
-                                onManageDownloads = controller::refreshSubscriptions,
+                                onCacheManagementClick = { showCacheManagement.value = true },
                             )
                         }
                     }
