@@ -201,6 +201,16 @@ class PodcastDao(private val database: PodcastDatabase) {
         )
     }
 
+    suspend fun getPodcastByFeedUrl(feedUrl: String): Podcast? {
+        println("🔍 DAO: Looking up podcast by feedUrl: $feedUrl")
+        val result = queries.selectPodcastByFeedUrl(feedUrl) { id, title, description, artworkUrl, feedUrl_, lastUpdated, autoDownload ->
+            mapPodcast(id, title, description, artworkUrl, feedUrl_, lastUpdated, autoDownload)
+        }
+            .executeAsOneOrNull()
+        println("🔍 DAO: Query result: ${if (result != null) "Found: ${result.title}" else "Not found"}")
+        return result
+    }
+
     private fun mapPodcast(
         id: String,
         title: String,

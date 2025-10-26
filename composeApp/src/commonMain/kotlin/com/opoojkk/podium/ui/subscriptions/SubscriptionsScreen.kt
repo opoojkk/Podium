@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -57,12 +58,13 @@ fun SubscriptionsScreen(
     onEditSubscription: (String, String) -> Unit,
     onDeleteSubscription: (String) -> Unit,
     onPodcastClick: (Podcast) -> Unit,
+    onClearDuplicateMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     
     Column(modifier = modifier.fillMaxSize()) {
-        // Custom TopAppBar
+        // Custom TopAppBar without windowInsets to fix spacing issue
         TopAppBar(
             title = { Text("订阅") },
             actions = {
@@ -74,7 +76,8 @@ fun SubscriptionsScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                 actionIconContentColor = MaterialTheme.colorScheme.onSurface
-            )
+            ),
+            windowInsets = WindowInsets(0.dp) // Fix spacing with status bar
         )
         
         LazyColumn(
@@ -121,6 +124,20 @@ fun SubscriptionsScreen(
             onConfirm = { feedUrl ->
                 onAddSubscription(feedUrl)
                 showAddDialog = false
+            }
+        )
+    }
+    
+    // 显示重复订阅提示
+    state.duplicateSubscriptionTitle?.let { title ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = onClearDuplicateMessage,
+            title = { Text("已订阅该播客") },
+            text = { Text("「$title」已在订阅列表中，已为您更新内容。") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = onClearDuplicateMessage) {
+                    Text("确定")
+                }
             }
         )
     }

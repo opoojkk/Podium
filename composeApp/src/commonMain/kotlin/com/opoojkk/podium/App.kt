@@ -197,6 +197,7 @@ private fun DesktopLayout(
                                     onEditSubscription = controller::renameSubscription,
                                     onDeleteSubscription = controller::deleteSubscription,
                                     onPodcastClick = { podcast -> selectedPodcast.value = podcast },
+                                    onClearDuplicateMessage = controller::clearDuplicateSubscriptionMessage,
                                 )
 
                                 PodiumDestination.Profile -> ProfileScreen(
@@ -385,6 +386,7 @@ private fun MobileLayout(
                                 onEditSubscription = controller::renameSubscription,
                                 onDeleteSubscription = controller::deleteSubscription,
                                 onPodcastClick = { podcast -> selectedPodcast.value = podcast },
+                                onClearDuplicateMessage = controller::clearDuplicateSubscriptionMessage,
                             )
 
                             PodiumDestination.Profile -> ProfileScreen(

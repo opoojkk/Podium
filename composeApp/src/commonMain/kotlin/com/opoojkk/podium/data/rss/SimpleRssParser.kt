@@ -165,16 +165,15 @@ class SimpleRssParser {
     }
 
     private fun generateUniquePodcastId(title: String, feedUrl: String): String {
-        // Create a more unique ID by combining title, feedUrl, and current timestamp
+        // Use feedUrl hash as the stable unique identifier for the podcast
+        // This ensures the same feed URL always produces the same ID
+        val urlHash = feedUrl.hashCode().toString().replace("-", "n")
         val titleHash = title.lowercase()
             .replace(Regex("[^a-z0-9]"), "-")
             .replace(Regex("-+"), "-")
             .trim('-')
-        val urlHash = feedUrl.hashCode().toString().replace("-", "n")
-        val timestamp = Clock.System.now().toEpochMilliseconds().toString()
-        // Use a random number instead of System.nanoTime() for multiplatform compatibility
-        val randomSuffix = (100000..999999).random().toString()
-        return "${titleHash}-${urlHash}-${timestamp}-${randomSuffix}"
+            .take(30) // Limit title hash length
+        return "podcast-${urlHash}-${titleHash}"
     }
 
     companion object {

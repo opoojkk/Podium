@@ -8,11 +8,7 @@ import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.player.PodcastPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -189,11 +185,24 @@ class PodiumController(
                 
                 repository.setAutoDownload(result.podcast.id, result.podcast.autoDownload)
                 println("🎧 Controller: Subscription process finished successfully")
+            } catch (e: com.opoojkk.podium.data.repository.DuplicateSubscriptionException) {
+                // 捕获重复订阅异常，显示提示
+                println("⚠️ Controller: Duplicate subscription detected: ${e.podcastTitle}")
+                println("⚠️ Controller: Setting duplicateSubscriptionTitle in state")
+                _subscriptionsState.value = _subscriptionsState.value.copy(
+                    duplicateSubscriptionTitle = e.podcastTitle
+                )
+                println("⚠️ Controller: State updated, duplicateSubscriptionTitle = ${_subscriptionsState.value.duplicateSubscriptionTitle}")
             } catch (e: Exception) {
                 println("❌ Controller: Subscription failed: ${e.message}")
+                println("❌ Controller: Exception type: ${e::class.simpleName}")
                 e.printStackTrace()
             }
         }
+    }
+
+    fun clearDuplicateSubscriptionMessage() {
+        _subscriptionsState.value = _subscriptionsState.value.copy(duplicateSubscriptionTitle = null)
     }
 
     fun toggleAutoDownload(enabled: Boolean) {

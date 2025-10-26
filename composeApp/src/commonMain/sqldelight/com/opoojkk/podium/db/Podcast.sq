@@ -3,7 +3,7 @@ CREATE TABLE podcasts (
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     artworkUrl TEXT,
-    feedUrl TEXT NOT NULL,
+    feedUrl TEXT NOT NULL UNIQUE,
     lastUpdated INTEGER NOT NULL,
     autoDownload INTEGER NOT NULL DEFAULT 1
 );
@@ -173,3 +173,8 @@ DELETE FROM podcasts WHERE id = ?;
 
 updatePodcastTitle:
 UPDATE podcasts SET title = ? WHERE id = ?;
+
+selectPodcastByFeedUrl:
+SELECT id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload
+FROM podcasts
+WHERE feedUrl = ?;

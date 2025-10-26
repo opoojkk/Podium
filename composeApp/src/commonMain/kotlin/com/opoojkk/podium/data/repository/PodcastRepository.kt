@@ -65,13 +65,36 @@ class PodcastRepository(
 
     suspend fun subscribe(feedUrl: String, autoDownload: Boolean = true): SubscriptionResult {
         try {
+            // Check if a podcast with this feedUrl already exists
+            println("🔍 Repository: Checking for existing podcast with feedUrl: $feedUrl")
+            val existingPodcast = dao.getPodcastByFeedUrl(feedUrl)
+            
+            // If already subscribed, throw DuplicateSubscriptionException
+            if (existingPodcast != null) {
+                println("⚠️ Repository: Found existing podcast: ${existingPodcast.title}")
+                throw DuplicateSubscriptionException(
+                    podcastTitle = existingPodcast.title,
+                    feedUrl = feedUrl
+                )
+            }
+            
+            println("✅ Repository: No existing podcast found, proceeding with subscription")
+            // Fetch the feed data
             val feed = feedService.fetch(feedUrl)
+            
+            // Create new podcast with generated ID
             val podcast = feed.toPodcast(autoDownload)
             val episodes = feed.episodes.map { it.toEpisode(podcast) }
+            
             dao.upsertPodcast(podcast)
             dao.upsertEpisodes(podcast.id, episodes)
             return SubscriptionResult(podcast, episodes)
+        } catch (e: DuplicateSubscriptionException) {
+            // Re-throw duplicate subscription exception
+            println("⚠️ Repository: Re-throwing DuplicateSubscriptionException")
+            throw e
         } catch (e: Exception) {
+            println("❌ Repository: Subscription failed with exception: ${e.message}")
             e.printStackTrace()
             throw e
         }
@@ -88,7 +111,8 @@ class PodcastRepository(
                 val existingEpisodeIds = existingEpisodes.map { it.episode.id }.toSet()
                 
                 val feed = feedService.fetch(podcast.feedUrl)
-                val updatedPodcast = feed.toPodcast(podcast.autoDownload)
+                // Use the existing podcast's ID and autoDownload setting when updating
+                val updatedPodcast = feed.toPodcast(podcast.autoDownload).copy(id = podcast.id)
                 val allEpisodes = feed.episodes.map { it.toEpisode(updatedPodcast) }
                 
                 // 找出新的节目
