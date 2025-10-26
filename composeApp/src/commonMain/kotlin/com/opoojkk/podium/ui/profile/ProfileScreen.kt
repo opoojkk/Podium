@@ -28,6 +28,7 @@ fun ProfileScreen(
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onCacheManagementClick: () -> Unit,
+    onAboutClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -84,7 +85,10 @@ fun ProfileScreen(
             headlineContent = { Text("关于 Podium") },
             supportingContent = { Text("Compose Multiplatform 播客客户端示例") },
             leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth(),
+            trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onAboutClick() },
         )
     }
 }

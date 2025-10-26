@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
 import com.opoojkk.podium.platform.copyTextToClipboard
+import com.opoojkk.podium.platform.openUrl
 import com.opoojkk.podium.ui.components.DesktopNavigationRail
 import com.opoojkk.podium.ui.components.DesktopPlaybackBar
 import com.opoojkk.podium.ui.components.PlaybackBar
@@ -19,6 +20,7 @@ import com.opoojkk.podium.ui.profile.ProfileScreen
 import com.opoojkk.podium.ui.profile.CacheManagementScreen
 import com.opoojkk.podium.ui.profile.ExportOpmlDialog
 import com.opoojkk.podium.ui.profile.ImportOpmlDialog
+import com.opoojkk.podium.ui.profile.AboutDialog
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
 import kotlinx.coroutines.launch
@@ -40,6 +42,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val showCacheManagement = remember { mutableStateOf(false) }
     val showImportDialog = remember { mutableStateOf(false) }
     val showExportDialog = remember { mutableStateOf(false) }
+    val showAboutDialog = remember { mutableStateOf(false) }
     val importText = remember { mutableStateOf("") }
     val importInProgress = remember { mutableStateOf(false) }
     val importResultState = remember { mutableStateOf<com.opoojkk.podium.data.repository.PodcastRepository.OpmlImportResult?>(null) }
@@ -122,6 +125,10 @@ fun PodiumApp(environment: PodiumEnvironment) {
         { text -> copyTextToClipboard(platformContext, text) }
     }
 
+    val openUrlInBrowser: (String) -> Boolean = remember(platformContext) {
+        { url -> openUrl(platformContext, url) }
+    }
+
     // 检测当前平台
     val platform = remember { getPlatform() }
     val isDesktop = remember(platform) {
@@ -134,6 +141,14 @@ fun PodiumApp(environment: PodiumEnvironment) {
     }
 
     MaterialTheme {
+        // About Dialog
+        if (showAboutDialog.value) {
+            AboutDialog(
+                onDismiss = { showAboutDialog.value = false },
+                onOpenUrl = openUrlInBrowser
+            )
+        }
+
         if (isDesktop) {
             // 桌面平台：使用Spotify风格布局（侧边导航 + 底部播放控制器）
             DesktopLayout(
@@ -143,6 +158,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
                 showCacheManagement = showCacheManagement,
+                showAboutDialog = showAboutDialog,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
@@ -151,6 +167,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 allRecentUpdates = allRecentUpdates,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
+                onOpenUrl = openUrlInBrowser,
             )
         } else {
             // 移动平台：使用传统底部导航栏布局
@@ -161,6 +178,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
                 showCacheManagement = showCacheManagement,
+                showAboutDialog = showAboutDialog,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
@@ -169,6 +187,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 allRecentUpdates = allRecentUpdates,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
+                onOpenUrl = openUrlInBrowser,
             )
         }
 
@@ -204,6 +223,7 @@ private fun DesktopLayout(
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
+    showAboutDialog: androidx.compose.runtime.MutableState<Boolean>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
@@ -212,6 +232,7 @@ private fun DesktopLayout(
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
+    onOpenUrl: (String) -> Boolean,
 ) {
     // 侧边栏展开状态
     var isNavigationExpanded by remember { mutableStateOf(true) }
@@ -309,6 +330,7 @@ private fun DesktopLayout(
                                     onImportClick = onImportClick,
                                     onExportClick = onExportClick,
                                     onCacheManagementClick = { showCacheManagement.value = true },
+                                    onAboutClick = { showAboutDialog.value = true },
                                 )
                             }
                         }
@@ -359,6 +381,7 @@ private fun MobileLayout(
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
+    showAboutDialog: androidx.compose.runtime.MutableState<Boolean>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
@@ -367,6 +390,7 @@ private fun MobileLayout(
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
+    onOpenUrl: (String) -> Boolean,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 主内容区域
@@ -492,6 +516,7 @@ private fun MobileLayout(
                                 onImportClick = onImportClick,
                                 onExportClick = onExportClick,
                                 onCacheManagementClick = { showCacheManagement.value = true },
+                                onAboutClick = { showAboutDialog.value = true },
                             )
                         }
                     }
