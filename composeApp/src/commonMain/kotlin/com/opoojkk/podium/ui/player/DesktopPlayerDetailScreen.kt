@@ -29,6 +29,10 @@ fun DesktopPlayerDetailScreen(
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     modifier: Modifier = Modifier,
+    playbackSpeed: Float = 1.0f,
+    onSpeedChange: () -> Unit = { /* TODO: 打开倍速选择对话框 */ },
+    sleepTimerMinutes: Int? = null,
+    onSleepTimerClick: () -> Unit = { /* TODO: 打开睡眠定时对话框 */ },
 ) {
     val episode = playbackState.episode ?: return
     val durationMs = episode.duration ?: playbackState.durationMs
@@ -286,6 +290,7 @@ fun DesktopPlayerDetailScreen(
                             }
                         }
 
+                        // 播放控制按钮（包含睡眠定时和倍速）
                         PlaybackDetailControls(
                             isPlaying = playbackState.isPlaying,
                             onPlayPause = onPlayPause,
@@ -293,34 +298,11 @@ fun DesktopPlayerDetailScreen(
                             onSeekForward = onSeekForward,
                             modifier = Modifier.fillMaxWidth(),
                             sizing = PlaybackControlDefaults.Compact,
+                            playbackSpeed = playbackSpeed,
+                            onSpeedChange = onSpeedChange,
+                            sleepTimerMinutes = sleepTimerMinutes,
+                            onSleepTimerClick = onSleepTimerClick,
                         )
-
-                        // 额外控制（音量、播放速度等）- 固定高度避免跳动
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(40.dp), // 减小高度
-                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 播放速度
-                            TextButton(onClick = { /* TODO: 播放速度 */ }) {
-                                Text(
-                                    text = "1.0x",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-
-                            // 设置
-                            IconButton(onClick = { /* TODO: 设置 */ }) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "设置",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
                     }
                 }
             }

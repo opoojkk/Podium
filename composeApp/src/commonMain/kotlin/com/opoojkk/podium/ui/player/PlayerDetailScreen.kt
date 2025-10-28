@@ -29,6 +29,10 @@ fun PlayerDetailScreen(
     onSeekForward: () -> Unit,
     onFavoriteClick: () -> Unit = {},
     onMoreClick: () -> Unit = {},
+    playbackSpeed: Float = 1.0f,
+    onSpeedChange: () -> Unit = { /* TODO: 打开倍速选择对话框 */ },
+    sleepTimerMinutes: Int? = null,
+    onSleepTimerClick: () -> Unit = { /* TODO: 打开睡眠定时对话框 */ },
 ) {
     val episode = playbackState.episode ?: return
     val durationMs = episode.duration ?: playbackState.durationMs
@@ -229,6 +233,10 @@ fun PlayerDetailScreen(
                 onSeekBack = onSeekBack,
                 onSeekForward = onSeekForward,
                 modifier = Modifier.fillMaxWidth(),
+                playbackSpeed = playbackSpeed,
+                onSpeedChange = onSpeedChange,
+                sleepTimerMinutes = sleepTimerMinutes,
+                onSleepTimerClick = onSleepTimerClick,
             )
 
             // 剧集描述（如果有）
