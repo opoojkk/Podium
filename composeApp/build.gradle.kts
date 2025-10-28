@@ -46,6 +46,9 @@ kotlin {
             implementation(libs.sqldelight.android)
             implementation(libs.ktor.serialization.kotlinx.xml)
             implementation(libs.coil.network.okhttp)
+            implementation(libs.androidx.media)
+            implementation(libs.androidx.media3.session)
+            implementation(libs.androidx.media3.ui)
         }
         commonMain.dependencies {
             implementation(compose.runtime)

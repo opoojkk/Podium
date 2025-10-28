@@ -18,8 +18,34 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
     private var mediaPlayer: MediaPlayer? = null
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
+    private var notificationManager: MediaNotificationManager? = null
 
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
+
+    init {
+        // 初始化通知管理器
+        notificationManager = MediaNotificationManager(
+            context = context,
+            onPlayPause = {
+                if (_state.value.isPlaying) {
+                    pause()
+                } else {
+                    resume()
+                }
+            },
+            onSeekForward = {
+                seekBy(15000) // 快进15秒
+            },
+            onSeekBackward = {
+                seekBy(-15000) // 快退15秒
+            },
+            onStop = {
+                stop()
+            }
+        )
+        // 设置静态监听器以便BroadcastReceiver使用
+        MediaActionReceiver.listener = notificationManager
+    }
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         withContext(Dispatchers.Main) {
@@ -37,13 +63,15 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     setOnPreparedListener { player ->
                         player.seekTo(startPositionMs.toInt())
                         player.start()
-						_state.value = PlaybackState(
+						val newState = PlaybackState(
                             episode = episode,
                             positionMs = player.currentPosition.toLong(),
                             isPlaying = true,
 							durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 },
 							isBuffering = false,
                         )
+                        _state.value = newState
+                        updateNotification(newState)
                         startPositionUpdates()
                     }
 					setOnInfoListener { mp, what, extra ->
@@ -98,13 +126,15 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
             if (player.isPlaying) {
                 player.pause()
                 stopPositionUpdates()
-				_state.value = PlaybackState(
+				val newState = PlaybackState(
                     episode = currentEpisode,
                     positionMs = player.currentPosition.toLong(),
                     isPlaying = false,
 					durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 					isBuffering = false,
                 )
+                _state.value = newState
+                updateNotification(newState)
             }
         }
     }
@@ -123,13 +153,15 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                 if (!player.isPlaying) {
                     player.start()
                     startPositionUpdates()
-                    _state.value = PlaybackState(
+                    val newState = PlaybackState(
                         episode = currentEpisode,
                         positionMs = player.currentPosition.toLong(),
                         isPlaying = true,
                         durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
                         isBuffering = false,
                     )
+                    _state.value = newState
+                    updateNotification(newState)
                 }
             }
         }
@@ -142,6 +174,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
         }
         releasePlayer()
         _state.value = PlaybackState(null, 0L, false, null)
+        notificationManager?.hideNotification()
     }
 
 	override fun seekTo(positionMs: Long) {
@@ -192,17 +225,26 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 	private fun startPositionUpdates() {
         stopPositionUpdates() // Stop any existing updates
         positionUpdateJob = CoroutineScope(Dispatchers.Main).launch {
+            var updateCount = 0
             while (isActive && mediaPlayer?.isPlaying == true) {
                 val player = mediaPlayer
                 val currentPosition = player?.currentPosition?.toLong() ?: 0L
                 val duration = player?.let { runCatching { it.duration.toLong() }.getOrNull() }?.takeIf { it > 0 }
-				_state.value = PlaybackState(
+				val newState = PlaybackState(
                     episode = currentEpisode,
                     positionMs = currentPosition,
                     isPlaying = true,
 					durationMs = duration ?: currentEpisode?.duration,
 					isBuffering = false,
                 )
+                _state.value = newState
+
+                // 每5秒更新一次通知（减少资源消耗）
+                updateCount++
+                if (updateCount % 5 == 0) {
+                    updateNotification(newState)
+                }
+
                 delay(1000) // Update every second
             }
         }
@@ -211,5 +253,23 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
     private fun stopPositionUpdates() {
         positionUpdateJob?.cancel()
         positionUpdateJob = null
+    }
+
+    /**
+     * 更新媒体通知
+     */
+    private fun updateNotification(state: PlaybackState) {
+        println("🎵 AndroidPodcastPlayer: updateNotification called - episode=${state.episode?.title}, isPlaying=${state.isPlaying}")
+        state.episode?.let { episode ->
+            notificationManager?.showNotification(
+                episode = episode,
+                isPlaying = state.isPlaying,
+                positionMs = state.positionMs,
+                durationMs = state.durationMs
+            )
+        } ?: run {
+            println("🎵 AndroidPodcastPlayer: 没有正在播放的节目，隐藏通知")
+            notificationManager?.hideNotification()
+        }
     }
 }
