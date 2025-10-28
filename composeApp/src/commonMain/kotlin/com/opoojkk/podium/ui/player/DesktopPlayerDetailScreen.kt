@@ -1,6 +1,5 @@
 package com.opoojkk.podium.ui.player
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -287,59 +286,14 @@ fun DesktopPlayerDetailScreen(
                             }
                         }
 
-                        // 播放控制按钮 - 固定高度避免跳动
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp), // 稍微减小高度
-                            horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 后退按钮
-                            IconButton(
-                                onClick = onSeekBack,
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FastRewind,
-                                    contentDescription = "后退15秒",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-
-                            // 播放/暂停按钮 - Material3 风格
-                            FilledIconButton(
-                                onClick = onPlayPause,
-                                modifier = Modifier.size(64.dp),
-                                colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            ) {
-                                Icon(
-                                    imageVector = if (playbackState.isPlaying) 
-                                        Icons.Default.Pause 
-                                    else 
-                                        Icons.Default.PlayArrow,
-                                    contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
-
-                            // 前进按钮
-                            IconButton(
-                                onClick = onSeekForward,
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FastForward,
-                                    contentDescription = "前进30秒",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                        }
+                        PlaybackDetailControls(
+                            isPlaying = playbackState.isPlaying,
+                            onPlayPause = onPlayPause,
+                            onSeekBack = onSeekBack,
+                            onSeekForward = onSeekForward,
+                            modifier = Modifier.fillMaxWidth(),
+                            sizing = PlaybackControlDefaults.Compact,
+                        )
 
                         // 额外控制（音量、播放速度等）- 固定高度避免跳动
                         Row(

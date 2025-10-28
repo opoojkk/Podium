@@ -1,6 +1,5 @@
 package com.opoojkk.podium.ui.player
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -224,57 +223,13 @@ fun PlayerDetailScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 播放控制按钮
-            Row(
+            PlaybackDetailControls(
+                isPlaying = playbackState.isPlaying,
+                onPlayPause = onPlayPause,
+                onSeekBack = onSeekBack,
+                onSeekForward = onSeekForward,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // 后退按钮
-                IconButton(
-                    onClick = onSeekBack,
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FastRewind,
-                        contentDescription = "后退15秒",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-
-                // 播放/暂停按钮
-                FilledIconButton(
-                    onClick = onPlayPause,
-                    modifier = Modifier.size(72.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Icon(
-                        imageVector = if (playbackState.isPlaying)
-                            Icons.Default.Pause
-                        else
-                            Icons.Default.PlayArrow,
-                        contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-
-                // 前进按钮
-                IconButton(
-                    onClick = onSeekForward,
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FastForward,
-                        contentDescription = "前进30秒",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
+            )
 
             // 剧集描述（如果有）
             if (episode.description.isNotBlank()) {
