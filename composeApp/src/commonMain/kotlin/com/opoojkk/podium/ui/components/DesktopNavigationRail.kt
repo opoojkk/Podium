@@ -40,9 +40,9 @@ fun DesktopNavigationRail(
         modifier = modifier
             .fillMaxHeight()
             .width(width),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 2.dp,
-        shadowElevation = 4.dp
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
@@ -52,30 +52,34 @@ fun DesktopNavigationRail(
             horizontalAlignment = if (isExpanded) Alignment.Start else Alignment.CenterHorizontally
         ) {
             // 切换按钮
-            Surface(
+            FilledTonalIconButton(
+                onClick = onToggleExpand,
                 modifier = Modifier
                     .then(
-                        if (isExpanded) Modifier.fillMaxWidth() 
+                        if (isExpanded) Modifier.fillMaxWidth().height(56.dp)
                         else Modifier.size(56.dp)
                     ),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = MaterialTheme.shapes.medium,
-                onClick = onToggleExpand
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = MaterialTheme.shapes.large
             ) {
                 Box(
-                    modifier = Modifier.padding(16.dp),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = if (isExpanded) Alignment.CenterStart else Alignment.Center
                 ) {
                     Row(
+                        modifier = if (isExpanded) Modifier.padding(horizontal = 16.dp) else Modifier,
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
                             imageVector = if (isExpanded) Icons.Default.MenuOpen else Icons.Default.Menu,
                             contentDescription = if (isExpanded) "收起" else "展开",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            modifier = Modifier.size(24.dp)
                         )
-                        
+
                         AnimatedVisibility(
                             visible = isExpanded,
                             enter = fadeIn() + expandHorizontally(),
@@ -83,8 +87,8 @@ fun DesktopNavigationRail(
                         ) {
                             Text(
                                 text = "Podium",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -99,23 +103,25 @@ fun DesktopNavigationRail(
             // 导航项
             PodiumDestination.entries.forEach { destination ->
                 val selected = destination == currentDestination
-                
+
                 Surface(
                     modifier = Modifier
                         .then(
-                            if (isExpanded) Modifier.fillMaxWidth() 
-                            else Modifier.size(56.dp)
+                            if (isExpanded) Modifier.fillMaxWidth().height(52.dp)
+                            else Modifier.size(52.dp)
                         ),
-                    color = if (selected) 
-                        MaterialTheme.colorScheme.secondaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.surface,
-                    shape = MaterialTheme.shapes.medium,
+                    color = if (selected)
+                        MaterialTheme.colorScheme.secondaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceContainerLowest,
+                    shape = MaterialTheme.shapes.large,
                     onClick = { onNavigate(destination) },
-                    tonalElevation = if (selected) 2.dp else 0.dp
+                    tonalElevation = 0.dp
                 ) {
                     Box(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
                         contentAlignment = if (isExpanded) Alignment.CenterStart else Alignment.Center
                     ) {
                         Row(
@@ -125,13 +131,13 @@ fun DesktopNavigationRail(
                             Icon(
                                 imageVector = destination.icon,
                                 contentDescription = destination.label,
-                                tint = if (selected) 
-                                    MaterialTheme.colorScheme.onSecondaryContainer 
-                                else 
+                                tint = if (selected)
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                else
                                     MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp)
                             )
-                            
+
                             AnimatedVisibility(
                                 visible = isExpanded,
                                 enter = fadeIn() + expandHorizontally(),
@@ -139,10 +145,10 @@ fun DesktopNavigationRail(
                             ) {
                                 Text(
                                     text = destination.label,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = if (selected) 
-                                        MaterialTheme.colorScheme.onSecondaryContainer 
-                                    else 
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (selected)
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    else
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }

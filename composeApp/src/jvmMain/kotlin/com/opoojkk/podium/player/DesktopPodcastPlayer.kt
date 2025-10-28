@@ -59,39 +59,41 @@ class DesktopPodcastPlayer : PodcastPlayer {
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         println("🎵 Desktop Player: Starting playback for episode: ${episode.title}")
         println("🎵 Desktop Player: Audio URL: ${episode.audioUrl}")
-        
-        this.startPositionMs = startPositionMs
-        
+        println("🎵 Desktop Player: Start position: ${startPositionMs}ms")
+
         withContext(Dispatchers.IO) {
             try {
                 // Check if we're resuming the same episode to avoid UI flicker
                 val isResuming = isPaused && currentEpisode == episode
-                
+
                 // Stop any existing playback, but preserve episode info when resuming
                 stop(clearEpisode = !isResuming)
-                
+
+                // Set the start position AFTER stopping (which may reset it)
+                this@DesktopPodcastPlayer.startPositionMs = startPositionMs
+
                 currentEpisode = episode
                 shouldStop = false
                 isPaused = false
-                
+
                 // Only reset detected duration if it's a new episode
                 if (!isResuming) {
                     detectedDurationMs = null
                 }
-                
+
                 // Update state immediately to show we're loading the episode
                 updateState()
-                
+
                 // Determine audio format from URL
                 val isMp3 = episode.audioUrl.lowercase().contains(".mp3") ||
                            episode.audioUrl.lowercase().contains("mpeg")
-                
+
                 if (isMp3) {
                     playMp3Stream(episode.audioUrl)
                 } else {
                     playOtherFormat(episode.audioUrl)
                 }
-                
+
             } catch (e: Exception) {
                 println("🎵 Desktop Player: Error occurred: ${e.message}")
                 e.printStackTrace()
@@ -106,19 +108,28 @@ class DesktopPodcastPlayer : PodcastPlayer {
         if (currentEpisode?.duration == null) {
             tryDetectMp3Duration(url)
         }
-        
+
         playerJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val connection = URL(url).openConnection()
                 connection.setRequestProperty("User-Agent", "Podium/1.0")
                 val inputStream = BufferedInputStream(connection.getInputStream())
-                
+
                 val player = AdvancedPlayer(inputStream)
                 currentPlayer = player
-                
+
+                // 计算起始帧：MP3 通常是 38.28 ms 每帧 (26 ms for MPEG2)
+                // 使用近似值：26 ms/frame for safe estimation
+                val msPerFrame = 26
+                val startFrame = if (startPositionMs > 0) {
+                    (startPositionMs / msPerFrame).toInt()
+                } else {
+                    0
+                }
+
                 player.setPlayBackListener(object : PlaybackListener() {
                     override fun playbackStarted(evt: PlaybackEvent) {
-                        println("🎵 Desktop Player: Playback started")
+                        println("🎵 Desktop Player: Playback started from frame $startFrame (${startPositionMs}ms)")
                         if (!shouldStop) {
                             isPlaying = true
                             isPaused = false
@@ -127,7 +138,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
                             startPositionUpdates()
                         }
                     }
-                    
+
                     override fun playbackFinished(evt: PlaybackEvent) {
                         println("🎵 Desktop Player: Playback finished (shouldStop=$shouldStop, isPaused=$isPaused)")
                         if (!isPaused) {
@@ -140,11 +151,15 @@ class DesktopPodcastPlayer : PodcastPlayer {
                         }
                     }
                 })
-                
-                println("🎵 Desktop Player: Starting MP3 playback...")
-                // Start playback (this blocks until playback finishes or is stopped)
-                player.play()
-                
+
+                println("🎵 Desktop Player: Starting MP3 playback from position ${startPositionMs}ms (frame $startFrame)...")
+                // Start playback from the specified frame (this blocks until playback finishes or is stopped)
+                if (startFrame > 0) {
+                    player.play(startFrame, Integer.MAX_VALUE)
+                } else {
+                    player.play()
+                }
+
             } catch (e: JavaLayerException) {
                 println("🎵 Desktop Player: JavaLayer error: ${e.message}")
                 e.printStackTrace()
@@ -216,10 +231,10 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 val connection = URL(url).openConnection()
                 connection.setRequestProperty("User-Agent", "Podium/1.0")
                 val inputStream = BufferedInputStream(connection.getInputStream())
-                
+
                 val audioInputStream = AudioSystem.getAudioInputStream(inputStream)
                 val format = audioInputStream.format
-                
+
                 // Convert to PCM if needed
                 val decodedFormat = AudioFormat(
                     AudioFormat.Encoding.PCM_SIGNED,
@@ -230,13 +245,13 @@ class DesktopPodcastPlayer : PodcastPlayer {
                     format.sampleRate,
                     false
                 )
-                
+
                 val decodedStream: AudioInputStream = if (format.encoding != AudioFormat.Encoding.PCM_SIGNED) {
                     AudioSystem.getAudioInputStream(decodedFormat, audioInputStream)
                 } else {
                     audioInputStream
                 }
-                
+
                 // Try to detect duration from audio stream if Episode doesn't have it
                 if (currentEpisode?.duration == null) {
                     try {
@@ -254,23 +269,51 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 } else {
                     println("🎵 Desktop Player: Using duration from Episode data: ${currentEpisode?.duration}ms")
                 }
-                
+
+                // Skip to the start position if needed
+                if (startPositionMs > 0) {
+                    try {
+                        val frameRate = decodedStream.format.frameRate
+                        val frameSize = decodedStream.format.frameSize
+                        if (frameRate > 0 && frameSize > 0) {
+                            // Calculate frames to skip
+                            val framesToSkip = ((startPositionMs / 1000.0) * frameRate).toLong()
+                            val bytesToSkip = framesToSkip * frameSize
+
+                            println("🎵 Desktop Player: Skipping to position ${startPositionMs}ms ($framesToSkip frames, $bytesToSkip bytes)")
+
+                            // Skip the bytes
+                            var skipped = 0L
+                            while (skipped < bytesToSkip && !shouldStop) {
+                                val toSkip = (bytesToSkip - skipped).coerceAtMost(8192)
+                                val actualSkipped = decodedStream.skip(toSkip)
+                                if (actualSkipped <= 0) break
+                                skipped += actualSkipped
+                            }
+
+                            println("🎵 Desktop Player: Actually skipped $skipped bytes")
+                        }
+                    } catch (e: Exception) {
+                        println("🎵 Desktop Player: Error skipping to position: ${e.message}")
+                    }
+                }
+
                 line = AudioSystem.getSourceDataLine(decodedStream.format)
                 currentLine = line
                 line.open(decodedStream.format)
                 line.start()
-                
+
                 isPlaying = true
                 isPaused = false
                 playbackStartTime = System.currentTimeMillis()
                 updateState()
                 startPositionUpdates()
-                
-                println("🎵 Desktop Player: Streaming audio...")
-                
+
+                println("🎵 Desktop Player: Streaming audio from position ${startPositionMs}ms...")
+
                 val buffer = ByteArray(4096)
                 var bytesRead = 0
-                
+
                 while (!shouldStop && decodedStream.read(buffer, 0, buffer.size).also { bytesRead = it } != -1) {
                     if (!isPaused) {
                         line.write(buffer, 0, bytesRead)
@@ -279,9 +322,9 @@ class DesktopPodcastPlayer : PodcastPlayer {
                         delay(100)
                     }
                 }
-                
+
                 line.drain()
-                
+
             } catch (e: Exception) {
                 println("🎵 Desktop Player: Error playing audio: ${e.message}")
                 e.printStackTrace()
@@ -402,11 +445,32 @@ class DesktopPodcastPlayer : PodcastPlayer {
     }
 
     override fun seekTo(positionMs: Long) {
-        // Note: Seeking in streaming mode is complex and would require
-        // re-establishing the connection and skipping to the position.
-        // For simplicity, this is a placeholder that would need enhancement.
-        println("🎵 Desktop Player: Seeking to ${positionMs}ms (limited support in streaming mode)")
-        // TODO: Implement seeking by restarting playback from position
+        println("🎵 Desktop Player: Seeking to ${positionMs}ms")
+        val episode = currentEpisode
+        if (episode != null) {
+            // 记录当前播放状态
+            val wasPlaying = isPlaying
+
+            // 保存目标位置
+            pausedAtMs = positionMs
+            startPositionMs = positionMs
+
+            // 立即更新状态，避免UI闪烁
+            if (!wasPlaying) {
+                isPaused = true
+                isPlaying = false
+                updateState()
+            }
+
+            // 使用协程重新开始播放
+            CoroutineScope(Dispatchers.IO).launch {
+                if (wasPlaying) {
+                    // 如果正在播放，从新位置重新开始播放
+                    play(episode, positionMs)
+                }
+                // 如果是暂停状态，状态已经在上面更新过了
+            }
+        }
     }
 
     override fun seekBy(deltaMs: Long) {

@@ -43,11 +43,23 @@ fun DesktopPlayerDetailScreen(
     // Slider状态管理
     var isDragging by remember { mutableStateOf(false) }
     var sliderPosition by remember { mutableStateOf(playbackState.positionMs.toFloat()) }
-    
-    // 更新slider位置（只在不拖动时）
+    var seekTarget by remember { mutableStateOf<Long?>(null) }
+
+    // 更新slider位置（只在不拖动且未等待 seek 时）
     LaunchedEffect(playbackState.positionMs) {
         if (!isDragging) {
-            sliderPosition = playbackState.positionMs.toFloat()
+            // 如果正在等待 seek 完成，检查是否已经接近目标位置
+            if (seekTarget != null) {
+                val diff = kotlin.math.abs(playbackState.positionMs - seekTarget!!)
+                if (diff < 2000) { // 如果在 2 秒内，认为 seek 完成
+                    seekTarget = null
+                }
+            }
+
+            // 如果没有等待 seek，正常更新位置
+            if (seekTarget == null) {
+                sliderPosition = playbackState.positionMs.toFloat()
+            }
         }
     }
 
@@ -61,9 +73,9 @@ fun DesktopPlayerDetailScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp), // 固定高度
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                tonalElevation = 2.dp
+                    .height(72.dp), // 固定高度
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                tonalElevation = 0.dp
             ) {
                 Row(
                     modifier = Modifier
@@ -85,7 +97,7 @@ fun DesktopPlayerDetailScreen(
                     // 播客标题
                     Text(
                         text = episode.podcastTitle,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -117,8 +129,8 @@ fun DesktopPlayerDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f) // 使用weight而不是fillMaxSize，更稳定
-                    .padding(horizontal = 64.dp, vertical = 32.dp),
-                horizontalArrangement = Arrangement.spacedBy(48.dp),
+                    .padding(horizontal = 80.dp, vertical = 48.dp),
+                horizontalArrangement = Arrangement.spacedBy(64.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 // 左侧：专辑封面和基本信息
@@ -129,15 +141,15 @@ fun DesktopPlayerDetailScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Top
                 ) {
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     // 专辑封面
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(12.dp)),
+                            .clip(RoundedCornerShape(16.dp)),
                         color = MaterialTheme.colorScheme.primaryContainer,
-                        shadowElevation = 8.dp
+                        shadowElevation = 4.dp
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -157,13 +169,13 @@ fun DesktopPlayerDetailScreen(
                     // 剧集标题 - 固定高度避免跳动
                     Text(
                         text = episode.title,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(64.dp) // 固定2行文字的高度
+                            .height(72.dp) // 固定2行文字的高度
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -195,11 +207,11 @@ fun DesktopPlayerDetailScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 200.dp, max = 400.dp), // 设置最大高度
+                                .weight(1f), // 使用weight填充剩余空间
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(16.dp)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -209,9 +221,9 @@ fun DesktopPlayerDetailScreen(
                             ) {
                                 Text(
                                     text = "剧集简介",
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = MaterialTheme.typography.titleLarge,
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(bottom = 12.dp)
+                                    modifier = Modifier.padding(bottom = 16.dp)
                                 )
                                 Text(
                                     text = episode.description,
@@ -246,7 +258,9 @@ fun DesktopPlayerDetailScreen(
                                         sliderPosition = newValue
                                     },
                                     onValueChangeFinished = {
-                                        onSeekTo(sliderPosition.toLong())
+                                        val targetPosition = sliderPosition.toLong()
+                                        seekTarget = targetPosition
+                                        onSeekTo(targetPosition)
                                         isDragging = false
                                     },
                                     valueRange = 0f..durationMs.toFloat(),
@@ -274,9 +288,7 @@ fun DesktopPlayerDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = formatTime(
-                                        if (isDragging) sliderPosition.toLong() else playbackState.positionMs
-                                    ),
+                                    text = formatTime(sliderPosition.toLong()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.width(60.dp) // 固定宽度

@@ -33,30 +33,49 @@ fun DesktopPlaybackBar(
     }
 
     val durationMs = playbackState.episode.duration ?: playbackState.durationMs
-    var sliderPosition by remember(playbackState.positionMs) { 
-        mutableStateOf(playbackState.positionMs.toFloat()) 
-    }
+    var sliderPosition by remember { mutableStateOf(playbackState.positionMs.toFloat()) }
     var isDragging by remember { mutableStateOf(false) }
+    var seekTarget by remember { mutableStateOf<Long?>(null) }
 
-    // Material3 风格的背景
+    // 更新 slider 位置（仅在不拖动且未等待 seek 时）
+    LaunchedEffect(playbackState.positionMs) {
+        if (!isDragging) {
+            // 如果正在等待 seek 完成，检查是否已经接近目标位置
+            if (seekTarget != null) {
+                val diff = kotlin.math.abs(playbackState.positionMs - seekTarget!!)
+                if (diff < 2000) { // 如果在 2 秒内，认为 seek 完成
+                    seekTarget = null
+                }
+            }
+
+            // 如果没有等待 seek，正常更新位置
+            if (seekTarget == null) {
+                sliderPosition = playbackState.positionMs.toFloat()
+            }
+        }
+    }
+
+    // Material3 风格的背景 - 使用更清晰的视觉层次
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 2.dp,
+        shadowElevation = 0.dp
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // 进度条 - 放在最顶部，Spotify风格
             if (durationMs != null && durationMs > 0) {
                 Slider(
-                    value = if (isDragging) sliderPosition else playbackState.positionMs.toFloat(),
-                    onValueChange = { 
+                    value = sliderPosition,
+                    onValueChange = { newValue ->
                         isDragging = true
-                        sliderPosition = it
+                        sliderPosition = newValue
                     },
                     onValueChangeFinished = {
+                        val targetPosition = sliderPosition.toLong()
+                        seekTarget = targetPosition
+                        onSeekTo(targetPosition)
                         isDragging = false
-                        onSeekTo(sliderPosition.toLong())
                     },
                     valueRange = 0f..durationMs.toFloat(),
                     modifier = Modifier
@@ -98,9 +117,9 @@ fun DesktopPlaybackBar(
                 ) {
                     // 专辑封面占位符（如果有封面图可以在这里显示）
                     Surface(
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier.size(64.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -110,7 +129,7 @@ fun DesktopPlaybackBar(
                                 imageVector = Icons.Default.Podcasts,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(36.dp)
                             )
                         }
                     }
@@ -118,18 +137,18 @@ fun DesktopPlaybackBar(
                     // 歌曲标题和播客名称
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
                             text = playbackState.episode.title,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyLarge,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = playbackState.episode.podcastTitle,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -177,26 +196,26 @@ fun DesktopPlaybackBar(
                         // 播放/暂停按钮 - Material3 风格
                         if (playbackState.isBuffering) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(48.dp),
+                                modifier = Modifier.size(52.dp),
                                 color = MaterialTheme.colorScheme.primary,
                                 strokeWidth = 3.dp
                             )
                         } else {
-                            FilledTonalIconButton(
+                            FilledIconButton(
                                 onClick = onPlayPauseClick,
-                                modifier = Modifier.size(48.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                modifier = Modifier.size(52.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             ) {
                                 Icon(
-                                    imageVector = if (playbackState.isPlaying) 
-                                        Icons.Default.Pause 
-                                    else 
+                                    imageVector = if (playbackState.isPlaying)
+                                        Icons.Default.Pause
+                                    else
                                         Icons.Default.PlayArrow,
                                     contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(32.dp)
                                 )
                             }
                         }
@@ -222,10 +241,7 @@ fun DesktopPlaybackBar(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = formatTime(
-                                if (isDragging) sliderPosition.toLong() 
-                                else playbackState.positionMs
-                            ),
+                            text = formatTime(sliderPosition.toLong()),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
