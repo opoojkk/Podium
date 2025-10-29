@@ -293,7 +293,7 @@ class PodcastRepository(
 
     companion object {
         private val outlineTagRegex = Regex("<outline\\b[^>]*>", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
-        private val outlineAttributeRegex = Regex("([A-Za-z_:][\\w:.-]*)\\s*=\\s*(['\"])(.*?)\\2", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        private val outlineAttributeRegex = Regex("([A-Za-z_:][\\w:.-]*)\\s*=\\s*(['\"])(.*?)\\2", setOf(RegexOption.IGNORE_CASE))
         private val numericEntityRegex = Regex("&#(x?[0-9A-Fa-f]+);")
 
         private fun extractOpmlFeedUrls(opml: String): List<String> {

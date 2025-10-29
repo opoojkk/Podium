@@ -122,8 +122,8 @@ class SimpleRssParser {
 
     private fun extractTag(block: String, tag: String): String? {
         val pattern = Regex(
-            "<$tag(?:\\s[^>]*)?>(.*?)</$tag>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE, RegexOption.DOT_MATCHES_ALL)
+            "<$tag(?:\\s[^>]*)?>([\\s\\S]*?)</$tag>",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE)
         )
         val raw = pattern.find(block)?.groupValues?.get(1) ?: return null
         val cdata = cdataRegex.find(raw)?.groupValues?.get(1) ?: raw
@@ -134,7 +134,7 @@ class SimpleRssParser {
     private fun extractAttribute(block: String, tag: String, attribute: String): String? {
         val pattern = Regex(
             "<$tag[^>]*\\b$attribute\\s*=\\s*['\\\"]([^'\\\"]+)['\\\"][^>]*/?>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            setOf(RegexOption.IGNORE_CASE)
         )
         val raw = pattern.find(block)?.groupValues?.get(1) ?: return null
         return decodeXmlEntities(raw).trim().takeIf { it.isNotEmpty() }
@@ -347,34 +347,34 @@ class SimpleRssParser {
 
     companion object {
         private val channelRegex = Regex(
-            "<channel>(.*?)</channel>",
-            setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            "<channel>([\\s\\S]*?)</channel>",
+            setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE)
         )
         private val itemRegex = Regex(
-            "<item>(.*?)</item>",
-            setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            "<item>([\\s\\S]*?)</item>",
+            setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE)
         )
         private val atomEntryRegex = Regex(
-            "<entry>(.*?)</entry>",
-            setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            "<entry>([\\s\\S]*?)</entry>",
+            setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE)
         )
         private val cdataRegex = Regex(
-            "<!\\[CDATA\\[(.*?)\\]\\]>",
-            setOf(RegexOption.MULTILINE, RegexOption.DOT_MATCHES_ALL)
+            "<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>",
+            setOf(RegexOption.MULTILINE)
         )
         private val breakTagRegex = Regex("<br\\s*/?>", setOf(RegexOption.IGNORE_CASE))
         private val blockTagRegex = Regex(
             "</?(?:p|div|li|blockquote|section|article|h[1-6]|tr|td|th)[^>]*>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            setOf(RegexOption.IGNORE_CASE)
         )
-        private val htmlTagRegex = Regex("<[^>]+>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        private val htmlTagRegex = Regex("<[^>]+>", setOf(RegexOption.IGNORE_CASE))
         private val scriptRegex = Regex(
-            "<script[^>]*>.*?</script>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            "<script[^>]*>[\\s\\S]*?</script>",
+            setOf(RegexOption.IGNORE_CASE)
         )
         private val styleRegex = Regex(
-            "<style[^>]*>.*?</style>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            "<style[^>]*>[\\s\\S]*?</style>",
+            setOf(RegexOption.IGNORE_CASE)
         )
         private val inlineWhitespaceRegex = Regex("\\s+")
         private val numericEntityRegex = Regex("&#(x?[0-9A-Fa-f]+);")
@@ -382,7 +382,7 @@ class SimpleRssParser {
         private val isoDurationRegex = Regex("^P(T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)$", RegexOption.IGNORE_CASE)
         private val enclosureLinkRegex = Regex(
             "<((?:\\w+:)?link)[^>]*\\brel\\s*=\\s*['\"]enclosure['\"][^>]*>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            setOf(RegexOption.IGNORE_CASE)
         )
 
         private val audioExtensions = listOf(
