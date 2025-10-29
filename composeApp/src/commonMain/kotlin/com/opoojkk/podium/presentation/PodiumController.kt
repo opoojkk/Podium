@@ -264,18 +264,21 @@ class PodiumController(
 
     fun subscribe(feedUrl: String) {
         scope.launch {
+            // 设置正在添加状态
+            _subscriptionsState.value = _subscriptionsState.value.copy(isAdding = true)
+
             try {
                 println("🎧 Controller: Starting subscription process for: $feedUrl")
                 val result = repository.subscribe(feedUrl)
                 println("🎧 Controller: Subscription completed, got ${result.episodes.size} episodes")
-                
+
                 // 如果启用自动下载，下载该播客的所有节目
                 if (result.podcast.autoDownload) {
                     result.episodes.forEach { episode ->
                         downloadManager.enqueue(episode, auto = true)
                     }
                 }
-                
+
                 repository.setAutoDownload(result.podcast.id, result.podcast.autoDownload)
                 println("🎧 Controller: Subscription process finished successfully")
             } catch (e: com.opoojkk.podium.data.repository.DuplicateSubscriptionException) {
@@ -290,6 +293,9 @@ class PodiumController(
                 println("❌ Controller: Subscription failed: ${e.message}")
                 println("❌ Controller: Exception type: ${e::class.simpleName}")
                 e.printStackTrace()
+            } finally {
+                // 无论成功或失败，都清除加载状态
+                _subscriptionsState.value = _subscriptionsState.value.copy(isAdding = false)
             }
         }
     }

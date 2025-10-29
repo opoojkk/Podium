@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -120,12 +121,25 @@ fun SubscriptionsScreen(
     
     if (showAddDialog) {
         AddSubscriptionDialog(
-            onDismiss = { showAddDialog = false },
+            isLoading = state.isAdding,
+            onDismiss = {
+                if (!state.isAdding) {
+                    showAddDialog = false
+                }
+            },
             onConfirm = { feedUrl ->
                 onAddSubscription(feedUrl)
-                showAddDialog = false
+                // 不在这里关闭对话框，等待订阅完成后自动关闭
             }
         )
+    }
+
+    // 订阅完成后自动关闭对话框
+    LaunchedEffect(state.isAdding, state.duplicateSubscriptionTitle) {
+        if (showAddDialog && !state.isAdding && state.duplicateSubscriptionTitle == null) {
+            // 只有在非加载状态且没有错误时才自动关闭
+            showAddDialog = false
+        }
     }
     
     // 显示重复订阅提示
@@ -287,16 +301,17 @@ private fun SubscriptionCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddSubscriptionDialog(
+    isLoading: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
     var feedUrl by remember { mutableStateOf("") }
-    
+
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("添加订阅") },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("请输入播客的 RSS 链接:")
                 androidx.compose.material3.OutlinedTextField(
                     value = feedUrl,
@@ -304,24 +319,45 @@ private fun AddSubscriptionDialog(
                     label = { Text("RSS 链接") },
                     placeholder = { Text("https://example.com/feed.xml") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isLoading
                 )
+                if (isLoading) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Text(
+                            text = "正在解析 RSS...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             androidx.compose.material3.TextButton(
-                onClick = { 
+                onClick = {
                     if (feedUrl.isNotBlank()) {
                         onConfirm(feedUrl.trim())
                     }
                 },
-                enabled = feedUrl.isNotBlank()
+                enabled = feedUrl.isNotBlank() && !isLoading
             ) {
-                Text("添加")
+                Text(if (isLoading) "添加中..." else "添加")
             }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
+            androidx.compose.material3.TextButton(
+                onClick = onDismiss,
+                enabled = !isLoading
+            ) {
                 Text("取消")
             }
         }
