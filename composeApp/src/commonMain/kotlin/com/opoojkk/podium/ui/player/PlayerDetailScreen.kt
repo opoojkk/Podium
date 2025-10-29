@@ -16,6 +16,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.opoojkk.podium.data.model.PlaybackState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,12 +138,20 @@ fun PlayerDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Podcasts,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(80.dp)
-                    )
+                    if (!episode.imageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = episode.imageUrl,
+                            contentDescription = episode.title,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Podcasts,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(80.dp)
+                        )
+                    }
                 }
             }
 
