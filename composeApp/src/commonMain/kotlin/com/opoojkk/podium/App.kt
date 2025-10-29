@@ -40,6 +40,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val scope = rememberCoroutineScope()
     val showPlayerDetail = remember { mutableStateOf(false) }
     val showPlaylist = remember { mutableStateOf(false) }
+    val showPlaylistFromPlayerDetail = remember { mutableStateOf(false) }
     val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }
     val selectedPodcast = remember { mutableStateOf<com.opoojkk.podium.data.model.Podcast?>(null) }
     val showCacheManagement = remember { mutableStateOf(false) }
@@ -165,6 +166,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 controller = controller,
                 showPlayerDetail = showPlayerDetail,
                 showPlaylist = showPlaylist,
+                showPlaylistFromPlayerDetail = showPlaylistFromPlayerDetail,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
                 showCacheManagement = showCacheManagement,
@@ -187,6 +189,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 controller = controller,
                 showPlayerDetail = showPlayerDetail,
                 showPlaylist = showPlaylist,
+                showPlaylistFromPlayerDetail = showPlaylistFromPlayerDetail,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
                 showCacheManagement = showCacheManagement,
@@ -234,6 +237,7 @@ private fun DesktopLayout(
     controller: com.opoojkk.podium.presentation.PodiumController,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showPlaylist: androidx.compose.runtime.MutableState<Boolean>,
+    showPlaylistFromPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
@@ -281,6 +285,10 @@ private fun DesktopLayout(
                                 onPlayEpisode = { episode ->
                                     controller.playEpisode(episode)
                                     showPlaylist.value = false
+                                    if (showPlaylistFromPlayerDetail.value) {
+                                        showPlayerDetail.value = true
+                                        showPlaylistFromPlayerDetail.value = false
+                                    }
                                 },
                                 onMarkCompleted = { episodeId ->
                                     controller.markEpisodeCompleted(episodeId)
@@ -288,7 +296,13 @@ private fun DesktopLayout(
                                 onRemoveFromPlaylist = { episodeId ->
                                     controller.removeFromPlaylist(episodeId)
                                 },
-                                onBack = { showPlaylist.value = false },
+                                onBack = {
+                                    showPlaylist.value = false
+                                    if (showPlaylistFromPlayerDetail.value) {
+                                        showPlayerDetail.value = true
+                                        showPlaylistFromPlayerDetail.value = false
+                                    }
+                                },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -314,6 +328,7 @@ private fun DesktopLayout(
                                 onSeekForward = { controller.seekBy(30_000) },
                                 onPlaylistClick = {
                                     showPlayerDetail.value = false
+                                    showPlaylistFromPlayerDetail.value = true
                                     showPlaylist.value = true
                                 },
                             )
@@ -379,16 +394,28 @@ private fun DesktopLayout(
             androidx.compose.animation.AnimatedVisibility(
                 visible = !showPlayerDetail.value,
                 enter = androidx.compose.animation.fadeIn(
-                    animationSpec = androidx.compose.animation.core.tween(300)
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = 250,
+                        easing = androidx.compose.animation.core.LinearOutSlowInEasing
+                    )
                 ) + androidx.compose.animation.slideInVertically(
                     initialOffsetY = { it },
-                    animationSpec = androidx.compose.animation.core.tween(300)
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = 300,
+                        easing = androidx.compose.animation.core.LinearOutSlowInEasing
+                    )
                 ),
                 exit = androidx.compose.animation.fadeOut(
-                    animationSpec = androidx.compose.animation.core.tween(300)
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = 200,
+                        easing = androidx.compose.animation.core.FastOutLinearInEasing
+                    )
                 ) + androidx.compose.animation.slideOutVertically(
                     targetOffsetY = { it },
-                    animationSpec = androidx.compose.animation.core.tween(300)
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = 250,
+                        easing = androidx.compose.animation.core.FastOutLinearInEasing
+                    )
                 )
             ) {
                 DesktopPlaybackBar(
@@ -416,6 +443,7 @@ private fun MobileLayout(
     controller: com.opoojkk.podium.presentation.PodiumController,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showPlaylist: androidx.compose.runtime.MutableState<Boolean>,
+    showPlaylistFromPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
@@ -439,16 +467,28 @@ private fun MobileLayout(
                 androidx.compose.animation.AnimatedVisibility(
                     visible = !showPlayerDetail.value && !showPlaylist.value && showViewMore.value == null && !showCacheManagement.value,
                     enter = androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(200)
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 250,
+                            easing = androidx.compose.animation.core.LinearOutSlowInEasing
+                        )
                     ) + androidx.compose.animation.slideInVertically(
                         initialOffsetY = { it },
-                        animationSpec = androidx.compose.animation.core.tween(300)
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 300,
+                            easing = androidx.compose.animation.core.LinearOutSlowInEasing
+                        )
                     ),
                     exit = androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(200)
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 200,
+                            easing = androidx.compose.animation.core.FastOutLinearInEasing
+                        )
                     ) + androidx.compose.animation.slideOutVertically(
                         targetOffsetY = { it },
-                        animationSpec = androidx.compose.animation.core.tween(300)
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 250,
+                            easing = androidx.compose.animation.core.FastOutLinearInEasing
+                        )
                     )
                 ) {
                     // 当显示播客单集列表时，隐藏底部栏
@@ -494,6 +534,10 @@ private fun MobileLayout(
                         onPlayEpisode = { episode ->
                             controller.playEpisode(episode)
                             showPlaylist.value = false
+                            if (showPlaylistFromPlayerDetail.value) {
+                                showPlayerDetail.value = true
+                                showPlaylistFromPlayerDetail.value = false
+                            }
                         },
                         onMarkCompleted = { episodeId ->
                             controller.markEpisodeCompleted(episodeId)
@@ -501,7 +545,13 @@ private fun MobileLayout(
                         onRemoveFromPlaylist = { episodeId ->
                             controller.removeFromPlaylist(episodeId)
                         },
-                        onBack = { showPlaylist.value = false },
+                        onBack = {
+                            showPlaylist.value = false
+                            if (showPlaylistFromPlayerDetail.value) {
+                                showPlayerDetail.value = true
+                                showPlaylistFromPlayerDetail.value = false
+                            }
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -585,19 +635,28 @@ private fun MobileLayout(
         androidx.compose.animation.AnimatedVisibility(
             visible = showPlayerDetail.value && playbackState.episode != null,
             enter = androidx.compose.animation.fadeIn(
-                animationSpec = androidx.compose.animation.core.tween(300)
+                animationSpec = androidx.compose.animation.core.tween(
+                    durationMillis = 350,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                )
             ) + androidx.compose.animation.slideInVertically(
                 initialOffsetY = { it },
-                animationSpec = androidx.compose.animation.core.spring(
-                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                    stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                animationSpec = androidx.compose.animation.core.tween(
+                    durationMillis = 350,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing
                 )
             ),
             exit = androidx.compose.animation.fadeOut(
-                animationSpec = androidx.compose.animation.core.tween(250)
+                animationSpec = androidx.compose.animation.core.tween(
+                    durationMillis = 250,
+                    easing = androidx.compose.animation.core.FastOutLinearInEasing
+                )
             ) + androidx.compose.animation.slideOutVertically(
                 targetOffsetY = { it },
-                animationSpec = androidx.compose.animation.core.tween(300)
+                animationSpec = androidx.compose.animation.core.tween(
+                    durationMillis = 250,
+                    easing = androidx.compose.animation.core.FastOutLinearInEasing
+                )
             )
         ) {
             PlayerDetailScreen(
@@ -611,6 +670,7 @@ private fun MobileLayout(
                 onSeekForward = { controller.seekBy(30_000) },
                 onPlaylistClick = {
                     showPlayerDetail.value = false
+                    showPlaylistFromPlayerDetail.value = true
                     showPlaylist.value = true
                 },
             )
