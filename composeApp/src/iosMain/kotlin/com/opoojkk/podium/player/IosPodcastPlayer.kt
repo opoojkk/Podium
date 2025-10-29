@@ -2,6 +2,7 @@ package com.opoojkk.podium.player
 
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaybackState
+import com.opoojkk.podium.player.ios.MediaNotificationManager
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.*
@@ -19,8 +20,31 @@ class IosPodcastPlayer : PodcastPlayer {
     private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null, false))
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
+    private var notificationManager: MediaNotificationManager? = null
 
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
+
+    init {
+        // 初始化通知管理器
+        notificationManager = MediaNotificationManager(
+            onPlayPause = {
+                if (_state.value.isPlaying) {
+                    pause()
+                } else {
+                    resume()
+                }
+            },
+            onSeekForward = {
+                seekBy(15000) // 快进15秒
+            },
+            onSeekBackward = {
+                seekBy(-15000) // 快退15秒
+            },
+            onStop = {
+                stop()
+            }
+        )
+    }
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         withContext(Dispatchers.Main) {
@@ -42,13 +66,17 @@ class IosPodcastPlayer : PodcastPlayer {
                 player.replaceCurrentItemWithPlayerItem(item)
                 val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
                 // Emit buffering state while preparing/seek
-                _state.value = PlaybackState(episode, startPositionMs, false, duration(), true)
+                val bufferingState = PlaybackState(episode, startPositionMs, false, duration(), true)
+                _state.value = bufferingState
+                updateNotification(bufferingState)
                 player.seekToTime(seekTime) { _ ->
                     player.play()
-                    _state.value = PlaybackState(episode, startPositionMs, true, duration(), false)
+                    val playingState = PlaybackState(episode, startPositionMs, true, duration(), false)
+                    _state.value = playingState
+                    updateNotification(playingState)
                     startPositionUpdates()
                 }
-                _state.value = PlaybackState(episode, startPositionMs, false, duration(), true)
+                _state.value = bufferingState
             } catch (e: Exception) {
                 // Handle any errors during AVPlayer setup or URL creation
                 stopPositionUpdates()
@@ -61,7 +89,9 @@ class IosPodcastPlayer : PodcastPlayer {
     override fun pause() {
         player.pause()
         stopPositionUpdates()
-        _state.value = PlaybackState(currentEpisode, currentPosition(), false, duration(), false)
+        val newState = PlaybackState(currentEpisode, currentPosition(), false, duration(), false)
+        _state.value = newState
+        updateNotification(newState)
     }
 
     override fun resume() {
@@ -76,7 +106,9 @@ class IosPodcastPlayer : PodcastPlayer {
         } else {
             player.play()
             startPositionUpdates()
-            _state.value = PlaybackState(currentEpisode, currentPosition(), true, duration(), false)
+            val newState = PlaybackState(currentEpisode, currentPosition(), true, duration(), false)
+            _state.value = newState
+            updateNotification(newState)
         }
     }
 
@@ -86,6 +118,7 @@ class IosPodcastPlayer : PodcastPlayer {
         player.seekToTime(CMTimeMakeWithSeconds(0.0, 1))
         currentEpisode = null
         _state.value = PlaybackState(null, 0L, false, null, false)
+        notificationManager?.hideNotification()
     }
 
     override fun seekTo(positionMs: Long) {
@@ -128,12 +161,21 @@ class IosPodcastPlayer : PodcastPlayer {
     private fun startPositionUpdates() {
         stopPositionUpdates() // Stop any existing updates
         positionUpdateJob = CoroutineScope(Dispatchers.Main).launch {
+            var updateCount = 0
             while (isActive) {
                 val currentPosition = currentPosition()
                 val timeControl = player.timeControlStatus
                 val isBuffering = (timeControl == AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate)
                 val isPlayingNow = (timeControl == AVPlayerTimeControlStatusPlaying) && player.rate > 0.0
-                _state.value = PlaybackState(currentEpisode, currentPosition, isPlayingNow, duration(), isBuffering)
+                val newState = PlaybackState(currentEpisode, currentPosition, isPlayingNow, duration(), isBuffering)
+                _state.value = newState
+
+                // 每5秒更新一次通知（减少资源消耗）
+                updateCount++
+                if (updateCount % 10 == 0) {  // 500ms * 10 = 5秒
+                    updateNotification(newState)
+                }
+
                 delay(500)
             }
         }
@@ -166,5 +208,32 @@ class IosPodcastPlayer : PodcastPlayer {
             location.contains("://") -> NSURL(string = location)
             else -> NSURL.fileURLWithPath(location)
         }
+    }
+
+    /**
+     * 更新媒体通知
+     */
+    private fun updateNotification(state: PlaybackState) {
+        println("🎵 iOS PodcastPlayer: updateNotification called - episode=${state.episode?.title}, isPlaying=${state.isPlaying}, isBuffering=${state.isBuffering}")
+        state.episode?.let { episode ->
+            notificationManager?.showNotification(
+                episode = episode,
+                isPlaying = state.isPlaying,
+                positionMs = state.positionMs,
+                durationMs = state.durationMs,
+                isBuffering = state.isBuffering
+            )
+        } ?: run {
+            println("🎵 iOS PodcastPlayer: 没有正在播放的节目，隐藏通知")
+            notificationManager?.hideNotification()
+        }
+    }
+
+    /**
+     * 清理资源
+     */
+    fun release() {
+        stop()
+        notificationManager?.release()
     }
 }

@@ -328,7 +328,7 @@ class SimpleRssParser {
             } else {
                 value.toIntOrNull()
             } ?: return@replace ""
-            String(Character.toChars(codePoint))
+            Char(codePoint).toString()
         }
     }
 

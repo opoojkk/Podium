@@ -452,7 +452,7 @@ private fun CachedItemCard(item: ProfileCachedItem) {
                 )
                 val sizeMb = item.sizeBytes.coerceAtLeast(0L) / (1024f * 1024f)
                 Text(
-                    text = String.format("%.1f MB", sizeMb),
+                    text = "${(sizeMb * 10).toInt() / 10.0} MB",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

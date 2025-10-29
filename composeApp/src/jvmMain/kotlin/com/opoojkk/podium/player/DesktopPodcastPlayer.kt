@@ -2,6 +2,7 @@ package com.opoojkk.podium.player
 
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaybackState
+import com.opoojkk.podium.player.jvm.MediaNotificationManager
 import javazoom.jl.decoder.Bitstream
 import javazoom.jl.decoder.Header
 import javazoom.jl.decoder.JavaLayerException
@@ -22,14 +23,14 @@ import javax.sound.sampled.SourceDataLine
 /**
  * Desktop podcast player implementation using JLayer for MP3 and Java Sound API for other formats.
  * Inspired by Less-Player's approach with improved streaming support.
- * 
+ *
  * Features:
  * - Zero external dependencies - pure Java libraries
  * - Supports MP3 (via JLayer) and WAV (via Java Sound API)
  * - Direct HTTP/HTTPS streaming support
  * - Playback controls (play, pause, resume, stop)
  * - Real-time position tracking
- * 
+ *
  * Note: Seeking is limited due to streaming nature. For best results with seeking,
  * the audio would need to be cached or downloaded first.
  */
@@ -43,18 +44,41 @@ class DesktopPodcastPlayer : PodcastPlayer {
     private var currentEpisode: Episode? = null
     private var currentPlayer: AdvancedPlayer? = null
     private var currentLine: SourceDataLine? = null
-    
+    private var notificationManager: MediaNotificationManager? = null
+
     @Volatile
     private var isPlaying = false
     @Volatile
     private var isPaused = false
     @Volatile
     private var shouldStop = false
-    
+
     private var startPositionMs: Long = 0
     private var pausedAtMs: Long = 0
     private var playbackStartTime: Long = 0
     private var detectedDurationMs: Long? = null
+
+    init {
+        // 初始化通知管理器
+        notificationManager = MediaNotificationManager(
+            onPlayPause = {
+                if (_state.value.isPlaying) {
+                    pause()
+                } else {
+                    resume()
+                }
+            },
+            onSeekForward = {
+                seekBy(15000) // 快进15秒
+            },
+            onSeekBackward = {
+                seekBy(-15000) // 快退15秒
+            },
+            onStop = {
+                stop()
+            }
+        )
+    }
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         println("🎵 Desktop Player: Starting playback for episode: ${episode.title}")
@@ -83,6 +107,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
 
                 // Update state immediately to show we're loading the episode
                 updateState()
+                updateNotification(_state.value)
 
                 // Determine audio format from URL
                 val isMp3 = episode.audioUrl.lowercase().contains(".mp3") ||
@@ -363,6 +388,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
             
             // Update state to reflect pause
             updateState()
+            updateNotification(_state.value)
             println("🎵 Desktop Player: Paused at ${pausedAtMs}ms")
         }
     }
@@ -397,6 +423,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
                         isPlaying = true
                         playbackStartTime = System.currentTimeMillis() - pausedAtMs
                         updateState()
+                        updateNotification(_state.value)
                         startPositionUpdates()
                     }
                 }
@@ -441,6 +468,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
             pausedAtMs = 0
             detectedDurationMs = null
             _state.value = PlaybackState(null, 0L, false, null)
+            notificationManager?.hideNotification()
         }
     }
 
@@ -524,8 +552,16 @@ class DesktopPodcastPlayer : PodcastPlayer {
     private fun startPositionUpdates() {
         stopPositionUpdates()
         positionUpdateJob = CoroutineScope(Dispatchers.Default).launch {
+            var updateCount = 0
             while (isActive && isPlaying) {
                 updateState()
+
+                // 每5秒更新一次通知（减少资源消耗）
+                updateCount++
+                if (updateCount % 10 == 0) {  // 500ms * 10 = 5秒
+                    updateNotification(_state.value)
+                }
+
                 delay(500) // Update twice per second
             }
         }
@@ -537,10 +573,30 @@ class DesktopPodcastPlayer : PodcastPlayer {
     }
 
     /**
+     * 更新媒体通知
+     */
+    private fun updateNotification(state: PlaybackState) {
+        println("🎵 Desktop PodcastPlayer: updateNotification called - episode=${state.episode?.title}, isPlaying=${state.isPlaying}, isBuffering=${state.isBuffering}")
+        state.episode?.let { episode ->
+            notificationManager?.showNotification(
+                episode = episode,
+                isPlaying = state.isPlaying,
+                positionMs = state.positionMs,
+                durationMs = state.durationMs,
+                isBuffering = state.isBuffering
+            )
+        } ?: run {
+            println("🎵 Desktop PodcastPlayer: 没有正在播放的节目，隐藏通知")
+            notificationManager?.hideNotification()
+        }
+    }
+
+    /**
      * Release resources when the player is no longer needed
      */
     fun release() {
         println("🎵 Desktop Player: Releasing player resources")
         stop()
+        notificationManager?.release()
     }
 }
