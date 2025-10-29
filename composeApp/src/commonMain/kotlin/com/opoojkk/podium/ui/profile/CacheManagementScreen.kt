@@ -1,18 +1,32 @@
 package com.opoojkk.podium.ui.profile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.SubcomposeAsyncImage
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -116,8 +130,7 @@ fun CacheManagementScreen(
                 onShowDownloads = { viewState = CacheManagementViewState.DownloadDetail },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(paddingValues),
             )
 
             CacheManagementViewState.DownloadDetail -> DownloadDetailContent(
@@ -125,8 +138,7 @@ fun CacheManagementScreen(
                 queued = queued,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(paddingValues),
             )
         }
     }
@@ -148,7 +160,7 @@ private fun CacheOverviewContent(
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             CachedSummaryCard(
@@ -163,15 +175,37 @@ private fun CacheOverviewContent(
                 onClick = onShowDownloads,
             )
         }
-        item { AutoDownloadDescription() }
+
+        item {
+            Text(
+                text = "自动缓存设置",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+            )
+        }
+
+        item {
+            Text(
+                text = "为每个播客单独设置自动缓存。开启后将下载该播客的所有节目，并在检测到更新时自动下载新节目。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         if (subscribedPodcasts.isEmpty()) {
-            item { EmptyPodcastCard() }
-        } else {
             item {
-                PodcastAutoDownloadList(
-                    podcasts = subscribedPodcasts,
-                    onToggle = onTogglePodcastAutoDownload,
+                Text(
+                    text = "暂无订阅的播客",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 24.dp),
+                )
+            }
+        } else {
+            items(subscribedPodcasts) { podcast ->
+                PodcastAutoDownloadCard(
+                    podcast = podcast,
+                    onToggleAutoDownload = { enabled -> onTogglePodcastAutoDownload(podcast.id, enabled) },
                 )
             }
         }
@@ -186,39 +220,33 @@ private fun CachedDetailContent(
     onShowDownloads: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    LazyColumn(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (cached.isEmpty()) {
-            Text(
-                text = "暂无已缓存的节目",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            item {
+                Text(
+                    text = "暂无已缓存的节目",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 24.dp),
+                )
+            }
         } else {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column {
-                    cached.forEachIndexed { index, item ->
-                        CachedItemRow(item)
-                        if (index < cached.lastIndex) {
-                            HorizontalDivider()
-                        }
-                    }
-                }
+            items(cached) { item ->
+                CachedItemCard(item)
             }
         }
 
-        DownloadSummaryCard(
-            inProgressCount = inProgress.size,
-            queuedCount = queued.size,
-            onClick = onShowDownloads,
-        )
+        item {
+            DownloadSummaryCard(
+                inProgressCount = inProgress.size,
+                queuedCount = queued.size,
+                onClick = onShowDownloads,
+            )
+        }
     }
 }
 
@@ -228,30 +256,51 @@ private fun DownloadDetailContent(
     queued: List<ProfileDownloadItem>,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (inProgress.isEmpty() && queued.isEmpty()) {
+    if (inProgress.isEmpty() && queued.isEmpty()) {
+        Column(
+            modifier = modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Text(
                 text = "暂无正在下载或排队的节目",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 24.dp),
             )
-            return
         }
+    } else {
+        LazyColumn(
+            modifier = modifier,
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (inProgress.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "正在缓存",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                items(inProgress) { item ->
+                    DownloadItemCard(item)
+                }
+            }
 
-        DownloadListCard(
-            title = "正在缓存",
-            downloads = inProgress,
-            emptyMessage = "当前没有正在缓存的节目",
-        )
-
-        DownloadListCard(
-            title = "等待缓存",
-            downloads = queued,
-            emptyMessage = "当前没有排队中的节目",
-        )
+            if (queued.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "等待缓存",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = if (inProgress.isNotEmpty()) 8.dp else 0.dp),
+                    )
+                }
+                items(queued) { item ->
+                    DownloadItemCard(item)
+                }
+            }
+        }
     }
 }
 
@@ -296,22 +345,28 @@ private fun CachedSummaryCard(
     }
 
     Card(
+        onClick = onClick,
+        enabled = cachedCount > 0,
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
-        modifier = Modifier.fillMaxWidth(),
     ) {
         ListItem(
             headlineContent = { Text("已缓存") },
             supportingContent = { Text(supportingText) },
-            leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
-            trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    enabled = cachedCount > 0,
-                    onClick = onClick,
-                ),
+            leadingContent = {
+                Icon(
+                    Icons.Default.Download,
+                    contentDescription = null,
+                )
+            },
+            trailingContent = {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                )
+            },
         )
     }
 }
@@ -331,146 +386,164 @@ private fun DownloadSummaryCard(
     }
 
     Card(
+        onClick = onClick,
+        enabled = enabled && (inProgressCount > 0 || queuedCount > 0),
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
-        modifier = Modifier.fillMaxWidth(),
     ) {
         ListItem(
             headlineContent = { Text("缓存中的节目") },
             supportingContent = { Text(supportingText) },
-            leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
-            trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    enabled = enabled && (inProgressCount > 0 || queuedCount > 0),
-                    onClick = onClick,
-                ),
+            leadingContent = {
+                Icon(
+                    Icons.Default.Download,
+                    contentDescription = null,
+                )
+            },
+            trailingContent = {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                )
+            },
         )
     }
 }
 
 @Composable
-private fun CachedItemRow(item: ProfileCachedItem) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = item.episodeTitle,
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Text(
-                text = item.podcastTitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        val sizeMb = item.sizeBytes.coerceAtLeast(0L) / (1024f * 1024f)
-        Text(
-            text = String.format("%.1f MB", sizeMb),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun DownloadListCard(
-    title: String,
-    downloads: List<ProfileDownloadItem>,
-    emptyMessage: String,
-) {
+private fun CachedItemCard(item: ProfileCachedItem) {
     Card(
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
-        modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(
-            modifier = Modifier.padding(vertical = 8.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            ListItem(headlineContent = { Text(title) })
-            if (downloads.isEmpty()) {
+            // 左侧图标
+            PodcastArtwork(
+                artworkUrl = item.podcastArtworkUrl,
+                podcastTitle = item.podcastTitle,
+                modifier = Modifier.size(56.dp),
+            )
+
+            // 右侧内容
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
-                    text = emptyMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    text = item.episodeTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
-            } else {
-                downloads.forEachIndexed { index, item ->
-                    DownloadDetailRow(item)
-                    if (index < downloads.lastIndex) {
-                        HorizontalDivider()
-                    }
-                }
+                Text(
+                    text = item.podcastTitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val sizeMb = item.sizeBytes.coerceAtLeast(0L) / (1024f * 1024f)
+                Text(
+                    text = String.format("%.1f MB", sizeMb),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
 }
 
+
 @Composable
-private fun DownloadDetailRow(download: ProfileDownloadItem) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+private fun DownloadItemCard(download: ProfileDownloadItem) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = download.episodeTitle,
-                style = MaterialTheme.typography.bodyLarge,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 左侧图标
+            PodcastArtwork(
+                artworkUrl = download.podcastArtworkUrl,
+                podcastTitle = download.podcastTitle,
+                modifier = Modifier.size(56.dp),
             )
-            Text(
-                text = download.podcastTitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        when (val status = download.status) {
-            is DownloadStatus.InProgress -> {
-                val progress = status.progress.coerceIn(0f, 1f)
-                val progressPercent = (progress * 100).roundToInt().coerceIn(0, 100)
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = "$progressPercent%",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.align(Alignment.End),
-                )
-            }
 
-            is DownloadStatus.Idle -> {
-                Text(
-                    text = "等待下载",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            // 右侧内容
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = download.episodeTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = download.podcastTitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
 
-            is DownloadStatus.Failed -> {
-                Text(
-                    text = "下载失败：${status.reason}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
+                when (val status = download.status) {
+                    is DownloadStatus.InProgress -> {
+                        val progress = status.progress.coerceIn(0f, 1f)
+                        val progressPercent = (progress * 100).roundToInt().coerceIn(0, 100)
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Text(
+                                text = "$progressPercent%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
 
-            is DownloadStatus.Completed -> {
-                Text(
-                    text = "下载已完成",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                    is DownloadStatus.Idle -> {
+                        Text(
+                            text = "等待下载",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    is DownloadStatus.Failed -> {
+                        Text(
+                            text = "下载失败：${status.reason}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+
+                    is DownloadStatus.Completed -> {
+                        Text(
+                            text = "下载已完成",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
@@ -504,80 +577,103 @@ private fun CacheActionsCard(onClearCache: () -> Unit) {
 }
 
 @Composable
-private fun AutoDownloadDescription() {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "自动缓存设置",
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            "为每个播客单独设置自动缓存。开启后将下载该播客的所有节目，并在检测到更新时自动下载新节目。",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun EmptyPodcastCard() {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(
-            text = "暂无订阅的播客",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(16.dp),
-        )
-    }
-}
-
-@Composable
-private fun PodcastAutoDownloadList(
-    podcasts: List<Podcast>,
-    onToggle: (String, Boolean) -> Unit,
+private fun PodcastAutoDownloadCard(
+    podcast: Podcast,
+    onToggleAutoDownload: (Boolean) -> Unit,
 ) {
     Card(
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
-        modifier = Modifier.fillMaxWidth(),
     ) {
-        Column {
-            podcasts.forEachIndexed { index, podcast ->
-                PodcastAutoDownloadItem(
-                    podcast = podcast,
-                    onToggleAutoDownload = { enabled -> onToggle(podcast.id, enabled) },
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 左侧图标 - 显示播客logo
+            PodcastArtwork(
+                artworkUrl = podcast.artworkUrl,
+                podcastTitle = podcast.title,
+                modifier = Modifier.size(56.dp),
+            )
+
+            // 中间内容
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = podcast.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
-                if (index < podcasts.lastIndex) {
-                    HorizontalDivider()
-                }
+                Text(
+                    text = if (podcast.autoDownload) "已启用自动缓存所有节目"
+                    else "未启用自动缓存",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+
+            // 右侧开关
+            Switch(
+                checked = podcast.autoDownload,
+                onCheckedChange = onToggleAutoDownload,
+            )
         }
     }
 }
 
 @Composable
-private fun PodcastAutoDownloadItem(
-    podcast: Podcast,
-    onToggleAutoDownload: (Boolean) -> Unit,
+private fun PodcastArtwork(
+    artworkUrl: String?,
+    podcastTitle: String,
+    modifier: Modifier = Modifier
 ) {
-    ListItem(
-        headlineContent = { Text(podcast.title) },
-        supportingContent = {
+    val initials = podcastTitle.trim().split(" ", limit = 2)
+        .mapNotNull { it.firstOrNull()?.uppercase() }
+        .joinToString(separator = "")
+        .takeIf { it.isNotBlank() }
+        ?: "P"
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!artworkUrl.isNullOrBlank()) {
+            SubcomposeAsyncImage(
+                model = artworkUrl,
+                contentDescription = podcastTitle,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                loading = {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                },
+                error = {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            )
+        } else {
             Text(
-                if (podcast.autoDownload) "已启用自动缓存所有节目"
-                else "未启用自动缓存",
+                text = initials,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-        },
-        trailingContent = {
-            Switch(
-                checked = podcast.autoDownload,
-                onCheckedChange = onToggleAutoDownload,
-            )
-        },
-    )
+        }
+    }
 }

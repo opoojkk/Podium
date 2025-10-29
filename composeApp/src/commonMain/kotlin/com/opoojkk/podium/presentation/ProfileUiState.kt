@@ -18,6 +18,7 @@ data class ProfileDownloadItem(
     val episodeId: String,
     val episodeTitle: String,
     val podcastTitle: String,
+    val podcastArtworkUrl: String?,
     val status: DownloadStatus,
 )
 
@@ -25,6 +26,7 @@ data class ProfileCachedItem(
     val episodeId: String,
     val episodeTitle: String,
     val podcastTitle: String,
+    val podcastArtworkUrl: String?,
     val sizeBytes: Long,
     val filePath: String?,
     val completedAtMillis: Long?,

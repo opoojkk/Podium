@@ -153,6 +153,7 @@ class PodiumController(
                                     episodeId = details.episode.id,
                                     episodeTitle = details.episode.title,
                                     podcastTitle = details.podcast.title,
+                                    podcastArtworkUrl = details.podcast.artworkUrl,
                                     sizeBytes = resolvedSize,
                                     filePath = status.filePath.takeIf { it.isNotBlank() },
                                     completedAtMillis = completedAt,
@@ -166,6 +167,7 @@ class PodiumController(
                                 episodeId = details.episode.id,
                                 episodeTitle = details.episode.title,
                                 podcastTitle = details.podcast.title,
+                                podcastArtworkUrl = details.podcast.artworkUrl,
                                 status = status,
                             )
                         }
@@ -176,6 +178,7 @@ class PodiumController(
                                 episodeId = details.episode.id,
                                 episodeTitle = details.episode.title,
                                 podcastTitle = details.podcast.title,
+                                podcastArtworkUrl = details.podcast.artworkUrl,
                                 status = status,
                             )
                         }
