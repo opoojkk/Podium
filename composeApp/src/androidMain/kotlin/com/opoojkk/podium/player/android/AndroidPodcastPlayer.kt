@@ -19,6 +19,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
     private var notificationManager: MediaNotificationManager? = null
+    private var wasPlayingBeforeSeek = false
 
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
@@ -77,25 +78,46 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 					setOnInfoListener { mp, what, extra ->
 						when (what) {
 							MediaPlayer.MEDIA_INFO_BUFFERING_START -> {
-								_state.value = PlaybackState(
+								val newState = PlaybackState(
 									episode = currentEpisode,
 									positionMs = mp.currentPosition.toLong(),
 									isPlaying = false,
 									durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 									isBuffering = true,
 								)
+								_state.value = newState
+								updateNotification(newState)
 							}
 							MediaPlayer.MEDIA_INFO_BUFFERING_END -> {
-								_state.value = PlaybackState(
+								val newState = PlaybackState(
 									episode = currentEpisode,
 									positionMs = mp.currentPosition.toLong(),
 									isPlaying = mp.isPlaying,
 									durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 									isBuffering = false,
 								)
+								_state.value = newState
+								updateNotification(newState)
 							}
 						}
 						true
+					}
+					setOnSeekCompleteListener { mp ->
+						val newState = PlaybackState(
+							episode = currentEpisode,
+							positionMs = mp.currentPosition.toLong(),
+							isPlaying = wasPlayingBeforeSeek && mp.isPlaying,
+							durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
+							isBuffering = false,
+						)
+						_state.value = newState
+						updateNotification(newState)
+
+						// 如果 seek 之前在播放，恢复播放
+						if (wasPlayingBeforeSeek && !mp.isPlaying) {
+							mp.start()
+							startPositionUpdates()
+						}
 					}
                     setOnCompletionListener {
                         stopPositionUpdates()
@@ -111,7 +133,9 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     prepareAsync()
                 }
                 currentEpisode = episode
-				_state.value = PlaybackState(episode, startPositionMs, false, episode.duration, true)
+				val initialState = PlaybackState(episode, startPositionMs, false, episode.duration, true)
+				_state.value = initialState
+				updateNotification(initialState)
             } catch (e: Exception) {
                 // Handle any errors during MediaPlayer setup or URI parsing
                 stopPositionUpdates()
@@ -181,16 +205,25 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 		mediaPlayer?.let { player ->
 			val duration = runCatching { player.duration.toLong() }.getOrNull() ?: currentEpisode?.duration
 			val clamped = duration?.let { positionMs.coerceIn(0L, it) } ?: positionMs.coerceAtLeast(0L)
-			player.seekTo(clamped.toInt())
-			val isPlayingNow = player.isPlaying
-			_state.value = PlaybackState(
+
+			// 记录 seek 之前的播放状态
+			wasPlayingBeforeSeek = player.isPlaying
+
+			// 设置缓冲状态
+			val bufferingState = PlaybackState(
 				episode = currentEpisode,
 				positionMs = clamped,
-				isPlaying = isPlayingNow,
+				isPlaying = false,
 				durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
-				isBuffering = false,
+				isBuffering = true,
 			)
-			if (isPlayingNow) startPositionUpdates()
+			_state.value = bufferingState
+			updateNotification(bufferingState)
+
+			// 执行 seek
+			player.seekTo(clamped.toInt())
+
+			// seek 完成后会通过 onSeekComplete 监听器更新状态
 		}
 	}
 
@@ -259,13 +292,14 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
      * 更新媒体通知
      */
     private fun updateNotification(state: PlaybackState) {
-        println("🎵 AndroidPodcastPlayer: updateNotification called - episode=${state.episode?.title}, isPlaying=${state.isPlaying}")
+        println("🎵 AndroidPodcastPlayer: updateNotification called - episode=${state.episode?.title}, isPlaying=${state.isPlaying}, isBuffering=${state.isBuffering}")
         state.episode?.let { episode ->
             notificationManager?.showNotification(
                 episode = episode,
                 isPlaying = state.isPlaying,
                 positionMs = state.positionMs,
-                durationMs = state.durationMs
+                durationMs = state.durationMs,
+                isBuffering = state.isBuffering
             )
         } ?: run {
             println("🎵 AndroidPodcastPlayer: 没有正在播放的节目，隐藏通知")

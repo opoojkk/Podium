@@ -72,9 +72,10 @@ class MediaNotificationManager(
         episode: Episode,
         isPlaying: Boolean,
         positionMs: Long,
-        durationMs: Long?
+        durationMs: Long?,
+        isBuffering: Boolean = false
     ) {
-        println("🔔 MediaNotificationManager: 尝试显示通知 - ${episode.title}, isPlaying=$isPlaying")
+        println("🔔 MediaNotificationManager: 尝试显示通知 - ${episode.title}, isPlaying=$isPlaying, isBuffering=$isBuffering")
 
         artworkJob?.cancel()
         artworkJob = CoroutineScope(Dispatchers.IO).launch {
@@ -83,7 +84,7 @@ class MediaNotificationManager(
 
             withContext(Dispatchers.Main) {
                 try {
-                    val notification = buildNotification(episode, isPlaying, positionMs, durationMs, artwork)
+                    val notification = buildNotification(episode, isPlaying, positionMs, durationMs, artwork, isBuffering)
                     notificationManager.notify(NOTIFICATION_ID, notification)
                     println("✅ MediaNotificationManager: 通知已发送")
                 } catch (e: Exception) {
@@ -107,7 +108,8 @@ class MediaNotificationManager(
         isPlaying: Boolean,
         positionMs: Long,
         durationMs: Long?,
-        artwork: Bitmap?
+        artwork: Bitmap?,
+        isBuffering: Boolean
     ): Notification {
         // 创建打开应用的Intent，并添加标记以显示播放详情页
         val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
@@ -122,7 +124,18 @@ class MediaNotificationManager(
         )
 
         // 创建控制按钮的PendingIntent
-        val playPauseIntent = createActionIntent(ACTION_PLAY_PAUSE)
+        // 当加载时，播放/暂停按钮不应响应点击
+        val playPauseIntent = if (isBuffering) {
+            // 使用一个空的PendingIntent来禁用点击
+            PendingIntent.getBroadcast(
+                context,
+                0,
+                Intent(),
+                PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            createActionIntent(ACTION_PLAY_PAUSE)
+        }
         val seekForwardIntent = createActionIntent(ACTION_SEEK_FORWARD)
         val seekBackwardIntent = createActionIntent(ACTION_SEEK_BACKWARD)
         val stopIntent = createActionIntent(ACTION_STOP)
@@ -148,6 +161,26 @@ class MediaNotificationManager(
         }
 
         // 添加媒体控制按钮
+        // 确定播放/暂停按钮的图标和文本
+        val playPauseIcon: Int
+        val playPauseText: String
+
+        when {
+            isBuffering -> {
+                // 加载状态：显示加载图标
+                playPauseIcon = android.R.drawable.ic_popup_sync
+                playPauseText = "加载中"
+            }
+            isPlaying -> {
+                playPauseIcon = android.R.drawable.ic_media_pause
+                playPauseText = "暂停"
+            }
+            else -> {
+                playPauseIcon = android.R.drawable.ic_media_play
+                playPauseText = "播放"
+            }
+        }
+
         builder
             .addAction(
                 android.R.drawable.ic_media_rew,
@@ -155,8 +188,8 @@ class MediaNotificationManager(
                 seekBackwardIntent
             )
             .addAction(
-                if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-                if (isPlaying) "暂停" else "播放",
+                playPauseIcon,
+                playPauseText,
                 playPauseIntent
             )
             .addAction(

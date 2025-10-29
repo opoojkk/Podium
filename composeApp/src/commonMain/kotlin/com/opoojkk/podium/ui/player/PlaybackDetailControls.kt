@@ -19,6 +19,7 @@ fun PlaybackDetailControls(
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     modifier: Modifier = Modifier,
+    isBuffering: Boolean = false,
     seekBackSeconds: Int = 10,
     seekForwardSeconds: Int = 30,
     sizing: PlaybackControlSizing = PlaybackControlDefaults.Default,
@@ -51,6 +52,7 @@ fun PlaybackDetailControls(
                 onClick = onPlayPause,
                 buttonSize = sizing.playButtonSize,
                 iconSize = sizing.playIconSize,
+                isBuffering = isBuffering,
             )
 
             SeekButton(
@@ -143,6 +145,7 @@ private fun PlayPauseButton(
     onClick: () -> Unit,
     buttonSize: Dp,
     iconSize: Dp,
+    isBuffering: Boolean = false,
 ) {
     FilledIconButton(
         onClick = onClick,
@@ -152,12 +155,21 @@ private fun PlayPauseButton(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
         ),
+        enabled = !isBuffering,
     ) {
-        Icon(
-            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-            contentDescription = if (isPlaying) "暂停" else "播放",
-            modifier = Modifier.size(iconSize)
-        )
+        if (isBuffering) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(iconSize),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 3.dp
+            )
+        } else {
+            Icon(
+                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = if (isPlaying) "暂停" else "播放",
+                modifier = Modifier.size(iconSize)
+            )
+        }
     }
 }
 

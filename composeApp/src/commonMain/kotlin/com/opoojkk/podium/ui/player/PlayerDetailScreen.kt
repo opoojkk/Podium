@@ -243,6 +243,7 @@ fun PlayerDetailScreen(
                 onSeekBack = onSeekBack,
                 onSeekForward = onSeekForward,
                 modifier = Modifier.fillMaxWidth(),
+                isBuffering = playbackState.isBuffering,
                 playbackSpeed = playbackSpeed,
                 onSpeedChange = onSpeedChange,
                 sleepTimerMinutes = sleepTimerMinutes,

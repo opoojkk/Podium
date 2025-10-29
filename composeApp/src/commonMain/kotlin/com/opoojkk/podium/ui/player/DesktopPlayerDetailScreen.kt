@@ -310,6 +310,7 @@ fun DesktopPlayerDetailScreen(
                             onSeekBack = onSeekBack,
                             onSeekForward = onSeekForward,
                             modifier = Modifier.fillMaxWidth(),
+                            isBuffering = playbackState.isBuffering,
                             sizing = PlaybackControlDefaults.Compact,
                             playbackSpeed = playbackSpeed,
                             onSpeedChange = onSpeedChange,
