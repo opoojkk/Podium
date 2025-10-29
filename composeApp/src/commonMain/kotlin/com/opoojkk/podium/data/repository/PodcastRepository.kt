@@ -83,7 +83,7 @@ class PodcastRepository(
         val reason: String?,
     )
 
-    suspend fun subscribe(feedUrl: String, autoDownload: Boolean = true): SubscriptionResult {
+    suspend fun subscribe(feedUrl: String, autoDownload: Boolean = false): SubscriptionResult {
         try {
             // Check if a podcast with this feedUrl already exists
             println("🔍 Repository: Checking for existing podcast with feedUrl: $feedUrl")
