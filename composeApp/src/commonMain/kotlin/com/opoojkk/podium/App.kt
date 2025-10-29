@@ -34,11 +34,23 @@ enum class ViewMoreType {
 }
 
 @Composable
-fun PodiumApp(environment: PodiumEnvironment) {
+fun PodiumApp(
+    environment: PodiumEnvironment,
+    showPlayerDetailFromNotification: androidx.compose.runtime.MutableState<Boolean>? = null
+) {
     val appState = rememberPodiumAppState(environment)
     val controller = appState.controller
     val scope = rememberCoroutineScope()
     val showPlayerDetail = remember { mutableStateOf(false) }
+
+    // 监听从通知栏打开的请求
+    LaunchedEffect(showPlayerDetailFromNotification?.value) {
+        if (showPlayerDetailFromNotification?.value == true) {
+            println("🎵 PodiumApp: 收到从通知栏打开播放详情页的请求")
+            showPlayerDetail.value = true
+            showPlayerDetailFromNotification.value = false // 重置标志
+        }
+    }
     val showPlaylist = remember { mutableStateOf(false) }
     val showPlaylistFromPlayerDetail = remember { mutableStateOf(false) }
     val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }

@@ -41,6 +41,9 @@ class MediaNotificationManager(
         const val ACTION_SEEK_FORWARD = "com.opoojkk.podium.SEEK_FORWARD"
         const val ACTION_SEEK_BACKWARD = "com.opoojkk.podium.SEEK_BACKWARD"
         const val ACTION_STOP = "com.opoojkk.podium.STOP"
+
+        // Intent extra for opening player detail
+        const val EXTRA_SHOW_PLAYER_DETAIL = "show_player_detail"
     }
 
     init {
@@ -106,9 +109,10 @@ class MediaNotificationManager(
         durationMs: Long?,
         artwork: Bitmap?
     ): Notification {
-        // 创建打开应用的Intent
+        // 创建打开应用的Intent，并添加标记以显示播放详情页
         val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_SHOW_PLAYER_DETAIL, true)
         }
         val openAppPendingIntent = PendingIntent.getActivity(
             context,
