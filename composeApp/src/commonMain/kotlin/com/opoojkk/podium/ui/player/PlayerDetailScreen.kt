@@ -28,6 +28,7 @@ fun PlayerDetailScreen(
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     onFavoriteClick: () -> Unit = {},
+    onPlaylistClick: () -> Unit = {},
     onMoreClick: () -> Unit = {},
     playbackSpeed: Float = 1.0f,
     onSpeedChange: () -> Unit = { /* TODO: 打开倍速选择对话框 */ },
@@ -92,10 +93,10 @@ fun PlayerDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onFavoriteClick) {
+                    IconButton(onClick = onPlaylistClick) {
                         Icon(
-                            imageVector = Icons.Default.Favorite,
-                            contentDescription = "收藏",
+                            imageVector = Icons.Default.PlaylistPlay,
+                            contentDescription = "播放列表",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

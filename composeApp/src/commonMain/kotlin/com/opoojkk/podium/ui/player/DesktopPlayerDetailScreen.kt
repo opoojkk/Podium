@@ -29,6 +29,7 @@ fun DesktopPlayerDetailScreen(
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     modifier: Modifier = Modifier,
+    onPlaylistClick: () -> Unit = {},
     playbackSpeed: Float = 1.0f,
     onSpeedChange: () -> Unit = { /* TODO: 打开倍速选择对话框 */ },
     sleepTimerMinutes: Int? = null,
@@ -106,10 +107,10 @@ fun DesktopPlayerDetailScreen(
 
                     // 操作按钮
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconButton(onClick = { /* TODO: 收藏 */ }) {
+                        IconButton(onClick = onPlaylistClick) {
                             Icon(
-                                imageVector = Icons.Default.Favorite,
-                                contentDescription = "收藏",
+                                imageVector = Icons.Default.PlaylistPlay,
+                                contentDescription = "播放列表",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

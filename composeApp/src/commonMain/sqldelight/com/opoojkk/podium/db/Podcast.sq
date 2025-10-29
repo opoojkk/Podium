@@ -23,7 +23,9 @@ CREATE TABLE playback_state (
     episodeId TEXT NOT NULL PRIMARY KEY REFERENCES episodes(id) ON DELETE CASCADE,
     positionMs INTEGER NOT NULL,
     durationMs INTEGER,
-    updatedAt INTEGER NOT NULL
+    updatedAt INTEGER NOT NULL,
+    isCompleted INTEGER NOT NULL DEFAULT 0,
+    addedToPlaylist INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE downloads (
@@ -58,8 +60,8 @@ updateAutoDownload:
 UPDATE podcasts SET autoDownload = ? WHERE id = ?;
 
 upsertPlayback:
-INSERT OR REPLACE INTO playback_state(episodeId, positionMs, durationMs, updatedAt)
-VALUES (?, ?, ?, ?);
+INSERT OR REPLACE INTO playback_state(episodeId, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
+VALUES (?, ?, ?, ?, ?, ?);
 
 upsertDownload:
 INSERT OR REPLACE INTO downloads(episodeId, status, progress, filePath)
@@ -134,7 +136,7 @@ selectRecentPlayback:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
-       ps.positionMs, ps.durationMs, ps.updatedAt
+       ps.positionMs, ps.durationMs, ps.updatedAt, ps.isCompleted, ps.addedToPlaylist
 FROM playback_state ps
 JOIN episodes e ON ps.episodeId = e.id
 JOIN podcasts p ON e.podcastId = p.id
@@ -146,7 +148,7 @@ selectRecentPlaybackUnique:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
-       ps.positionMs, ps.durationMs, ps.updatedAt
+       ps.positionMs, ps.durationMs, ps.updatedAt, ps.isCompleted, ps.addedToPlaylist
 FROM playback_state ps
 JOIN episodes e ON ps.episodeId = e.id
 JOIN podcasts p ON e.podcastId = p.id
@@ -166,7 +168,7 @@ selectAllRecentPlayback:
 SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
-       ps.positionMs, ps.durationMs, ps.updatedAt
+       ps.positionMs, ps.durationMs, ps.updatedAt, ps.isCompleted, ps.addedToPlaylist
 FROM playback_state ps
 JOIN episodes e ON ps.episodeId = e.id
 JOIN podcasts p ON e.podcastId = p.id
@@ -176,7 +178,31 @@ selectDownloadStatuses:
 SELECT episodeId, status, progress, filePath FROM downloads;
 
 selectPlaybackForEpisode:
-SELECT episodeId, positionMs, durationMs, updatedAt FROM playback_state WHERE episodeId = ?;
+SELECT episodeId, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist FROM playback_state WHERE episodeId = ?;
+
+-- Playlist queries: get all episodes in playlist (not completed)
+selectPlaylistEpisodes:
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+       p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
+       p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
+       ps.positionMs, ps.durationMs, ps.updatedAt, ps.isCompleted, ps.addedToPlaylist
+FROM playback_state ps
+JOIN episodes e ON ps.episodeId = e.id
+JOIN podcasts p ON e.podcastId = p.id
+WHERE ps.addedToPlaylist = 1 AND ps.isCompleted = 0
+ORDER BY ps.updatedAt DESC;
+
+-- Mark episode as completed
+markEpisodeCompleted:
+UPDATE playback_state SET isCompleted = 1 WHERE episodeId = ?;
+
+-- Remove episode from playlist
+removeFromPlaylist:
+UPDATE playback_state SET addedToPlaylist = 0 WHERE episodeId = ?;
+
+-- Add episode back to playlist
+addToPlaylist:
+UPDATE playback_state SET addedToPlaylist = 1, isCompleted = 0 WHERE episodeId = ?;
 
 -- New queries for smart episode upsert
 selectExistingEpisodeIds:

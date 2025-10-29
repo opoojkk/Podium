@@ -39,6 +39,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val controller = appState.controller
     val scope = rememberCoroutineScope()
     val showPlayerDetail = remember { mutableStateOf(false) }
+    val showPlaylist = remember { mutableStateOf(false) }
     val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }
     val selectedPodcast = remember { mutableStateOf<com.opoojkk.podium.data.model.Podcast?>(null) }
     val showCacheManagement = remember { mutableStateOf(false) }
@@ -58,6 +59,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
     val homeState by controller.homeState.collectAsState()
     val subscriptionsState by controller.subscriptionsState.collectAsState()
     val profileState by controller.profileState.collectAsState()
+    val playlistState by controller.playlistState.collectAsState()
     val playbackState by controller.playbackState.collectAsState()
     val allRecentListening by controller.allRecentListening.collectAsState(emptyList())
     val allRecentUpdates by controller.allRecentUpdates.collectAsState(emptyList())
@@ -162,6 +164,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 appState = appState,
                 controller = controller,
                 showPlayerDetail = showPlayerDetail,
+                showPlaylist = showPlaylist,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
                 showCacheManagement = showCacheManagement,
@@ -169,6 +172,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
+                playlistState = playlistState,
                 playbackState = playbackState,
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
@@ -182,6 +186,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 appState = appState,
                 controller = controller,
                 showPlayerDetail = showPlayerDetail,
+                showPlaylist = showPlaylist,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
                 showCacheManagement = showCacheManagement,
@@ -189,6 +194,7 @@ fun PodiumApp(environment: PodiumEnvironment) {
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
+                playlistState = playlistState,
                 playbackState = playbackState,
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
@@ -227,6 +233,7 @@ private fun DesktopLayout(
     appState: com.opoojkk.podium.presentation.PodiumAppState,
     controller: com.opoojkk.podium.presentation.PodiumController,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
+    showPlaylist: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
@@ -234,6 +241,7 @@ private fun DesktopLayout(
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
+    playlistState: com.opoojkk.podium.presentation.PlaylistUiState,
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
@@ -266,6 +274,24 @@ private fun DesktopLayout(
                         .fillMaxSize()
                 ) {
                     when {
+                        showPlaylist.value -> {
+                            // 显示播放列表页面
+                            com.opoojkk.podium.ui.playlist.PlaylistScreen(
+                                state = playlistState,
+                                onPlayEpisode = { episode ->
+                                    controller.playEpisode(episode)
+                                    showPlaylist.value = false
+                                },
+                                onMarkCompleted = { episodeId ->
+                                    controller.markEpisodeCompleted(episodeId)
+                                },
+                                onRemoveFromPlaylist = { episodeId ->
+                                    controller.removeFromPlaylist(episodeId)
+                                },
+                                onBack = { showPlaylist.value = false },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                         showCacheManagement.value -> {
                             // 显示缓存管理页面
                             CacheManagementScreen(
@@ -286,6 +312,10 @@ private fun DesktopLayout(
                                 onSeekTo = { controller.seekTo(it) },
                                 onSeekBack = { controller.seekBy(-15_000) },
                                 onSeekForward = { controller.seekBy(30_000) },
+                                onPlaylistClick = {
+                                    showPlayerDetail.value = false
+                                    showPlaylist.value = true
+                                },
                             )
                         }
                         selectedPodcast.value != null -> {
@@ -385,6 +415,7 @@ private fun MobileLayout(
     appState: com.opoojkk.podium.presentation.PodiumAppState,
     controller: com.opoojkk.podium.presentation.PodiumController,
     showPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
+    showPlaylist: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
@@ -392,6 +423,7 @@ private fun MobileLayout(
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
+    playlistState: com.opoojkk.podium.presentation.PlaylistUiState,
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
@@ -405,7 +437,7 @@ private fun MobileLayout(
             bottomBar = {
                 // 底部栏带动画显示/隐藏
                 androidx.compose.animation.AnimatedVisibility(
-                    visible = !showPlayerDetail.value && showViewMore.value == null && !showCacheManagement.value,
+                    visible = !showPlayerDetail.value && !showPlaylist.value && showViewMore.value == null && !showCacheManagement.value,
                     enter = androidx.compose.animation.fadeIn(
                         animationSpec = androidx.compose.animation.core.tween(200)
                     ) + androidx.compose.animation.slideInVertically(
@@ -455,6 +487,24 @@ private fun MobileLayout(
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             when {
+                showPlaylist.value -> {
+                    // 显示播放列表页面
+                    com.opoojkk.podium.ui.playlist.PlaylistScreen(
+                        state = playlistState,
+                        onPlayEpisode = { episode ->
+                            controller.playEpisode(episode)
+                            showPlaylist.value = false
+                        },
+                        onMarkCompleted = { episodeId ->
+                            controller.markEpisodeCompleted(episodeId)
+                        },
+                        onRemoveFromPlaylist = { episodeId ->
+                            controller.removeFromPlaylist(episodeId)
+                        },
+                        onBack = { showPlaylist.value = false },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
                 showCacheManagement.value -> {
                     // 显示缓存管理页面 - 不应用 padding，让 CacheManagementScreen 的 Scaffold 自己处理
                     CacheManagementScreen(
@@ -559,6 +609,10 @@ private fun MobileLayout(
                 onSeekTo = { controller.seekTo(it) },
                 onSeekBack = { controller.seekBy(-15_000) },
                 onSeekForward = { controller.seekBy(30_000) },
+                onPlaylistClick = {
+                    showPlayerDetail.value = false
+                    showPlaylist.value = true
+                },
             )
         }
     }

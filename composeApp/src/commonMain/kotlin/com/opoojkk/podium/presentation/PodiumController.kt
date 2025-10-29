@@ -33,6 +33,9 @@ class PodiumController(
     private val _profileState = MutableStateFlow(ProfileUiState())
     val profileState: StateFlow<ProfileUiState> = _profileState.asStateFlow()
 
+    private val _playlistState = MutableStateFlow(PlaylistUiState())
+    val playlistState: StateFlow<PlaylistUiState> = _playlistState.asStateFlow()
+
     private val _downloads = MutableStateFlow<Map<String, DownloadStatus>>(emptyMap())
     val downloads: StateFlow<Map<String, DownloadStatus>> = _downloads.asStateFlow()
 
@@ -98,6 +101,15 @@ class PodiumController(
             repository.observeHomeState().collect { homeState ->
                 println("🏠 Home state updated: ${homeState.recentUpdates.size} recent updates, ${homeState.recentPlayed.size} recent played")
                 _homeState.value = homeState
+            }
+        }
+        scope.launch {
+            repository.observePlaylist().collect { playlistItems ->
+                println("📋 Playlist updated: ${playlistItems.size} items")
+                _playlistState.value = _playlistState.value.copy(
+                    items = playlistItems,
+                    isLoading = false,
+                )
             }
         }
         scope.launch {
@@ -355,6 +367,28 @@ class PodiumController(
     fun renameSubscription(podcastId: String, newTitle: String) {
         scope.launch {
             repository.renameSubscription(podcastId, newTitle)
+        }
+    }
+
+    // Playlist-related methods
+    fun markEpisodeCompleted(episodeId: String) {
+        scope.launch {
+            repository.markEpisodeCompleted(episodeId)
+            println("✅ Marked episode $episodeId as completed")
+        }
+    }
+
+    fun removeFromPlaylist(episodeId: String) {
+        scope.launch {
+            repository.removeFromPlaylist(episodeId)
+            println("🗑️ Removed episode $episodeId from playlist")
+        }
+    }
+
+    fun addToPlaylist(episodeId: String) {
+        scope.launch {
+            repository.addToPlaylist(episodeId)
+            println("➕ Added episode $episodeId to playlist")
         }
     }
 

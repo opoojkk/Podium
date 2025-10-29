@@ -5,6 +5,7 @@ import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.PlaybackProgress
+import com.opoojkk.podium.data.model.PlaylistItem
 import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.data.rss.PodcastFeedService
 import com.opoojkk.podium.data.rss.RssEpisode
@@ -251,6 +252,21 @@ class PodcastRepository(
 
     suspend fun renameSubscription(podcastId: String, newTitle: String) {
         dao.updatePodcastTitle(podcastId, newTitle)
+    }
+
+    // Playlist-related methods
+    fun observePlaylist(): Flow<List<PlaylistItem>> = dao.observePlaylist()
+
+    suspend fun markEpisodeCompleted(episodeId: String) {
+        dao.markEpisodeCompleted(episodeId)
+    }
+
+    suspend fun removeFromPlaylist(episodeId: String) {
+        dao.removeFromPlaylist(episodeId)
+    }
+
+    suspend fun addToPlaylist(episodeId: String) {
+        dao.addToPlaylist(episodeId)
     }
 
     private fun com.opoojkk.podium.data.rss.PodcastFeed.toPodcast(autoDownload: Boolean): Podcast = Podcast(

@@ -38,6 +38,8 @@ data class PlaybackProgress(
     val positionMs: Long,
     val durationMs: Long?,
     val updatedAt: Instant,
+    val isCompleted: Boolean = false,
+    val addedToPlaylist: Boolean = true,
 )
 
 /**
@@ -46,6 +48,15 @@ data class PlaybackProgress(
 data class EpisodeWithPodcast(
     val episode: Episode,
     val podcast: Podcast,
+)
+
+/**
+ * Playlist item with episode, podcast and playback progress information.
+ */
+data class PlaylistItem(
+    val episode: Episode,
+    val podcast: Podcast,
+    val progress: PlaybackProgress,
 )
 
 /**
