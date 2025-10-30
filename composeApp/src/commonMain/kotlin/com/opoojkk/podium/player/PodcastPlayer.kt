@@ -13,7 +13,13 @@ interface PodcastPlayer {
     fun stop()
     fun seekTo(positionMs: Long)
     fun seekBy(deltaMs: Long)
-    
+
+    /**
+     * 设置播放速度
+     * @param speed 播放速度，范围通常为 0.5x 到 2.0x
+     */
+    fun setPlaybackSpeed(speed: Float)
+
     /**
      * 恢复播放状态，但不自动开始播放
      */

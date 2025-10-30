@@ -36,7 +36,7 @@ import javax.sound.sampled.SourceDataLine
  */
 class DesktopPodcastPlayer : PodcastPlayer {
 
-    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null, false))
+    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null, false, 1.0f))
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
     private var playerJob: Job? = null
@@ -57,6 +57,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
     private var pausedAtMs: Long = 0
     private var playbackStartTime: Long = 0
     private var detectedDurationMs: Long? = null
+    private var currentPlaybackSpeed: Float = 1.0f
 
     init {
         // 初始化通知管理器
@@ -123,7 +124,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 println("🎵 Desktop Player: Error occurred: ${e.message}")
                 e.printStackTrace()
                 currentEpisode = null
-                _state.value = PlaybackState(null, 0L, false, null)
+                _state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
             }
         }
     }
@@ -172,7 +173,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
                         stopPositionUpdates()
                         if (!shouldStop && !isPaused) {
                             currentEpisode = null
-                            _state.value = PlaybackState(null, 0L, false, null)
+                            _state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
                         }
                     }
                 })
@@ -190,13 +191,13 @@ class DesktopPodcastPlayer : PodcastPlayer {
                 e.printStackTrace()
                 isPlaying = false
                 isPaused = false
-                _state.value = PlaybackState(null, 0L, false, null)
+                _state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
             } catch (e: Exception) {
                 println("🎵 Desktop Player: Error: ${e.message}")
                 e.printStackTrace()
                 isPlaying = false
                 isPaused = false
-                _state.value = PlaybackState(null, 0L, false, null)
+                _state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
             } finally {
                 currentPlayer = null
             }
@@ -353,7 +354,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
             } catch (e: Exception) {
                 println("🎵 Desktop Player: Error playing audio: ${e.message}")
                 e.printStackTrace()
-                _state.value = PlaybackState(null, 0L, false, null)
+                _state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
             } finally {
                 line?.stop()
                 line?.close()
@@ -467,7 +468,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
             startPositionMs = 0
             pausedAtMs = 0
             detectedDurationMs = null
-            _state.value = PlaybackState(null, 0L, false, null)
+            _state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
             notificationManager?.hideNotification()
         }
     }
@@ -506,6 +507,22 @@ class DesktopPodcastPlayer : PodcastPlayer {
         seekTo(current + deltaMs)
     }
 
+    override fun setPlaybackSpeed(speed: Float) {
+        val clampedSpeed = speed.coerceIn(0.5f, 2.0f)
+        currentPlaybackSpeed = clampedSpeed
+
+        // 更新状态以反映新的播放速度
+        _state.value = _state.value.copy(playbackSpeed = currentPlaybackSpeed)
+        updateNotification(_state.value)
+
+        println("🎵 Desktop Player: Playback speed set to ${currentPlaybackSpeed}x")
+        println("⚠️ Desktop Player: Note - Speed control on JVM is limited. The speed setting is tracked but actual playback speed adjustment requires more advanced audio processing libraries.")
+
+        // 如果正在播放,需要重新播放以应用新的速度
+        // 注意: JLayer 和 Java Sound API 原生不支持倍速,这里只是记录设置
+        // 实际的倍速实现需要使用如 SSRC (Sample Rate Conversion) 或其他音频处理库
+    }
+
     override fun restorePlaybackState(episode: Episode, positionMs: Long) {
         println("🎵 Desktop Player: Restoring playback state for episode: ${episode.title} at ${positionMs}ms")
         // 直接设置状态，不准备播放器
@@ -521,6 +538,7 @@ class DesktopPodcastPlayer : PodcastPlayer {
             isPlaying = false,
             durationMs = episode.duration,
             isBuffering = false,
+            playbackSpeed = currentPlaybackSpeed,
         )
     }
 
@@ -540,12 +558,14 @@ class DesktopPodcastPlayer : PodcastPlayer {
     private fun updateState() {
         // 优先从 Episode 数据获取时长，如果没有则使用播放器检测到的时长
         val duration = currentEpisode?.duration ?: detectedDurationMs
-        
+
         _state.value = PlaybackState(
             episode = currentEpisode,
             positionMs = position(),
             isPlaying = isPlaying,
-            durationMs = duration
+            durationMs = duration,
+            isBuffering = false,
+            playbackSpeed = currentPlaybackSpeed,
         )
     }
 

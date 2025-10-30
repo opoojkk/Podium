@@ -17,10 +17,11 @@ import platform.Foundation.NSURL
 class IosPodcastPlayer : PodcastPlayer {
 
     private val player = AVPlayer()
-    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null, false))
+    private val _state = MutableStateFlow(PlaybackState(null, 0L, false, null, false, 1.0f))
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
     private var notificationManager: MediaNotificationManager? = null
+    private var currentPlaybackSpeed: Float = 1.0f
 
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
@@ -51,27 +52,28 @@ class IosPodcastPlayer : PodcastPlayer {
             try {
                 // Validate audioUrl before attempting to create NSURL
                 if (episode.audioUrl.isBlank()) {
-                    _state.value = PlaybackState(null, 0L, false, null)
+                    _state.value = PlaybackState(null, 0L, false, null, playbackSpeed = currentPlaybackSpeed)
                     return@withContext
                 }
-                
+
                 currentEpisode = episode
                 val url = createUrlForPlayback(episode.audioUrl)
                 if (url == null) {
-                    _state.value = PlaybackState(null, 0L, false, null)
+                    _state.value = PlaybackState(null, 0L, false, null, playbackSpeed = currentPlaybackSpeed)
                     return@withContext
                 }
-                
+
                 val item = AVPlayerItem.playerItemWithURL(url)
                 player.replaceCurrentItemWithPlayerItem(item)
                 val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
                 // Emit buffering state while preparing/seek
-                val bufferingState = PlaybackState(episode, startPositionMs, false, duration(), true)
+                val bufferingState = PlaybackState(episode, startPositionMs, false, duration(), true, currentPlaybackSpeed)
                 _state.value = bufferingState
                 updateNotification(bufferingState)
                 player.seekToTime(seekTime) { _ ->
-                    player.play()
-                    val playingState = PlaybackState(episode, startPositionMs, true, duration(), false)
+                    // 应用播放速度
+                    player.rate = currentPlaybackSpeed
+                    val playingState = PlaybackState(episode, startPositionMs, true, duration(), false, currentPlaybackSpeed)
                     _state.value = playingState
                     updateNotification(playingState)
                     startPositionUpdates()
@@ -80,7 +82,7 @@ class IosPodcastPlayer : PodcastPlayer {
             } catch (e: Exception) {
                 // Handle any errors during AVPlayer setup or URL creation
                 stopPositionUpdates()
-                _state.value = PlaybackState(null, 0L, false, null, false)
+                _state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
                 currentEpisode = null
             }
         }
@@ -89,7 +91,7 @@ class IosPodcastPlayer : PodcastPlayer {
     override fun pause() {
         player.pause()
         stopPositionUpdates()
-        val newState = PlaybackState(currentEpisode, currentPosition(), false, duration(), false)
+        val newState = PlaybackState(currentEpisode, currentPosition(), false, duration(), false, currentPlaybackSpeed)
         _state.value = newState
         updateNotification(newState)
     }
@@ -104,9 +106,10 @@ class IosPodcastPlayer : PodcastPlayer {
                 play(episode, startPos)
             }
         } else {
-            player.play()
+            // 使用当前播放速度恢复播放
+            player.rate = currentPlaybackSpeed
             startPositionUpdates()
-            val newState = PlaybackState(currentEpisode, currentPosition(), true, duration(), false)
+            val newState = PlaybackState(currentEpisode, currentPosition(), true, duration(), false, currentPlaybackSpeed)
             _state.value = newState
             updateNotification(newState)
         }
@@ -117,7 +120,7 @@ class IosPodcastPlayer : PodcastPlayer {
         player.pause()
         player.seekToTime(CMTimeMakeWithSeconds(0.0, 1))
         currentEpisode = null
-        _state.value = PlaybackState(null, 0L, false, null, false)
+        _state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
         notificationManager?.hideNotification()
     }
 
@@ -127,13 +130,31 @@ class IosPodcastPlayer : PodcastPlayer {
         val seekTime = CMTimeMakeWithSeconds(clamped.toDouble() / 1000.0, 1000)
         player.seekToTime(seekTime) { _ ->
             val isPlayingNow = player.timeControlStatus == AVPlayerTimeControlStatusPlaying && player.rate > 0.0
-            _state.value = PlaybackState(currentEpisode, clamped, isPlayingNow, duration(), false)
+            _state.value = PlaybackState(currentEpisode, clamped, isPlayingNow, duration(), false, currentPlaybackSpeed)
         }
     }
 
     override fun seekBy(deltaMs: Long) {
         val current = currentPosition()
         seekTo(current + deltaMs)
+    }
+
+    override fun setPlaybackSpeed(speed: Float) {
+        currentPlaybackSpeed = speed.coerceIn(0.5f, 2.0f)
+
+        // 设置 AVPlayer 的播放速率
+        player.rate = if (player.timeControlStatus == AVPlayerTimeControlStatusPlaying) {
+            currentPlaybackSpeed
+        } else {
+            0.0f
+        }
+
+        // 更新状态
+        val newState = _state.value.copy(playbackSpeed = currentPlaybackSpeed)
+        _state.value = newState
+        updateNotification(newState)
+
+        println("🎵 iOS Player: Playback speed set to ${currentPlaybackSpeed}x")
     }
 
     override fun restorePlaybackState(episode: Episode, positionMs: Long) {
@@ -144,6 +165,7 @@ class IosPodcastPlayer : PodcastPlayer {
             isPlaying = false,
             durationMs = episode.duration,
             isBuffering = false,
+            playbackSpeed = currentPlaybackSpeed,
         )
     }
 
@@ -167,7 +189,7 @@ class IosPodcastPlayer : PodcastPlayer {
                 val timeControl = player.timeControlStatus
                 val isBuffering = (timeControl == AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate)
                 val isPlayingNow = (timeControl == AVPlayerTimeControlStatusPlaying) && player.rate > 0.0
-                val newState = PlaybackState(currentEpisode, currentPosition, isPlayingNow, duration(), isBuffering)
+                val newState = PlaybackState(currentEpisode, currentPosition, isPlayingNow, duration(), isBuffering, currentPlaybackSpeed)
                 _state.value = newState
 
                 // 每5秒更新一次通知（减少资源消耗）

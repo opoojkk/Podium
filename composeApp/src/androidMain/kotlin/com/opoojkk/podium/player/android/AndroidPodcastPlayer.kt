@@ -14,12 +14,13 @@ import kotlinx.coroutines.withContext
 
 class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 
-    private val _state = MutableStateFlow(PlaybackState(episode = null, positionMs = 0L, isPlaying = false, durationMs = null, isBuffering = false))
+    private val _state = MutableStateFlow(PlaybackState(episode = null, positionMs = 0L, isPlaying = false, durationMs = null, isBuffering = false, playbackSpeed = 1.0f))
     private var mediaPlayer: MediaPlayer? = null
     private var currentEpisode: Episode? = null
     private var positionUpdateJob: Job? = null
     private var notificationManager: MediaNotificationManager? = null
     private var wasPlayingBeforeSeek = false
+    private var currentPlaybackSpeed: Float = 1.0f
 
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
@@ -53,7 +54,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
             try {
                 // Validate audioUrl before attempting to parse
                 if (episode.audioUrl.isBlank()) {
-                    _state.value = PlaybackState(null, 0L, false)
+                    _state.value = PlaybackState(null, 0L, false, playbackSpeed = currentPlaybackSpeed)
                     return@withContext
                 }
                 
@@ -62,6 +63,14 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     // 对于HTTP/HTTPS URL，直接使用URL字符串
                     setDataSource(episode.audioUrl)
                     setOnPreparedListener { player ->
+                        // 应用播放速度（Android M 及以上）
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                            try {
+                                player.playbackParams = player.playbackParams.setSpeed(currentPlaybackSpeed)
+                            } catch (e: Exception) {
+                                println("❌ Android Player: Failed to set playback speed on prepared: ${e.message}")
+                            }
+                        }
                         player.seekTo(startPositionMs.toInt())
                         player.start()
 						val newState = PlaybackState(
@@ -70,6 +79,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                             isPlaying = true,
 							durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 },
 							isBuffering = false,
+							playbackSpeed = currentPlaybackSpeed,
                         )
                         _state.value = newState
                         updateNotification(newState)
@@ -84,6 +94,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 									isPlaying = false,
 									durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 									isBuffering = true,
+									playbackSpeed = currentPlaybackSpeed,
 								)
 								_state.value = newState
 								updateNotification(newState)
@@ -95,6 +106,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 									isPlaying = mp.isPlaying,
 									durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 									isBuffering = false,
+									playbackSpeed = currentPlaybackSpeed,
 								)
 								_state.value = newState
 								updateNotification(newState)
@@ -109,6 +121,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 							isPlaying = wasPlayingBeforeSeek && mp.isPlaying,
 							durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 							isBuffering = false,
+							playbackSpeed = currentPlaybackSpeed,
 						)
 						_state.value = newState
 						updateNotification(newState)
@@ -121,25 +134,25 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 					}
                     setOnCompletionListener {
                         stopPositionUpdates()
-						_state.value = PlaybackState(null, 0L, false, null, false)
+						_state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
                         releasePlayer()
                     }
                     setOnErrorListener { _, what, extra ->
                         stopPositionUpdates()
-						_state.value = PlaybackState(null, 0L, false, null, false)
+						_state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
                         releasePlayer()
                         true
                     }
                     prepareAsync()
                 }
                 currentEpisode = episode
-				val initialState = PlaybackState(episode, startPositionMs, false, episode.duration, true)
+				val initialState = PlaybackState(episode, startPositionMs, false, episode.duration, true, currentPlaybackSpeed)
 				_state.value = initialState
 				updateNotification(initialState)
             } catch (e: Exception) {
                 // Handle any errors during MediaPlayer setup or URI parsing
                 stopPositionUpdates()
-				_state.value = PlaybackState(null, 0L, false, null, false)
+				_state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
                 releasePlayer()
             }
         }
@@ -156,6 +169,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     isPlaying = false,
 					durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 					isBuffering = false,
+					playbackSpeed = currentPlaybackSpeed,
                 )
                 _state.value = newState
                 updateNotification(newState)
@@ -183,6 +197,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                         isPlaying = true,
                         durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
                         isBuffering = false,
+                        playbackSpeed = currentPlaybackSpeed,
                     )
                     _state.value = newState
                     updateNotification(newState)
@@ -197,7 +212,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
             player.stop()
         }
         releasePlayer()
-        _state.value = PlaybackState(null, 0L, false, null)
+        _state.value = PlaybackState(null, 0L, false, null, playbackSpeed = currentPlaybackSpeed)
         notificationManager?.hideNotification()
     }
 
@@ -216,6 +231,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 				isPlaying = false,
 				durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 				isBuffering = true,
+				playbackSpeed = currentPlaybackSpeed,
 			)
 			_state.value = bufferingState
 			updateNotification(bufferingState)
@@ -237,6 +253,25 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 		}
 	}
 
+	override fun setPlaybackSpeed(speed: Float) {
+		currentPlaybackSpeed = speed.coerceIn(0.5f, 2.0f)
+		mediaPlayer?.let { player ->
+			if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+				try {
+					player.playbackParams = player.playbackParams.setSpeed(currentPlaybackSpeed)
+					val newState = _state.value.copy(playbackSpeed = currentPlaybackSpeed)
+					_state.value = newState
+					updateNotification(newState)
+					println("🎵 Android Player: Playback speed set to ${currentPlaybackSpeed}x")
+				} catch (e: Exception) {
+					println("❌ Android Player: Failed to set playback speed: ${e.message}")
+				}
+			} else {
+				println("⚠️ Android Player: Playback speed control requires Android M (API 23) or higher")
+			}
+		}
+	}
+
 	override fun restorePlaybackState(episode: Episode, positionMs: Long) {
 		currentEpisode = episode
 		_state.value = PlaybackState(
@@ -245,6 +280,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 			isPlaying = false,
 			durationMs = episode.duration,
 			isBuffering = false,
+			playbackSpeed = currentPlaybackSpeed,
 		)
 	}
 
@@ -269,6 +305,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     isPlaying = true,
 					durationMs = duration ?: currentEpisode?.duration,
 					isBuffering = false,
+					playbackSpeed = currentPlaybackSpeed,
                 )
                 _state.value = newState
 

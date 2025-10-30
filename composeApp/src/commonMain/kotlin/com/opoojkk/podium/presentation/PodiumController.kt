@@ -249,6 +249,8 @@ class PodiumController(
 
     fun seekBy(deltaMs: Long) = player.seekBy(deltaMs)
 
+    fun setPlaybackSpeed(speed: Float) = player.setPlaybackSpeed(speed)
+
     fun refreshSubscriptions() {
         if (refreshJob?.isActive == true) return
         _subscriptionsState.value = _subscriptionsState.value.copy(isRefreshing = true)

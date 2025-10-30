@@ -19,6 +19,7 @@ import com.opoojkk.podium.ui.home.HomeScreen
 import com.opoojkk.podium.ui.home.ViewMoreScreen
 import com.opoojkk.podium.ui.player.DesktopPlayerDetailScreen
 import com.opoojkk.podium.ui.player.PlayerDetailScreen
+import com.opoojkk.podium.ui.player.PlaybackSpeedDialog
 import com.opoojkk.podium.ui.profile.ProfileScreen
 import com.opoojkk.podium.ui.profile.CacheManagementScreen
 import com.opoojkk.podium.ui.profile.ExportOpmlDialog
@@ -92,6 +93,9 @@ fun PodiumApp(
 
     // 睡眠定时器对话框状态
     val showSleepTimerDialog = remember { mutableStateOf(false) }
+
+    // 倍速选择对话框状态
+    val showSpeedDialog = remember { mutableStateOf(false) }
 
     val loadExportContent: () -> Unit = {
         exportInProgress.value = true
@@ -201,6 +205,16 @@ fun PodiumApp(
             )
         }
 
+        if (showSpeedDialog.value) {
+            PlaybackSpeedDialog(
+                currentSpeed = playbackState.playbackSpeed,
+                onSpeedSelected = { speed ->
+                    controller.setPlaybackSpeed(speed)
+                },
+                onDismiss = { showSpeedDialog.value = false }
+            )
+        }
+
         if (isDesktop) {
             // 桌面平台：使用Spotify风格布局（侧边导航 + 底部播放控制器）
             DesktopLayout(
@@ -243,6 +257,7 @@ fun PodiumApp(
                 playbackState = playbackState,
                 sleepTimerState = sleepTimerState,
                 showSleepTimerDialog = showSleepTimerDialog,
+                showSpeedDialog = showSpeedDialog,
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
                 onImportClick = handleImportClick,
@@ -498,7 +513,8 @@ private fun MobileLayout(
     playlistState: com.opoojkk.podium.presentation.PlaylistUiState,
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
     sleepTimerState: com.opoojkk.podium.data.model.SleepTimerState,
-    showSleepTimerDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showSleepTimerDialog: MutableState<Boolean>,
+    showSpeedDialog: MutableState<Boolean>,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     onImportClick: () -> Unit,
@@ -719,6 +735,8 @@ private fun MobileLayout(
                     showPlaylistFromPlayerDetail.value = true
                     showPlaylist.value = true
                 },
+                playbackSpeed = playbackState.playbackSpeed,
+                onSpeedChange = { showSpeedDialog.value = true },
                 sleepTimerMinutes = if (sleepTimerState.isActive) sleepTimerState.remainingMinutes else null,
                 onSleepTimerClick = { showSleepTimerDialog.value = true },
             )
