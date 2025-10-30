@@ -14,6 +14,7 @@ import com.opoojkk.podium.platform.openUrl
 import com.opoojkk.podium.ui.components.DesktopNavigationRail
 import com.opoojkk.podium.ui.components.DesktopPlaybackBar
 import com.opoojkk.podium.ui.components.PlaybackBar
+import com.opoojkk.podium.ui.components.SleepTimerDialog
 import com.opoojkk.podium.ui.home.HomeScreen
 import com.opoojkk.podium.ui.home.ViewMoreScreen
 import com.opoojkk.podium.ui.player.DesktopPlayerDetailScreen
@@ -36,12 +37,23 @@ enum class ViewMoreType {
 @Composable
 fun PodiumApp(
     environment: PodiumEnvironment,
-    showPlayerDetailFromNotification: androidx.compose.runtime.MutableState<Boolean>? = null
+    showPlayerDetailFromNotification: androidx.compose.runtime.MutableState<Boolean>? = null,
+    onExitApp: (() -> Unit)? = null
 ) {
     val appState = rememberPodiumAppState(environment)
     val controller = appState.controller
     val scope = rememberCoroutineScope()
     val showPlayerDetail = remember { mutableStateOf(false) }
+
+    // 设置睡眠定时器完成回调
+    DisposableEffect(controller) {
+        controller.onSleepTimerComplete = {
+            onExitApp?.invoke()
+        }
+        onDispose {
+            controller.onSleepTimerComplete = null
+        }
+    }
 
     // 监听从通知栏打开的请求
     LaunchedEffect(showPlayerDetailFromNotification?.value) {
@@ -74,8 +86,12 @@ fun PodiumApp(
     val profileState by controller.profileState.collectAsState()
     val playlistState by controller.playlistState.collectAsState()
     val playbackState by controller.playbackState.collectAsState()
+    val sleepTimerState by controller.sleepTimerState.collectAsState()
     val allRecentListening by controller.allRecentListening.collectAsState(emptyList())
     val allRecentUpdates by controller.allRecentUpdates.collectAsState(emptyList())
+
+    // 睡眠定时器对话框状态
+    val showSleepTimerDialog = remember { mutableStateOf(false) }
 
     val loadExportContent: () -> Unit = {
         exportInProgress.value = true
@@ -171,6 +187,20 @@ fun PodiumApp(
             )
         }
 
+        // Sleep Timer Dialog
+        if (showSleepTimerDialog.value) {
+            SleepTimerDialog(
+                sleepTimerState = sleepTimerState,
+                onDurationSelected = { duration ->
+                    controller.startSleepTimer(duration)
+                },
+                onCancel = {
+                    controller.cancelSleepTimer()
+                },
+                onDismiss = { showSleepTimerDialog.value = false }
+            )
+        }
+
         if (isDesktop) {
             // 桌面平台：使用Spotify风格布局（侧边导航 + 底部播放控制器）
             DesktopLayout(
@@ -211,6 +241,8 @@ fun PodiumApp(
                 profileState = profileState,
                 playlistState = playlistState,
                 playbackState = playbackState,
+                sleepTimerState = sleepTimerState,
+                showSleepTimerDialog = showSleepTimerDialog,
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
                 onImportClick = handleImportClick,
@@ -465,6 +497,8 @@ private fun MobileLayout(
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
     playlistState: com.opoojkk.podium.presentation.PlaylistUiState,
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
+    sleepTimerState: com.opoojkk.podium.data.model.SleepTimerState,
+    showSleepTimerDialog: androidx.compose.runtime.MutableState<Boolean>,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     onImportClick: () -> Unit,
@@ -685,6 +719,8 @@ private fun MobileLayout(
                     showPlaylistFromPlayerDetail.value = true
                     showPlaylist.value = true
                 },
+                sleepTimerMinutes = if (sleepTimerState.isActive) sleepTimerState.remainingMinutes else null,
+                onSleepTimerClick = { showSleepTimerDialog.value = true },
             )
         }
     }

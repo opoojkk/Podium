@@ -4,6 +4,8 @@ import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.PlaybackProgress
+import com.opoojkk.podium.data.model.SleepTimerDuration
+import com.opoojkk.podium.data.model.SleepTimerState
 import com.opoojkk.podium.data.repository.PodcastRepository
 import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.platform.fileLastModifiedMillis
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlin.system.exitProcess
 
 class PodiumController(
     private val repository: PodcastRepository,
@@ -47,6 +50,12 @@ class PodiumController(
     private val downloadEpisodeCacheMutex = Mutex()
 
     val playbackState: StateFlow<com.opoojkk.podium.data.model.PlaybackState> = player.state
+
+    // Sleep timer state
+    private val _sleepTimerState = MutableStateFlow(SleepTimerState())
+    val sleepTimerState: StateFlow<SleepTimerState> = _sleepTimerState.asStateFlow()
+    private var sleepTimerJob: Job? = null
+    var onSleepTimerComplete: (() -> Unit)? = null
 
     // 查看更多页面使用的完整列表
     val allRecentListening = repository.observeAllRecentListening()
@@ -417,5 +426,71 @@ class PodiumController(
         path.startsWith("content://") -> path
         path.startsWith("/") -> "file://$path"
         else -> path
+    }
+
+    // Sleep timer methods
+    fun startSleepTimer(duration: SleepTimerDuration) {
+        println("⏰ Starting sleep timer for ${duration.displayName}")
+        cancelSleepTimer() // Cancel any existing timer
+
+        _sleepTimerState.value = SleepTimerState(
+            isActive = true,
+            duration = duration,
+            remainingMs = duration.milliseconds
+        )
+
+        sleepTimerJob = scope.launch {
+            val startTime = Clock.System.now().toEpochMilliseconds()
+            val endTime = startTime + duration.milliseconds
+
+            while (true) {
+                kotlinx.coroutines.delay(1000) // Update every second
+                val currentTime = Clock.System.now().toEpochMilliseconds()
+                val remaining = (endTime - currentTime).coerceAtLeast(0)
+
+                _sleepTimerState.value = _sleepTimerState.value.copy(
+                    remainingMs = remaining
+                )
+
+                if (remaining <= 0) {
+                    println("⏰ Sleep timer completed")
+                    onTimerComplete()
+                    break
+                }
+            }
+        }
+    }
+
+    fun cancelSleepTimer() {
+        println("⏰ Cancelling sleep timer")
+        sleepTimerJob?.cancel()
+        sleepTimerJob = null
+        _sleepTimerState.value = SleepTimerState()
+    }
+
+    private fun onTimerComplete() {
+        // Stop playback
+        player.pause()
+
+        // Save current progress
+        scope.launch {
+            val currentState = player.state.value
+            if (currentState.episode != null) {
+                repository.savePlayback(
+                    PlaybackProgress(
+                        episodeId = currentState.episode.id,
+                        positionMs = currentState.positionMs,
+                        durationMs = currentState.durationMs ?: currentState.episode.duration,
+                        updatedAt = Clock.System.now(),
+                    ),
+                )
+            }
+        }
+
+        // Reset timer state
+        _sleepTimerState.value = SleepTimerState()
+
+        // Trigger app exit callback
+        onSleepTimerComplete?.invoke()
     }
 }

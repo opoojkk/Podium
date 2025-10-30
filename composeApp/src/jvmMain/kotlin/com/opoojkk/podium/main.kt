@@ -12,6 +12,9 @@ fun main() = application {
         DisposableEffect(Unit) {
             onDispose { environment.dispose() }
         }
-        PodiumApp(environment)
+        PodiumApp(
+            environment = environment,
+            onExitApp = ::exitApplication
+        )
     }
 }

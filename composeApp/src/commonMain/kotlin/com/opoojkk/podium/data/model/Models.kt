@@ -89,3 +89,27 @@ sealed interface DownloadStatus {
         val reason: String,
     ) : DownloadStatus
 }
+
+/**
+ * Sleep timer duration options.
+ */
+enum class SleepTimerDuration(val minutes: Int, val displayName: String) {
+    FIVE_MIN(5, "5分钟"),
+    FIFTEEN_MIN(15, "15分钟"),
+    THIRTY_MIN(30, "30分钟"),
+    ONE_HOUR(60, "1小时");
+
+    val milliseconds: Long get() = minutes * 60 * 1000L
+}
+
+/**
+ * State of the sleep timer.
+ */
+data class SleepTimerState(
+    val isActive: Boolean = false,
+    val duration: SleepTimerDuration? = null,
+    val remainingMs: Long = 0L,
+) {
+    val remainingMinutes: Int get() = (remainingMs / 60000).toInt()
+    val remainingSeconds: Int get() = ((remainingMs % 60000) / 1000).toInt()
+}
