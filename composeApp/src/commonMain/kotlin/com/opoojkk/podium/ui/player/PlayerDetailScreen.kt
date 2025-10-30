@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.opoojkk.podium.data.model.PlaybackState
+import com.opoojkk.podium.platform.BackHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +39,10 @@ fun PlayerDetailScreen(
 ) {
     val episode = playbackState.episode ?: return
     val durationMs = episode.duration ?: playbackState.durationMs
-    
+
+    // 处理系统返回按钮
+    BackHandler(onBack = onBack)
+
     // 滚动状态
     val scrollState = rememberScrollState()
     

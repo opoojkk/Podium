@@ -54,6 +54,7 @@ import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.presentation.ProfileCachedItem
 import com.opoojkk.podium.presentation.ProfileDownloadItem
 import com.opoojkk.podium.presentation.ProfileUiState
+import com.opoojkk.podium.platform.BackHandler
 import kotlin.math.roundToInt
 
 private sealed interface CacheManagementViewState {
@@ -80,6 +81,18 @@ fun CacheManagementScreen(
         CacheManagementViewState.Overview -> "缓存管理"
         CacheManagementViewState.CachedDetail -> "已缓存"
         CacheManagementViewState.DownloadDetail -> "下载详情"
+    }
+
+    // 处理系统返回按钮
+    BackHandler {
+        viewState = when (viewState) {
+            CacheManagementViewState.Overview -> {
+                onBackClick()
+                CacheManagementViewState.Overview
+            }
+            CacheManagementViewState.CachedDetail,
+            CacheManagementViewState.DownloadDetail -> CacheManagementViewState.Overview
+        }
     }
 
     Scaffold(

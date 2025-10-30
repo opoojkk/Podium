@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
+import com.opoojkk.podium.platform.BackHandler
 
 /**
  * 查看更多页面，展示完整的单集列表
@@ -35,6 +36,9 @@ fun ViewMoreScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // 处理系统返回按钮
+    BackHandler(onBack = onBack)
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {

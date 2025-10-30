@@ -34,6 +34,7 @@ import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
+import com.opoojkk.podium.platform.BackHandler
 
 enum class SortOrder {
     DESCENDING, // 降序（新到旧）
@@ -54,7 +55,10 @@ fun PodcastEpisodesScreen(
 ) {
     var sortOrder by remember { mutableStateOf(SortOrder.DESCENDING) }
     var showSortMenu by remember { mutableStateOf(false) }
-    
+
+    // 处理系统返回按钮
+    BackHandler(onBack = onBack)
+
     // 根据排序顺序对剧集进行排序
     val sortedEpisodes = remember(episodes, sortOrder) {
         when (sortOrder) {
@@ -62,7 +66,7 @@ fun PodcastEpisodesScreen(
             SortOrder.ASCENDING -> episodes.sortedBy { it.episode.publishDate }
         }
     }
-    
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {

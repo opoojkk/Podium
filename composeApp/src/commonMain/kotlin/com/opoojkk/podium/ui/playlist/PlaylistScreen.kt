@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaylistItem
 import com.opoojkk.podium.presentation.PlaylistUiState
+import com.opoojkk.podium.platform.BackHandler
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,6 +28,9 @@ fun PlaylistScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
 ) {
+    // 处理系统返回按钮
+    onBack?.let { BackHandler(onBack = it) }
+
     Scaffold(
         topBar = {
             TopAppBar(
