@@ -22,7 +22,9 @@ import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.presentation.HomeUiState
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRow
+import com.opoojkk.podium.ui.components.HorizontalEpisodeRowSkeleton
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
+import com.opoojkk.podium.ui.components.PodcastEpisodeCardSkeleton
 
 @Composable
 fun HomeScreen(
@@ -46,13 +48,20 @@ fun HomeScreen(
                     onViewMore = if (state.recentPlayed.isNotEmpty()) onViewMoreRecentPlayed else null,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
-                if (state.recentPlayed.isEmpty()) {
-                    EmptyHint(text = "暂无播放记录")
-                } else {
-                    HorizontalEpisodeRow(
-                        episodes = state.recentPlayed,
-                        onPlayClick = { onPlayEpisode(it.episode) },
-                    )
+                when {
+                    state.isLoading -> {
+                        // 显示骨架屏
+                        HorizontalEpisodeRowSkeleton()
+                    }
+                    state.recentPlayed.isEmpty() -> {
+                        EmptyHint(text = "暂无播放记录")
+                    }
+                    else -> {
+                        HorizontalEpisodeRow(
+                            episodes = state.recentPlayed,
+                            onPlayClick = { onPlayEpisode(it.episode) },
+                        )
+                    }
                 }
             }
         }
@@ -67,17 +76,28 @@ fun HomeScreen(
             )
         }
 
-        if (state.recentUpdates.isEmpty()) {
-            item {
-                EmptyHint(text = "暂无新节目")
+        when {
+            state.isLoading -> {
+                // 显示骨架屏
+                items(6) { // 显示 6 个骨架卡片
+                    PodcastEpisodeCardSkeleton(
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
             }
-        } else {
-            items(state.recentUpdates, key = { it.episode.id }) { item ->
-                PodcastEpisodeCard(
-                    episodeWithPodcast = item,
-                    onPlayClick = { onPlayEpisode(item.episode) },
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
+            state.recentUpdates.isEmpty() -> {
+                item {
+                    EmptyHint(text = "暂无新节目")
+                }
+            }
+            else -> {
+                items(state.recentUpdates, key = { it.episode.id }) { item ->
+                    PodcastEpisodeCard(
+                        episodeWithPodcast = item,
+                        onPlayClick = { onPlayEpisode(item.episode) },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
             }
         }
     }

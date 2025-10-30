@@ -24,8 +24,12 @@ class PodiumController(
     private val scope: CoroutineScope,
 ) {
 
-    private val _homeState = MutableStateFlow(HomeUiState(isLoading = true))
-    val homeState: StateFlow<HomeUiState> = _homeState.asStateFlow()
+    val homeState: StateFlow<HomeUiState> = repository.observeHomeState()
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = HomeUiState(isLoading = true)
+        )
 
     private val _subscriptionsState = MutableStateFlow(SubscriptionsUiState())
     val subscriptionsState: StateFlow<SubscriptionsUiState> = _subscriptionsState.asStateFlow()
@@ -97,12 +101,7 @@ class PodiumController(
             }
         }
 
-        scope.launch {
-            repository.observeHomeState().collect { homeState ->
-                println("🏠 Home state updated: ${homeState.recentUpdates.size} recent updates, ${homeState.recentPlayed.size} recent played")
-                _homeState.value = homeState
-            }
-        }
+        // homeState now uses stateIn, no need for manual collection
         scope.launch {
             repository.observePlaylist().collect { playlistItems ->
                 println("📋 Playlist updated: ${playlistItems.size} items")
