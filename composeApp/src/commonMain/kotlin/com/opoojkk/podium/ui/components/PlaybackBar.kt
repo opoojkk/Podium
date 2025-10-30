@@ -43,43 +43,46 @@ fun PlaybackBar(
                     }
                 )
             },
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
     ) {
         val durationMs = playbackState.episode.duration ?: playbackState.durationMs
         val timeText = buildString {
             append(formatTime(playbackState.positionMs))
-            append("/")
+            append(" / ")
             append(durationMs?.let { formatTime(it) } ?: "--:--")
         }
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Top content row
+            // Content row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Play/Pause or Buffering indicator
                 if (playbackState.isBuffering) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        strokeWidth = 3.dp
+                        modifier = Modifier.size(40.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
                     )
                 } else {
-                    IconButton(
+                    FilledTonalIconButton(
                         onClick = onPlayPauseClick,
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -91,17 +94,16 @@ fun PlaybackBar(
                 ) {
                     Text(
                         text = playbackState.episode.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = playbackState.episode.podcastTitle,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = playbackState.episode.podcastTitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -109,12 +111,12 @@ fun PlaybackBar(
                 val rightText = if (playbackState.isBuffering) "加载中…" else timeText
                 Text(
                     text = rightText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // Bottom progress bar
+            // Progress bar at bottom
             val progress = if (durationMs != null && durationMs > 0) {
                 (playbackState.positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
             } else {
@@ -124,9 +126,9 @@ fun PlaybackBar(
                 progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp),
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+                    .height(3.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
     }
