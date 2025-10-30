@@ -217,26 +217,44 @@ class SimpleRssParser {
     }
 
     private fun parseRfc2822Date(dateString: String): Instant? {
-        for (pattern in rfcPatterns) {
-            val match = pattern.regex.find(dateString) ?: continue
-            val groups = match.groupValues
+        // RFC 2822 format: "Wed, 27 Aug 2025 09:44:16 GMT"
+        // or: "27 Aug 2025 09:44:16 GMT" (without day of week)
 
-            val day = groups[1].toInt()
-            val monthName = groups[2]
-            val year = groups[3].toInt()
-            val hour = groups[4].toInt()
-            val minute = groups[5].toInt()
-            val second = groups[6].toInt()
-            val timezoneToken = pattern.timezoneGroup?.let { groups.getOrNull(it) }
+        return runCatching {
+            // Remove leading day of week if present (e.g., "Wed, ")
+            val cleaned = dateString.replace(Regex("^\\w+,\\s*"), "").trim()
 
-            val month = monthMap[monthName] ?: continue
+            // Split by whitespace
+            val parts = cleaned.split(Regex("\\s+"))
+            if (parts.size < 5) return null
+
+            // Parse: "27 Aug 2025 09:44:16 GMT" or "27 Aug 2025 09:44:16 +0800"
+            val day = parts[0].toIntOrNull() ?: return null
+            val monthName = parts[1]
+            val year = parts[2].toIntOrNull() ?: return null
+
+            // Parse time "09:44:16"
+            val timeParts = parts[3].split(":")
+            if (timeParts.size != 3) return null
+            val hour = timeParts[0].toIntOrNull() ?: return null
+            val minute = timeParts[1].toIntOrNull() ?: return null
+            val second = timeParts[2].toIntOrNull() ?: return null
+
+            // Parse timezone (optional, defaults to UTC)
+            val timezone = if (parts.size > 4) parts[4] else "UTC"
+
+            // Get month number
+            val month = monthMap[monthName] ?: return null
+
+            // Create LocalDateTime
             val localDateTime = LocalDateTime(year, month, day, hour, minute, second)
-            val timeZone = parseTimezoneToken(timezoneToken)
 
-            return runCatching { localDateTime.toInstant(timeZone) }.getOrNull()
-        }
+            // Parse timezone
+            val timeZone = parseTimezoneToken(timezone)
 
-        return null
+            // Convert to Instant
+            localDateTime.toInstant(timeZone)
+        }.getOrNull()
     }
 
     private fun parseTimezoneToken(token: String?): TimeZone {
@@ -409,16 +427,5 @@ class SimpleRssParser {
             "Jan" to 1, "Feb" to 2, "Mar" to 3, "Apr" to 4, "May" to 5, "Jun" to 6,
             "Jul" to 7, "Aug" to 8, "Sep" to 9, "Oct" to 10, "Nov" to 11, "Dec" to 12
         )
-
-        private val rfcPatterns = listOf(
-            RfcPattern(Regex("""\\w{3},\\s+(\\d{1,2})\\s+(\\w{3})\\s+(\\d{4})\\s+(\\d{2}):(\\d{2}):(\\d{2})\\s+(\\w{3})"""), 7),
-            RfcPattern(Regex("""\\w{3},\\s+(\\d{1,2})\\s+(\\w{3})\\s+(\\d{4})\\s+(\\d{2}):(\\d{2}):(\\d{2})\\s+([+-]\\d{4})"""), 7),
-            RfcPattern(Regex("""(\\d{1,2})\\s+(\\w{3})\\s+(\\d{4})\\s+(\\d{2}):(\\d{2}):(\\d{2})\\s+(\\w{3})"""), 7),
-            RfcPattern(Regex("""(\\d{1,2})\\s+(\\w{3})\\s+(\\d{4})\\s+(\\d{2}):(\\d{2}):(\\d{2})\\s+([+-]\\d{4})"""), 7),
-            RfcPattern(Regex("""\\w{3},\\s+(\\d{1,2})\\s+(\\w{3})\\s+(\\d{4})\\s+(\\d{2}):(\\d{2}):(\\d{2})""")),
-            RfcPattern(Regex("""(\\d{1,2})\\s+(\\w{3})\\s+(\\d{4})\\s+(\\d{2}):(\\d{2}):(\\d{2})""")),
-        )
     }
-
-    private data class RfcPattern(val regex: Regex, val timezoneGroup: Int? = null)
 }
