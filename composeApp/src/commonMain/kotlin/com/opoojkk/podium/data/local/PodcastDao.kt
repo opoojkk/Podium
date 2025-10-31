@@ -6,6 +6,7 @@ import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.PlaybackProgress
 import com.opoojkk.podium.data.model.Podcast
+import com.opoojkk.podium.data.util.ChapterSerializer
 import com.opoojkk.podium.db.PodcastDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -24,59 +25,59 @@ class PodcastDao(private val database: PodcastDatabase) {
             .mapToList(Dispatchers.Default)
 
     fun observeEpisodes(podcastId: String): Flow<List<Episode>> =
-        queries.selectEpisodesByPodcast(podcastId) { id, podcastId, podcastTitle, title, description, audioUrl, publishDate, duration, imageUrl ->
-            mapEpisode(id, podcastId, podcastTitle, title, description, audioUrl, publishDate, duration, imageUrl)
+        queries.selectEpisodesByPodcast(podcastId) { id, podcastId, podcastTitle, title, description, audioUrl, publishDate, duration, imageUrl, chapters ->
+            mapEpisode(id, podcastId, podcastTitle, title, description, audioUrl, publishDate, duration, imageUrl, chapters)
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
 
     fun observeEpisodesWithPodcast(podcastId: String): Flow<List<EpisodeWithPodcast>> =
-        queries.selectEpisodesWithPodcastByPodcastId(podcastId) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
-            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        queries.selectEpisodesWithPodcastByPodcastId(podcastId) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
 
     fun observeRecentEpisodes(limit: Int): Flow<List<EpisodeWithPodcast>> =
-        queries.selectRecentEpisodes(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
-            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        queries.selectRecentEpisodes(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
 
     fun observeRecentEpisodesUnique(limit: Int): Flow<List<EpisodeWithPodcast>> =
-        queries.selectRecentEpisodesUnique(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
-            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        queries.selectRecentEpisodesUnique(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
 
     fun observeAllRecentEpisodes(): Flow<List<EpisodeWithPodcast>> =
-        queries.selectAllRecentEpisodes { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
-            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        queries.selectAllRecentEpisodes { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
 
     fun observeRecentListening(limit: Int): Flow<List<EpisodeWithPodcast>> =
-        queries.selectRecentPlayback(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
-            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
+        queries.selectRecentPlayback(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
+            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
             .map { list -> list.map { it.first } }
 
     fun observeRecentListeningUnique(limit: Int): Flow<List<EpisodeWithPodcast>> =
-        queries.selectRecentPlaybackUnique(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
-            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
+        queries.selectRecentPlaybackUnique(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
+            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
             .map { list -> list.map { it.first } }
 
     fun observeAllRecentListening(): Flow<List<EpisodeWithPodcast>> =
-        queries.selectAllRecentPlayback { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
-            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
+        queries.selectAllRecentPlayback { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
+            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
@@ -100,7 +101,7 @@ class PodcastDao(private val database: PodcastDatabase) {
             val existingEpisodeIds = queries.selectExistingEpisodeIds(podcastId)
                 .executeAsList()
                 .toSet()
-            
+
             // Upsert all episodes from the feed (this will update existing ones and add new ones)
             episodes.forEach { episode ->
                 queries.upsertEpisode(
@@ -112,14 +113,15 @@ class PodcastDao(private val database: PodcastDatabase) {
                     publishDate = episode.publishDate.toEpochMilliseconds(),
                     duration = episode.duration,
                     imageUrl = episode.imageUrl,
+                    chapters = if (episode.chapters.isNotEmpty()) ChapterSerializer.serialize(episode.chapters) else null,
                 )
             }
-            
+
             // Only remove episodes that are no longer in the feed
             // This preserves episodes that might be temporarily missing from the feed
             val newEpisodeIds = episodes.map { it.id }.toSet()
             val episodesToRemove = existingEpisodeIds - newEpisodeIds
-            
+
             if (episodesToRemove.isNotEmpty()) {
                 episodesToRemove.forEach { episodeId ->
                     queries.removeEpisodeById(episodeId)
@@ -161,8 +163,8 @@ class PodcastDao(private val database: PodcastDatabase) {
             .executeAsList()
 
     suspend fun getEpisodeWithPodcast(episodeId: String): EpisodeWithPodcast? =
-        queries.selectEpisodeWithPodcastByEpisodeId(episodeId) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
-            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+        queries.selectEpisodeWithPodcastByEpisodeId(episodeId) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
         }
             .executeAsOneOrNull()
 
@@ -195,8 +197,8 @@ class PodcastDao(private val database: PodcastDatabase) {
     }
 
     suspend fun getLastPlayedEpisode(): Pair<Episode, PlaybackProgress>? {
-        return queries.selectRecentPlayback(1) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
-            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
+        return queries.selectRecentPlayback(1) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
+            mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
         }
             .executeAsOneOrNull()
             ?.let { (episodeWithPodcast, progress) ->
@@ -232,9 +234,9 @@ class PodcastDao(private val database: PodcastDatabase) {
 
     // Playlist-related methods
     fun observePlaylist(): Flow<List<com.opoojkk.podium.data.model.PlaylistItem>> =
-        queries.selectPlaylistEpisodes { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
+        queries.selectPlaylistEpisodes { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
             val (episodeWithPodcast, progress) = mapPlaybackWithEpisode(
-                id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl,
+                id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters,
                 podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed,
                 podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt,
                 isCompleted, addedToPlaylist
@@ -288,6 +290,7 @@ class PodcastDao(private val database: PodcastDatabase) {
         publishDate: Long,
         duration: Long?,
         imageUrl: String?,
+        chapters: String?,
     ): Episode = Episode(
         id = id,
         podcastId = podcastId,
@@ -298,6 +301,7 @@ class PodcastDao(private val database: PodcastDatabase) {
         publishDate = Instant.fromEpochMilliseconds(publishDate),
         duration = duration,
         imageUrl = imageUrl,
+        chapters = ChapterSerializer.deserialize(chapters),
     )
 
     private fun mapEpisodeWithPodcast(
@@ -309,6 +313,7 @@ class PodcastDao(private val database: PodcastDatabase) {
         publishDate: Long,
         duration: Long?,
         imageUrl: String?,
+        chapters: String?,
         podcastId_: String,
         podcastTitle: String,
         podcastDescription: String,
@@ -336,6 +341,7 @@ class PodcastDao(private val database: PodcastDatabase) {
             publishDate = Instant.fromEpochMilliseconds(publishDate),
             duration = duration,
             imageUrl = imageUrl,
+            chapters = ChapterSerializer.deserialize(chapters),
         )
         return EpisodeWithPodcast(episode, podcast)
     }
@@ -349,6 +355,7 @@ class PodcastDao(private val database: PodcastDatabase) {
         publishDate: Long,
         duration: Long?,
         imageUrl: String?,
+        chapters: String?,
         podcastId_: String,
         podcastTitle: String,
         podcastDescription: String,
@@ -381,6 +388,7 @@ class PodcastDao(private val database: PodcastDatabase) {
             publishDate = Instant.fromEpochMilliseconds(publishDate),
             duration = duration,
             imageUrl = imageUrl,
+            chapters = ChapterSerializer.deserialize(chapters),
         )
         val progress = PlaybackProgress(
             episodeId = id,

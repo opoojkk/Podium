@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +22,8 @@ import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.PlaybackState
 import com.opoojkk.podium.platform.BackHandler
 import com.opoojkk.podium.ui.components.DownloadButton
+import com.opoojkk.podium.ui.components.ChapterProgressBar
+import com.opoojkk.podium.ui.components.TimestampText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,24 +199,38 @@ fun PlayerDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (durationMs != null && durationMs > 0) {
-                    Slider(
-                        value = sliderPosition,
-                        onValueChange = { newValue ->
-                            isDragging = true
-                            sliderPosition = newValue
-                        },
-                        onValueChangeFinished = {
-                            onSeekTo(sliderPosition.toLong())
-                            isDragging = false
-                        },
-                        valueRange = 0f..durationMs.toFloat(),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    // 如果有章节信息，使用章节进度条，否则使用普通Slider
+                    if (episode.chapters.isNotEmpty()) {
+                        ChapterProgressBar(
+                            currentPositionMs = if (isDragging) sliderPosition.toLong() else playbackState.positionMs,
+                            durationMs = durationMs,
+                            chapters = episode.chapters,
+                            onSeekTo = { position ->
+                                sliderPosition = position.toFloat()
+                                onSeekTo(position)
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         )
-                    )
+                    } else {
+                        Slider(
+                            value = sliderPosition,
+                            onValueChange = { newValue ->
+                                isDragging = true
+                                sliderPosition = newValue
+                            },
+                            onValueChangeFinished = {
+                                onSeekTo(sliderPosition.toLong())
+                                isDragging = false
+                            },
+                            valueRange = 0f..durationMs.toFloat(),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        )
+                    }
                 } else {
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(),
@@ -255,6 +272,39 @@ fun PlayerDetailScreen(
                 onSleepTimerClick = onSleepTimerClick,
             )
 
+            // 章节列表（如果有）
+            if (episode.chapters.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "章节",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        episode.chapters.forEach { chapter ->
+                            ChapterItem(
+                                chapter = chapter,
+                                onClick = { onSeekTo(chapter.startTimeMs) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+
             // 剧集描述（如果有）
             if (episode.description.isNotBlank()) {
                 Spacer(modifier = Modifier.height(32.dp))
@@ -277,11 +327,15 @@ fun PlayerDetailScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        Text(
+                        TimestampText(
                             text = episode.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.5
+                            onTimestampClick = { timestampMs ->
+                                onSeekTo(timestampMs)
+                            },
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.5
+                            )
                         )
                     }
                 }
@@ -289,6 +343,45 @@ fun PlayerDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+private fun ChapterItem(
+    chapter: com.opoojkk.podium.data.model.Chapter,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 章节时间
+        Text(
+            text = formatTime(chapter.startTimeMs),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.widthIn(min = 50.dp)
+        )
+
+        // 章节标题
+        Text(
+            text = chapter.title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+
+        // 播放图标
+        Icon(
+            imageVector = Icons.Default.PlayArrow,
+            contentDescription = "播放章节",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

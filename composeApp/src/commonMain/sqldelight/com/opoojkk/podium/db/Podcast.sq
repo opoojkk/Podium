@@ -16,7 +16,8 @@ CREATE TABLE episodes (
     audioUrl TEXT NOT NULL,
     publishDate INTEGER NOT NULL,
     duration INTEGER,
-    imageUrl TEXT
+    imageUrl TEXT,
+    chapters TEXT
 );
 
 CREATE TABLE playback_state (
@@ -40,8 +41,8 @@ INSERT OR REPLACE INTO podcasts(id, title, description, artworkUrl, feedUrl, las
 VALUES (?, ?, ?, ?, ?, ?, ?);
 
 upsertEpisode:
-INSERT OR REPLACE INTO episodes(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO episodes(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 removeEpisodesForPodcast:
 DELETE FROM episodes WHERE podcastId = ?;
@@ -73,7 +74,7 @@ FROM podcasts
 ORDER BY lastUpdated DESC;
 
 selectEpisodesByPodcast:
-SELECT e.id, e.podcastId, p.title AS podcastTitle, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl
+SELECT e.id, e.podcastId, p.title AS podcastTitle, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters
 FROM episodes e
 JOIN podcasts p ON e.podcastId = p.id
 WHERE e.podcastId = ?
@@ -81,7 +82,7 @@ ORDER BY e.publishDate DESC;
 
 -- 获取特定播客的所有单集（带完整Podcast信息）
 selectEpisodesWithPodcastByPodcastId:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
 FROM episodes e
@@ -90,7 +91,7 @@ WHERE e.podcastId = ?
 ORDER BY e.publishDate DESC;
 
 selectEpisodeWithPodcastByEpisodeId:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
 FROM episodes e
@@ -98,7 +99,7 @@ JOIN podcasts p ON e.podcastId = p.id
 WHERE e.id = ?;
 
 selectRecentEpisodes:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
 FROM episodes e
@@ -108,7 +109,7 @@ LIMIT ?;
 
 -- 最近更新的单集，每个播客只取最新的一集
 selectRecentEpisodesUnique:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
 FROM episodes e
@@ -125,7 +126,7 @@ LIMIT ?;
 
 -- 所有最近更新的单集（用于查看更多页面）
 selectAllRecentEpisodes:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload
 FROM episodes e
@@ -133,7 +134,7 @@ JOIN podcasts p ON e.podcastId = p.id
 ORDER BY e.publishDate DESC;
 
 selectRecentPlayback:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
        ps.positionMs, ps.durationMs, ps.updatedAt, ps.isCompleted, ps.addedToPlaylist
@@ -145,7 +146,7 @@ LIMIT ?;
 
 -- 最近收听的单集，每个播客只取最近播放的一集
 selectRecentPlaybackUnique:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
        ps.positionMs, ps.durationMs, ps.updatedAt, ps.isCompleted, ps.addedToPlaylist
@@ -165,7 +166,7 @@ LIMIT ?;
 
 -- 所有最近收听的单集（用于查看更多页面）
 selectAllRecentPlayback:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
        ps.positionMs, ps.durationMs, ps.updatedAt, ps.isCompleted, ps.addedToPlaylist
@@ -182,7 +183,7 @@ SELECT episodeId, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylis
 
 -- Playlist queries: get all episodes in playlist (not completed)
 selectPlaylistEpisodes:
-SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl,
+SELECT e.id, e.podcastId, e.title, e.description, e.audioUrl, e.publishDate, e.duration, e.imageUrl, e.chapters,
        p.id AS podcastId_, p.title AS podcastTitle, p.description AS podcastDescription, p.artworkUrl AS podcastArtwork,
        p.feedUrl AS podcastFeed, p.lastUpdated AS podcastLastUpdated, p.autoDownload AS podcastAutoDownload,
        ps.positionMs, ps.durationMs, ps.updatedAt, ps.isCompleted, ps.addedToPlaylist

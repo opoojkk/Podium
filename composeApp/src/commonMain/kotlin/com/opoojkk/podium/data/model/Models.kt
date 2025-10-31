@@ -28,6 +28,17 @@ data class Episode(
     val publishDate: Instant,
     val duration: Long?,
     val imageUrl: String?,
+    val chapters: List<Chapter> = emptyList(),
+)
+
+/**
+ * Chapter information for podcast episodes.
+ */
+data class Chapter(
+    val startTimeMs: Long,
+    val title: String,
+    val imageUrl: String? = null,
+    val url: String? = null,
 )
 
 /**

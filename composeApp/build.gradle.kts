@@ -136,6 +136,7 @@ sqldelight {
         create("PodcastDatabase") {
             packageName.set("com.opoojkk.podium.db")
             schemaOutputDirectory.set(file("src/commonMain/sqldelight"))
+            version = 3
         }
     }
 }

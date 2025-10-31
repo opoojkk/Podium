@@ -1,0 +1,4 @@
+-- Migration: Add chapters column to episodes table
+-- This migration adds support for podcast episode chapters
+
+ALTER TABLE episodes ADD COLUMN chapters TEXT;

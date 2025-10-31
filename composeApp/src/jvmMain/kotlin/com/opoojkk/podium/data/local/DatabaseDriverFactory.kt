@@ -24,7 +24,7 @@ actual class DatabaseDriverFactory {
 
     private fun migrateIfNeeded(driver: SqlDriver) {
         val currentVersion = getCurrentVersion(driver)
-        val targetVersion = 2 // 当前版本号
+        val targetVersion = 3 // 当前版本号
 
         if (currentVersion < targetVersion) {
             println("🔄 Migrating database from version $currentVersion to $targetVersion")
@@ -34,6 +34,7 @@ actual class DatabaseDriverFactory {
                 when (version) {
                     0 -> migrateToV1(driver)
                     1 -> migrateToV2(driver)
+                    2 -> migrateToV3(driver)
                 }
             }
 
@@ -111,6 +112,41 @@ actual class DatabaseDriverFactory {
             }
         } catch (e: Exception) {
             println("  ✗ Error migrating to V2: ${e.message}")
+            throw e
+        }
+    }
+
+    // 迁移到版本3：添加 episodes.chapters 字段
+    private fun migrateToV3(driver: SqlDriver) {
+        println("  → Migrating to V3: Adding chapters to episodes...")
+
+        try {
+            // 检查字段是否已存在
+            val hasColumn = driver.executeQuery(
+                identifier = null,
+                sql = "SELECT COUNT(*) FROM pragma_table_info('episodes') WHERE name='chapters'",
+                mapper = { cursor ->
+                    val count = cursor.getLong(0)?.toInt() ?: 0
+                    QueryResult.Value(count > 0)
+                },
+                parameters = 0,
+                binders = null
+            ).value ?: false
+
+            if (!hasColumn) {
+                // 添加 chapters 字段
+                driver.execute(
+                    identifier = null,
+                    sql = "ALTER TABLE episodes ADD COLUMN chapters TEXT",
+                    parameters = 0,
+                    binders = null
+                )
+                println("  ✓ Added chapters column to episodes")
+            } else {
+                println("  ✓ chapters column already exists")
+            }
+        } catch (e: Exception) {
+            println("  ✗ Error migrating to V3: ${e.message}")
             throw e
         }
     }
