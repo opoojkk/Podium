@@ -71,19 +71,39 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                                 println("❌ Android Player: Failed to set playback speed on prepared: ${e.message}")
                             }
                         }
-                        player.seekTo(startPositionMs.toInt())
-                        player.start()
-						val newState = PlaybackState(
-                            episode = episode,
-                            positionMs = player.currentPosition.toLong(),
-                            isPlaying = true,
-							durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 },
-							isBuffering = false,
-							playbackSpeed = currentPlaybackSpeed,
-                        )
-                        _state.value = newState
-                        updateNotification(newState)
-                        startPositionUpdates()
+
+                        // 如果需要seek，先seek再开始播放，并保持缓冲状态
+                        // onSeekCompleteListener 会在 seek 完成后更新状态
+                        if (startPositionMs > 0) {
+                            wasPlayingBeforeSeek = true  // 标记准备播放
+                            player.seekTo(startPositionMs.toInt())
+                            player.start()
+                            // 保持 isBuffering = true，等待 seek 完成
+                            val newState = PlaybackState(
+                                episode = episode,
+                                positionMs = startPositionMs,
+                                isPlaying = true,
+                                durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 },
+                                isBuffering = true,  // 保持缓冲状态直到 seek 完成
+                                playbackSpeed = currentPlaybackSpeed,
+                            )
+                            _state.value = newState
+                            updateNotification(newState)
+                        } else {
+                            // 从头开始播放，不需要 seek
+                            player.start()
+                            val newState = PlaybackState(
+                                episode = episode,
+                                positionMs = 0L,
+                                isPlaying = true,
+                                durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 },
+                                isBuffering = false,
+                                playbackSpeed = currentPlaybackSpeed,
+                            )
+                            _state.value = newState
+                            updateNotification(newState)
+                            startPositionUpdates()
+                        }
                     }
 					setOnInfoListener { mp, what, extra ->
 						when (what) {
@@ -91,7 +111,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 								val newState = PlaybackState(
 									episode = currentEpisode,
 									positionMs = mp.currentPosition.toLong(),
-									isPlaying = false,
+									isPlaying = mp.isPlaying,  // 保持实际播放状态，不要强制设为false
 									durationMs = runCatching { mp.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
 									isBuffering = true,
 									playbackSpeed = currentPlaybackSpeed,
@@ -126,10 +146,13 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 						_state.value = newState
 						updateNotification(newState)
 
-						// 如果 seek 之前在播放，恢复播放
-						if (wasPlayingBeforeSeek && !mp.isPlaying) {
-							mp.start()
+						// 如果 seek 之前在播放，确保播放和位置更新都已启动
+						if (wasPlayingBeforeSeek) {
+							if (!mp.isPlaying) {
+								mp.start()
+							}
 							startPositionUpdates()
+							wasPlayingBeforeSeek = false  // 重置标志
 						}
 					}
                     setOnCompletionListener {

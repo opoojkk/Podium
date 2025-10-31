@@ -155,7 +155,8 @@ private fun PlayPauseButton(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
         ),
-        enabled = !isBuffering,
+        // 缓冲时仍允许点击，以便用户可以暂停
+        enabled = true,
     ) {
         if (isBuffering) {
             CircularProgressIndicator(
