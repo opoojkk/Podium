@@ -9,7 +9,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 actual fun createFileOperations(context: PlatformContext): FileOperations {
-    return AndroidFileOperations(context.androidContext)
+    return AndroidFileOperations(context.context)
 }
 
 class AndroidFileOperations(private val context: Context) : FileOperations {
