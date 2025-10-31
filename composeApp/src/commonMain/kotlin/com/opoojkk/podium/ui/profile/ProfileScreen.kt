@@ -66,8 +66,8 @@ fun ProfileScreen(
         )
         
         ListItem(
-            headlineContent = { Text("导入订阅 (OPML)") },
-            supportingContent = { Text("支持从其他客户端导入 RSS 列表") },
+            headlineContent = { Text("导入订阅") },
+            supportingContent = { Text("支持 OPML 和 JSON 格式") },
             leadingContent = { Icon(Icons.Default.FileUpload, contentDescription = null) },
             trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
             modifier = Modifier
@@ -76,7 +76,7 @@ fun ProfileScreen(
         )
         ListItem(
             headlineContent = { Text("导出订阅") },
-            supportingContent = { Text("生成 OPML 文件，方便备份") },
+            supportingContent = { Text("支持 OPML 和 JSON 格式") },
             leadingContent = { Icon(Icons.Default.Podcasts, contentDescription = null) },
             trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
             modifier = Modifier

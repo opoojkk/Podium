@@ -79,6 +79,7 @@ fun PodiumApp(
     val exportInProgress = remember { mutableStateOf(false) }
     val exportContent = remember { mutableStateOf<String?>(null) }
     val exportErrorMessage = remember { mutableStateOf<String?>(null) }
+    val exportFormat = remember { mutableStateOf(com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML) }
 
     val platformContext = remember { environment.platformContext }
 
@@ -102,9 +103,9 @@ fun PodiumApp(
         exportErrorMessage.value = null
         exportContent.value = null
         scope.launch {
-            val result = runCatching { controller.exportOpml() }
-            result.onSuccess { opml ->
-                exportContent.value = opml
+            val result = runCatching { controller.exportSubscriptions(exportFormat.value) }
+            result.onSuccess { content ->
+                exportContent.value = content
             }.onFailure { throwable ->
                 exportContent.value = null
                 exportErrorMessage.value = throwable.message ?: "导出失败，请稍后重试。"
@@ -123,6 +124,12 @@ fun PodiumApp(
 
     val handleExportClick = {
         showExportDialog.value = true
+        exportFormat.value = com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML
+        loadExportContent()
+    }
+
+    val handleFormatChange: (com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat) -> Unit = { format ->
+        exportFormat.value = format
         loadExportContent()
     }
 
@@ -133,7 +140,7 @@ fun PodiumApp(
             importResultState.value = null
             importErrorMessage.value = null
             scope.launch {
-                val result = runCatching { controller.importOpml(content) }
+                val result = runCatching { controller.importSubscriptions(content) }
                 result.onSuccess { importResultState.value = it }
                     .onFailure { throwable ->
                         importErrorMessage.value = throwable.message ?: "导入失败，请稍后重试。"
@@ -282,6 +289,8 @@ fun PodiumApp(
                 isProcessing = exportInProgress.value,
                 opmlContent = exportContent.value,
                 errorMessage = exportErrorMessage.value,
+                selectedFormat = exportFormat.value,
+                onFormatChange = handleFormatChange,
                 onRetry = loadExportContent,
                 onDismiss = handleExportDismiss,
                 onCopy = copyOpmlToClipboard,

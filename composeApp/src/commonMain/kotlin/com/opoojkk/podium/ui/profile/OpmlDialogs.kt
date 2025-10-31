@@ -14,6 +14,9 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -29,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.repository.PodcastRepository
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ImportOpmlDialog(
     opmlText: String,
@@ -41,14 +45,14 @@ fun ImportOpmlDialog(
 ) {
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Text("导入订阅 (OPML)") },
+        title = { Text("导入订阅") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = "粘贴或输入 OPML 文本，应用将尝试解析其中的 RSS 订阅。",
+                    text = "粘贴或输入订阅文件内容。支持 OPML 和 JSON 格式。",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 OutlinedTextField(
@@ -57,7 +61,7 @@ fun ImportOpmlDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 160.dp),
-                    label = { Text("OPML 内容") },
+                    label = { Text("订阅内容 (OPML/JSON)") },
                     singleLine = false,
                     maxLines = 12,
                 )
@@ -105,25 +109,68 @@ fun ImportOpmlDialog(
     )
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ExportOpmlDialog(
     isProcessing: Boolean,
     opmlContent: String?,
     errorMessage: String?,
+    selectedFormat: PodcastRepository.ExportFormat,
+    onFormatChange: (PodcastRepository.ExportFormat) -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
     onCopy: (String) -> Boolean,
 ) {
     var copyFeedback by remember(opmlContent) { mutableStateOf<CopyFeedback?>(null) }
+    var formatMenuExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Text("导出订阅 (OPML)") },
+        title = { Text("导出订阅") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                // Format selector
+                ExposedDropdownMenuBox(
+                    expanded = formatMenuExpanded,
+                    onExpandedChange = { formatMenuExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = when (selectedFormat) {
+                            PodcastRepository.ExportFormat.OPML -> "OPML"
+                            PodcastRepository.ExportFormat.JSON -> "JSON"
+                        },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("导出格式") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = formatMenuExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable, true),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = formatMenuExpanded,
+                        onDismissRequest = { formatMenuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("OPML (标准格式)") },
+                            onClick = {
+                                onFormatChange(PodcastRepository.ExportFormat.OPML)
+                                formatMenuExpanded = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("JSON (包含更多元数据)") },
+                            onClick = {
+                                onFormatChange(PodcastRepository.ExportFormat.JSON)
+                                formatMenuExpanded = false
+                            },
+                        )
+                    }
+                }
+
                 when {
                     isProcessing -> {
                         Row(
@@ -135,7 +182,7 @@ fun ExportOpmlDialog(
                                 strokeWidth = 2.dp,
                             )
                             Text(
-                                text = "正在生成 OPML …",
+                                text = "正在生成导出文件…",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

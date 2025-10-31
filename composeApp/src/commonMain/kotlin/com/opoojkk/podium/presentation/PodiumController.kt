@@ -347,7 +347,13 @@ class PodiumController(
     suspend fun importOpml(opml: String): PodcastRepository.OpmlImportResult =
         repository.importOpml(opml)
 
+    suspend fun importSubscriptions(content: String): PodcastRepository.OpmlImportResult =
+        repository.importSubscriptions(content)
+
     suspend fun exportOpml(): String = repository.exportOpml()
+
+    suspend fun exportSubscriptions(format: PodcastRepository.ExportFormat): String =
+        repository.exportSubscriptions(format)
 
     fun deleteSubscription(podcastId: String) {
         scope.launch {
