@@ -204,7 +204,7 @@ class MediaNotificationManager(
     }
 
     /**
-     * 创建默认图标
+     * 创建默认图标（播客麦克风图标）
      */
     private fun createDefaultIcon(): Image {
         // 创建一个简单的彩色方块作为默认图标
@@ -218,23 +218,51 @@ class MediaNotificationManager(
         val image = java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB)
         val g = image.createGraphics()
 
-        // 绘制一个圆形图标
-        g.color = java.awt.Color(0, 122, 255) // iOS蓝色
-        g.fillRoundRect(0, 0, size, size, size / 4, size / 4)
+        // 启用抗锯齿
+        g.setRenderingHint(
+            java.awt.RenderingHints.KEY_ANTIALIASING,
+            java.awt.RenderingHints.VALUE_ANTIALIAS_ON
+        )
+        g.setRenderingHint(
+            java.awt.RenderingHints.KEY_RENDERING,
+            java.awt.RenderingHints.VALUE_RENDER_QUALITY
+        )
 
-        // 绘制一个播放三角形
+        // Material 主题色 - 使用渐变效果
+        val gradient = java.awt.GradientPaint(
+            0f, 0f, java.awt.Color(98, 0, 234),  // Material Purple 700
+            size.toFloat(), size.toFloat(), java.awt.Color(103, 58, 183)  // Material Deep Purple 500
+        )
+        g.paint = gradient
+
+        // 绘制圆角矩形背景
+        g.fillRoundRect(0, 0, size, size, size / 3, size / 3)
+
+        // 绘制播客麦克风图标
         g.color = java.awt.Color.WHITE
-        val margin = size / 4
-        val trianglePoints = intArrayOf(
-            margin, margin,
-            margin, size - margin,
-            size - margin, size / 2
-        )
-        g.fillPolygon(
-            intArrayOf(trianglePoints[0], trianglePoints[2], trianglePoints[4]),
-            intArrayOf(trianglePoints[1], trianglePoints[3], trianglePoints[5]),
-            3
-        )
+
+        val centerX = size / 2
+        val centerY = size / 2
+        val iconSize = size / 2
+
+        // 麦克风主体（椭圆）
+        val micWidth = iconSize / 3
+        val micHeight = iconSize / 2
+        val micX = centerX - micWidth / 2
+        val micY = centerY - micHeight / 2 - iconSize / 6
+        g.fillRoundRect(micX, micY, micWidth, micHeight, micWidth / 2, micWidth / 2)
+
+        // 麦克风支架（U形）
+        g.stroke = java.awt.BasicStroke(size / 12f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND)
+        val arcWidth = iconSize / 2
+        val arcHeight = iconSize / 2
+        val arcX = centerX - arcWidth / 2
+        val arcY = centerY - iconSize / 6
+        g.drawArc(arcX, arcY, arcWidth, arcHeight, 0, -180)
+
+        // 麦克风底座
+        val baseY = centerY + iconSize / 3
+        g.fillRect(centerX - iconSize / 6, baseY, iconSize / 3, size / 12)
 
         g.dispose()
         return image

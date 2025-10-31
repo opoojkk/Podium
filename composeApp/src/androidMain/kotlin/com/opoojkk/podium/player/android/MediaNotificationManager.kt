@@ -57,9 +57,13 @@ class MediaNotificationManager(
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "显示正在播放的播客节目"
+                description = "显示正在播放的播客节目，包括播放控制和进度信息"
                 setShowBadge(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                // 禁用通知声音和震动
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -141,10 +145,10 @@ class MediaNotificationManager(
         val stopIntent = createActionIntent(ACTION_STOP)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_media_play) // 使用系统默认图标，你可以替换为自己的
+            .setSmallIcon(context.resources.getIdentifier("ic_notification_small", "drawable", context.packageName))
             .setContentTitle(episode.title)
             .setContentText(episode.podcastTitle)
-            .setSubText("播客")
+            .setSubText("Podium")
             .setLargeIcon(artwork)
             .setContentIntent(openAppPendingIntent)
             .setDeleteIntent(stopIntent)
@@ -153,10 +157,14 @@ class MediaNotificationManager(
             .setOngoing(isPlaying)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            // 设置通知颜色为Material主题色
+            .setColorized(false)
 
-        // 添加进度条
-        if (durationMs != null && durationMs > 0) {
-            val progress = (positionMs * 100 / durationMs).toInt()
+        // 添加进度条（不确定模式用于加载状态）
+        if (isBuffering) {
+            builder.setProgress(100, 0, true)  // 不确定进度
+        } else if (durationMs != null && durationMs > 0) {
+            val progress = (positionMs * 100 / durationMs).toInt().coerceIn(0, 100)
             builder.setProgress(100, progress, false)
         }
 
@@ -168,23 +176,26 @@ class MediaNotificationManager(
         when {
             isBuffering -> {
                 // 加载状态：显示加载图标
-                playPauseIcon = android.R.drawable.ic_popup_sync
+                playPauseIcon = context.resources.getIdentifier("ic_notification_loading", "drawable", context.packageName)
                 playPauseText = "加载中"
             }
             isPlaying -> {
-                playPauseIcon = android.R.drawable.ic_media_pause
+                playPauseIcon = context.resources.getIdentifier("ic_notification_pause", "drawable", context.packageName)
                 playPauseText = "暂停"
             }
             else -> {
-                playPauseIcon = android.R.drawable.ic_media_play
+                playPauseIcon = context.resources.getIdentifier("ic_notification_play", "drawable", context.packageName)
                 playPauseText = "播放"
             }
         }
 
+        val rewindIcon = context.resources.getIdentifier("ic_notification_rewind", "drawable", context.packageName)
+        val forwardIcon = context.resources.getIdentifier("ic_notification_forward", "drawable", context.packageName)
+
         builder
             .addAction(
-                android.R.drawable.ic_media_rew,
-                "快退",
+                rewindIcon,
+                "快退 15 秒",
                 seekBackwardIntent
             )
             .addAction(
@@ -193,8 +204,8 @@ class MediaNotificationManager(
                 playPauseIntent
             )
             .addAction(
-                android.R.drawable.ic_media_ff,
-                "快进",
+                forwardIcon,
+                "快进 30 秒",
                 seekForwardIntent
             )
 
