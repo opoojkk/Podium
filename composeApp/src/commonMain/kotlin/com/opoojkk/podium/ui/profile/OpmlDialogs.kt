@@ -42,6 +42,7 @@ fun ImportOpmlDialog(
     errorMessage: String?,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    onPickFile: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -55,6 +56,17 @@ fun ImportOpmlDialog(
                     text = "粘贴或输入订阅文件内容。支持 OPML 和 JSON 格式。",
                     style = MaterialTheme.typography.bodyMedium,
                 )
+
+                // File picker button (if available)
+                if (onPickFile != null) {
+                    TextButton(
+                        onClick = onPickFile,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("从文件选择")
+                    }
+                }
+
                 OutlinedTextField(
                     value = opmlText,
                     onValueChange = onOpmlTextChange,
@@ -120,6 +132,7 @@ fun ExportOpmlDialog(
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
     onCopy: (String) -> Boolean,
+    onSaveToFile: ((String) -> Unit)? = null,
 ) {
     var copyFeedback by remember(opmlContent) { mutableStateOf<CopyFeedback?>(null) }
     var formatMenuExpanded by remember { mutableStateOf(false) }
@@ -251,6 +264,17 @@ fun ExportOpmlDialog(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (!isProcessing && errorMessage == null && opmlContent != null) {
+                    // Save to file button (if available)
+                    if (onSaveToFile != null) {
+                        TextButton(
+                            onClick = { onSaveToFile(opmlContent) },
+                            modifier = Modifier.padding(end = 4.dp),
+                        ) {
+                            Text("保存到文件")
+                        }
+                    }
+
+                    // Copy button
                     TextButton(
                         onClick = {
                             val success = onCopy(opmlContent)

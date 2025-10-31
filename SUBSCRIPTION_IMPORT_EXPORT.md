@@ -11,36 +11,60 @@ Podium 现在支持多种标准格式的订阅导入和导出功能，包括：
 
 ### 导入功能
 
-1. **自动格式检测** - 自动识别 OPML 或 JSON 格式
-2. **批量导入** - 一次性导入多个订阅
-3. **重复检测** - 自动跳过已订阅的播客
-4. **错误处理** - 显示导入失败的订阅及原因
-5. **元数据保留** - JSON 格式可以保留自动下载等设置
+1. **文件选择器** - 直接从文件系统选择文件（JVM平台）
+2. **自动格式检测** - 自动识别 OPML 或 JSON 格式
+3. **批量导入** - 一次性导入多个订阅
+4. **重复检测** - 自动跳过已订阅的播客
+5. **错误处理** - 显示导入失败的订阅及原因
+6. **元数据保留** - JSON 格式可以保留自动下载等设置
 
 ### 导出功能
 
-1. **格式选择** - 可选择 OPML 或 JSON 格式
-2. **完整元数据** - 包含标题、描述、封面等信息
-3. **标准兼容** - OPML 格式与其他播客应用兼容
-4. **即时切换** - 可以在对话框中即时切换导出格式
+1. **文件保存** - 直接保存到文件系统（JVM平台）
+2. **格式选择** - 可选择 OPML 或 JSON 格式
+3. **完整元数据** - 包含标题、描述、封面等信息
+4. **标准兼容** - OPML 格式与其他播客应用兼容
+5. **即时切换** - 可以在对话框中即时切换导出格式
+6. **剪贴板支持** - 可复制到剪贴板手动保存
 
 ## 使用方法
 
 ### 导入订阅
 
+#### 方式一：从文件导入（推荐 - JVM平台）
 1. 打开"我的"标签页
 2. 点击"导入订阅"
-3. 粘贴 OPML 或 JSON 内容
+3. 点击"从文件选择"按钮
+4. 在文件选择器中选择 .opml、.xml 或 .json 文件
+5. 文件内容将自动加载到文本框
+6. 点击"导入"按钮
+7. 查看导入结果统计
+
+#### 方式二：粘贴内容导入（所有平台）
+1. 打开"我的"标签页
+2. 点击"导入订阅"
+3. 将 OPML 或 JSON 内容粘贴到文本框
 4. 点击"导入"按钮
-5. 查看导入结果
+5. 查看导入结果统计
 
 ### 导出订阅
 
+#### 方式一：保存到文件（推荐 - JVM平台）
 1. 打开"我的"标签页
 2. 点击"导出订阅"
-3. 选择导出格式（OPML 或 JSON）
-4. 复制生成的内容
-5. 保存到文件或分享
+3. 在格式下拉菜单中选择 OPML 或 JSON
+4. 等待内容生成
+5. 点击"保存到文件"按钮
+6. 在文件保存对话框中选择保存位置
+7. 文件将自动命名为 `podium_subscriptions.opml` 或 `podium_subscriptions.json`
+
+#### 方式二：复制内容（所有平台）
+1. 打开"我的"标签页
+2. 点击"导出订阅"
+3. 在格式下拉菜单中选择 OPML 或 JSON
+4. 等待内容生成
+5. 点击"复制"按钮将内容复制到剪贴板
+6. 手动创建文件并粘贴内容，或分享给其他应用
 
 ## 格式说明
 
@@ -126,8 +150,14 @@ data/repository/
 presentation/
 └── PodiumController.kt      - 控制器（已集成导入导出）
 
+platform/
+├── FileOperations.kt        - 跨平台文件操作接口
+├── FileOperations.jvm.kt    - JVM 平台实现
+├── FileOperations.android.kt - Android 平台实现（待完善）
+└── FileOperations.ios.kt    - iOS 平台实现（待完善）
+
 ui/profile/
-├── OpmlDialogs.kt          - 导入导出对话框（已更新）
+├── OpmlDialogs.kt          - 导入导出对话框（已更新，包含文件按钮）
 └── ProfileScreen.kt        - 个人页面（已更新）
 ```
 
@@ -156,6 +186,28 @@ class SubscriptionImporter {
 }
 ```
 
+#### FileOperations
+
+跨平台文件操作接口：
+
+```kotlin
+interface FileOperations {
+    suspend fun pickFileToImport(): String?
+    suspend fun saveToFile(
+        content: String,
+        suggestedFileName: String,
+        mimeType: String = "text/plain"
+    ): Boolean
+}
+
+expect fun createFileOperations(context: PlatformContext): FileOperations
+```
+
+**平台实现状态：**
+- ✅ **JVM**: 完整实现，使用 `FileDialog` 提供原生文件选择器
+- ⚠️ **Android**: 基础实现，需要 Activity Result API 集成
+- ⚠️ **iOS**: 基础实现，需要 `UIDocumentPickerViewController` 集成
+
 ## 向后兼容
 
 为了保持向后兼容，保留了原有的方法：
@@ -170,10 +222,28 @@ suspend fun importSubscriptions(content: String): OpmlImportResult
 suspend fun exportSubscriptions(format: ExportFormat): String
 ```
 
+## 平台支持
+
+| 功能 | JVM | Android | iOS |
+|------|-----|---------|-----|
+| 文件选择器导入 | ✅ | ⚠️ | ⚠️ |
+| 文件保存 | ✅ | ⚠️ | ⚠️ |
+| 粘贴内容导入 | ✅ | ✅ | ✅ |
+| 复制到剪贴板 | ✅ | ✅ | ✅ |
+| OPML 格式 | ✅ | ✅ | ✅ |
+| JSON 格式 | ✅ | ✅ | ✅ |
+
+**说明：**
+- ✅ = 完整实现并测试
+- ⚠️ = 基础实现，需要进一步集成平台特定 API
+- ❌ = 暂不支持
+
 ## 未来增强
 
-- [ ] 文件选择器支持（直接从文件导入）
-- [ ] 文件保存支持（直接保存到文件）
+- [ ] 完善 Android 平台的文件选择器（使用 Activity Result API）
+- [ ] 完善 iOS 平台的文件选择器（使用 UIDocumentPickerViewController）
 - [ ] 更多格式支持（如 Podcast Index）
 - [ ] 导入进度显示
 - [ ] 批量编辑导入的订阅
+- [ ] 自动备份到云端
+- [ ] 定期自动导出

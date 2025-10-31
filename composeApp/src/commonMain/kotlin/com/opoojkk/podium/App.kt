@@ -82,6 +82,7 @@ fun PodiumApp(
     val exportFormat = remember { mutableStateOf(com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML) }
 
     val platformContext = remember { environment.platformContext }
+    val fileOperations = remember { environment.fileOperations }
 
     val homeState by controller.homeState.collectAsState()
     val subscriptionsState by controller.subscriptionsState.collectAsState()
@@ -131,6 +132,34 @@ fun PodiumApp(
     val handleFormatChange: (com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat) -> Unit = { format ->
         exportFormat.value = format
         loadExportContent()
+    }
+
+    val handlePickFile: () -> Unit = {
+        scope.launch {
+            val content = fileOperations.pickFileToImport()
+            if (content != null) {
+                importText.value = content
+            }
+        }
+    }
+
+    val handleSaveToFile: (String) -> Unit = { content ->
+        scope.launch {
+            val fileName = when (exportFormat.value) {
+                com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML -> "podium_subscriptions.opml"
+                com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.JSON -> "podium_subscriptions.json"
+            }
+            val mimeType = when (exportFormat.value) {
+                com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML -> "text/xml"
+                com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.JSON -> "application/json"
+            }
+            val success = fileOperations.saveToFile(content, fileName, mimeType)
+            if (success) {
+                println("✅ File saved successfully")
+            } else {
+                println("❌ Failed to save file")
+            }
+        }
     }
 
     val handleImportConfirm: () -> Unit = {
@@ -282,6 +311,7 @@ fun PodiumApp(
                 errorMessage = importErrorMessage.value,
                 onConfirm = handleImportConfirm,
                 onDismiss = handleImportDismiss,
+                onPickFile = handlePickFile,
             )
         }
         if (showExportDialog.value) {
@@ -294,6 +324,7 @@ fun PodiumApp(
                 onRetry = loadExportContent,
                 onDismiss = handleExportDismiss,
                 onCopy = copyOpmlToClipboard,
+                onSaveToFile = handleSaveToFile,
             )
         }
     }
