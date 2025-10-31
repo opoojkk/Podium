@@ -1,11 +1,16 @@
 package com.opoojkk.podium.platform
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 
 actual fun createFileOperations(context: PlatformContext): FileOperations {
@@ -26,10 +31,87 @@ class AndroidFileOperations(private val context: Context) : FileOperations {
         suggestedFileName: String,
         mimeType: String
     ): Boolean = withContext(Dispatchers.IO) {
-        // Note: This requires launching an activity with ActivityResultContract
-        // For now, return false as this needs UI integration
-        // The proper implementation would use Activity Result API
-        false
+        try {
+            val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ (API 29+): Use MediaStore to save to Downloads
+                saveToMediaStore(content, suggestedFileName, mimeType)
+            } else {
+                // Android 9 and below: Use legacy Downloads directory
+                saveToLegacyDownloads(content, suggestedFileName)
+            }
+
+            // Show toast notification
+            if (success) {
+                showToast(context, "文件已保存到下载文件夹: $suggestedFileName")
+            } else {
+                showToast(context, "保存文件失败，请重试")
+            }
+
+            success
+        } catch (e: Exception) {
+            println("❌ Error saving file to Downloads: ${e.message}")
+            e.printStackTrace()
+            showToast(context, "保存文件时出错: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Save file using MediaStore API (Android 10+)
+     * No permissions required for Downloads directory
+     */
+    private fun saveToMediaStore(content: String, fileName: String, mimeType: String): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+
+        try {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+
+            val uri = context.contentResolver.insert(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                contentValues
+            ) ?: return false
+
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(content.toByteArray())
+                outputStream.flush()
+            }
+
+            println("✅ File saved successfully to Downloads: $fileName")
+            return true
+        } catch (e: Exception) {
+            println("❌ MediaStore save error: ${e.message}")
+            e.printStackTrace()
+            return false
+        }
+    }
+
+    /**
+     * Save file to legacy Downloads directory (Android 9 and below)
+     * No permissions required for public Downloads directory
+     */
+    private fun saveToLegacyDownloads(content: String, fileName: String): Boolean {
+        try {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+
+            // Create Downloads directory if it doesn't exist
+            if (!downloadsDir.exists()) {
+                downloadsDir.mkdirs()
+            }
+
+            val file = File(downloadsDir, fileName)
+            file.writeText(content)
+
+            println("✅ File saved successfully to Downloads: ${file.absolutePath}")
+            return true
+        } catch (e: Exception) {
+            println("❌ Legacy save error: ${e.message}")
+            e.printStackTrace()
+            return false
+        }
     }
 
     /**

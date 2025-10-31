@@ -49,13 +49,14 @@ Podium 现在支持多种标准格式的订阅导入和导出功能，包括：
 
 ### 导出订阅
 
-#### 方式一：保存到文件（推荐 - JVM平台）
+#### 方式一：保存到文件（推荐 - JVM/Android）
 1. 打开"我的"标签页
 2. 点击"导出订阅"
 3. 在格式下拉菜单中选择 OPML 或 JSON
 4. 等待内容生成
 5. 点击"保存到文件"按钮
-6. 在文件保存对话框中选择保存位置
+6. **JVM**: 在文件保存对话框中选择保存位置
+   **Android**: 文件自动保存到下载文件夹，显示 Toast 提示
 7. 文件将自动命名为 `podium_subscriptions.opml` 或 `podium_subscriptions.json`
 
 #### 方式二：复制内容（所有平台）
@@ -205,7 +206,10 @@ expect fun createFileOperations(context: PlatformContext): FileOperations
 
 **平台实现状态：**
 - ✅ **JVM**: 完整实现，使用 `FileDialog` 提供原生文件选择器
-- ⚠️ **Android**: 基础实现，需要 Activity Result API 集成
+- ✅ **Android**: 保存到下载文件夹实现（无需权限）
+  - Android 10+: 使用 `MediaStore` API
+  - Android 9-: 使用传统 Downloads 目录
+  - 包含 Toast 提示
 - ⚠️ **iOS**: 基础实现，需要 `UIDocumentPickerViewController` 集成
 
 ## 向后兼容
@@ -227,16 +231,24 @@ suspend fun exportSubscriptions(format: ExportFormat): String
 | 功能 | JVM | Android | iOS |
 |------|-----|---------|-----|
 | 文件选择器导入 | ✅ | ⚠️ | ⚠️ |
-| 文件保存 | ✅ | ⚠️ | ⚠️ |
+| 文件保存到下载 | ✅ | ✅ | ⚠️ |
 | 粘贴内容导入 | ✅ | ✅ | ✅ |
 | 复制到剪贴板 | ✅ | ✅ | ✅ |
 | OPML 格式 | ✅ | ✅ | ✅ |
 | JSON 格式 | ✅ | ✅ | ✅ |
+| Toast/通知提示 | ❌ | ✅ | ⚠️ |
 
 **说明：**
 - ✅ = 完整实现并测试
 - ⚠️ = 基础实现，需要进一步集成平台特定 API
 - ❌ = 暂不支持
+
+**Android 特性：**
+- 保存文件到系统下载文件夹
+- 无需申请存储权限
+- Android 10+ 使用 MediaStore API（推荐）
+- Android 9- 使用传统文件系统
+- 操作完成后显示 Toast 提示
 
 ## 未来增强
 
