@@ -330,41 +330,14 @@ private fun DesktopLayout(
                     onToggleExpand = { isNavigationExpanded = !isNavigationExpanded }
                 )
 
-                // 主内容区域 - 直接切换，避免动画导致的跳动
+                // 主内容区域 - 播放列表从右侧滑入
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxSize()
                 ) {
+                    // 主内容区域 - 始终显示
                     when {
-                        showPlaylist.value -> {
-                            // 显示播放列表页面
-                            com.opoojkk.podium.ui.playlist.PlaylistScreen(
-                                state = playlistState,
-                                onPlayEpisode = { episode ->
-                                    controller.playEpisode(episode)
-                                    showPlaylist.value = false
-                                    if (showPlaylistFromPlayerDetail.value) {
-                                        showPlayerDetail.value = true
-                                        showPlaylistFromPlayerDetail.value = false
-                                    }
-                                },
-                                onMarkCompleted = { episodeId ->
-                                    controller.markEpisodeCompleted(episodeId)
-                                },
-                                onRemoveFromPlaylist = { episodeId ->
-                                    controller.removeFromPlaylist(episodeId)
-                                },
-                                onBack = {
-                                    showPlaylist.value = false
-                                    if (showPlaylistFromPlayerDetail.value) {
-                                        showPlayerDetail.value = true
-                                        showPlaylistFromPlayerDetail.value = false
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
                         showCacheManagement.value -> {
                             // 显示缓存管理页面
                             CacheManagementScreen(
@@ -445,6 +418,61 @@ private fun DesktopLayout(
                                 )
                             }
                         }
+                    }
+
+                    // 播放列表从右侧滑入覆盖主内容
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showPlaylist.value,
+                        enter = androidx.compose.animation.fadeIn(
+                            animationSpec = androidx.compose.animation.core.tween(
+                                durationMillis = 150,
+                                easing = androidx.compose.animation.core.FastOutSlowInEasing
+                            )
+                        ) + androidx.compose.animation.slideInHorizontally(
+                            initialOffsetX = { it },
+                            animationSpec = androidx.compose.animation.core.tween(
+                                durationMillis = 200,
+                                easing = androidx.compose.animation.core.FastOutSlowInEasing
+                            )
+                        ),
+                        exit = androidx.compose.animation.fadeOut(
+                            animationSpec = androidx.compose.animation.core.tween(
+                                durationMillis = 100,
+                                easing = androidx.compose.animation.core.FastOutLinearInEasing
+                            )
+                        ) + androidx.compose.animation.slideOutHorizontally(
+                            targetOffsetX = { it },
+                            animationSpec = androidx.compose.animation.core.tween(
+                                durationMillis = 150,
+                                easing = androidx.compose.animation.core.FastOutLinearInEasing
+                            )
+                        )
+                    ) {
+                        com.opoojkk.podium.ui.playlist.PlaylistScreen(
+                            state = playlistState,
+                            onPlayEpisode = { episode ->
+                                controller.playEpisode(episode)
+                                showPlaylist.value = false
+                                if (showPlaylistFromPlayerDetail.value) {
+                                    showPlayerDetail.value = true
+                                    showPlaylistFromPlayerDetail.value = false
+                                }
+                            },
+                            onMarkCompleted = { episodeId ->
+                                controller.markEpisodeCompleted(episodeId)
+                            },
+                            onRemoveFromPlaylist = { episodeId ->
+                                controller.removeFromPlaylist(episodeId)
+                            },
+                            onBack = {
+                                showPlaylist.value = false
+                                if (showPlaylistFromPlayerDetail.value) {
+                                    showPlayerDetail.value = true
+                                    showPlaylistFromPlayerDetail.value = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
                 }
             }
@@ -588,9 +616,112 @@ private fun MobileLayout(
             },
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
-            when {
-                showPlaylist.value -> {
-                    // 显示播放列表页面
+            Box(modifier = Modifier.fillMaxSize()) {
+                // 主内容区域
+                when {
+                    showCacheManagement.value -> {
+                        // 显示缓存管理页面 - 不应用 padding，让 CacheManagementScreen 的 Scaffold 自己处理
+                        CacheManagementScreen(
+                            state = profileState,
+                            onBackClick = { showCacheManagement.value = false },
+                            onTogglePodcastAutoDownload = controller::togglePodcastAutoDownload,
+                            onClearCache = { /* TODO: 实现清除缓存功能 */ },
+                        )
+                    }
+                    selectedPodcast.value != null -> {
+                        // 显示播客单集列表
+                        val podcast = selectedPodcast.value!!
+                        val podcastEpisodes by controller.getPodcastEpisodes(podcast.id).collectAsState(emptyList())
+                        PodcastEpisodesScreen(
+                            podcast = podcast,
+                            episodes = podcastEpisodes,
+                            onPlayEpisode = controller::playEpisode,
+                            onBack = { selectedPodcast.value = null },
+                        )
+                    }
+                    showViewMore.value != null -> {
+                        // 显示查看更多页面 - 不应用 padding，让 Scaffold 自己处理
+                        val viewMoreType = showViewMore.value!!
+                        val (title, episodes) = when (viewMoreType) {
+                            ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
+                            ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
+                        }
+                        ViewMoreScreen(
+                            title = title,
+                            episodes = episodes,
+                            onPlayEpisode = controller::playEpisode,
+                            onBack = { showViewMore.value = null },
+                        )
+                    }
+
+                    !showPlayerDetail.value -> {
+                        // 不显示详情页时的内容 - 应用 padding
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    top = paddingValues.calculateTopPadding(),
+                                    bottom = paddingValues.calculateBottomPadding()
+                                )
+                        ) {
+                            when (appState.currentDestination) {
+                                PodiumDestination.Home -> HomeScreen(
+                                    state = homeState,
+                                    onPlayEpisode = controller::playEpisode,
+                                    onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
+                                    onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
+                                )
+
+                                PodiumDestination.Subscriptions -> SubscriptionsScreen(
+                                    state = subscriptionsState,
+                                    onRefresh = controller::refreshSubscriptions,
+                                    onAddSubscription = controller::subscribe,
+                                    onEditSubscription = controller::renameSubscription,
+                                    onDeleteSubscription = controller::deleteSubscription,
+                                    onPodcastClick = { podcast -> selectedPodcast.value = podcast },
+                                    onClearDuplicateMessage = controller::clearDuplicateSubscriptionMessage,
+                                )
+
+                                PodiumDestination.Profile -> ProfileScreen(
+                                    state = profileState,
+                                    onImportClick = onImportClick,
+                                    onExportClick = onExportClick,
+                                    onCacheManagementClick = { showCacheManagement.value = true },
+                                    onAboutClick = { showAboutDialog.value = true },
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 播放列表从上往下滑入覆盖主内容
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showPlaylist.value,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 150,
+                            easing = androidx.compose.animation.core.FastOutSlowInEasing
+                        )
+                    ) + androidx.compose.animation.slideInVertically(
+                        initialOffsetY = { -it },
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 200,
+                            easing = androidx.compose.animation.core.FastOutSlowInEasing
+                        )
+                    ),
+                    exit = androidx.compose.animation.fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 100,
+                            easing = androidx.compose.animation.core.FastOutLinearInEasing
+                        )
+                    ) + androidx.compose.animation.slideOutVertically(
+                        targetOffsetY = { -it },
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 150,
+                            easing = androidx.compose.animation.core.FastOutLinearInEasing
+                        )
+                    )
+                ) {
                     com.opoojkk.podium.ui.playlist.PlaylistScreen(
                         state = playlistState,
                         onPlayEpisode = { episode ->
@@ -616,79 +747,6 @@ private fun MobileLayout(
                         },
                         modifier = Modifier.fillMaxSize(),
                     )
-                }
-                showCacheManagement.value -> {
-                    // 显示缓存管理页面 - 不应用 padding，让 CacheManagementScreen 的 Scaffold 自己处理
-                    CacheManagementScreen(
-                        state = profileState,
-                        onBackClick = { showCacheManagement.value = false },
-                        onTogglePodcastAutoDownload = controller::togglePodcastAutoDownload,
-                        onClearCache = { /* TODO: 实现清除缓存功能 */ },
-                    )
-                }
-                selectedPodcast.value != null -> {
-                    // 显示播客单集列表
-                    val podcast = selectedPodcast.value!!
-                    val podcastEpisodes by controller.getPodcastEpisodes(podcast.id).collectAsState(emptyList())
-                    PodcastEpisodesScreen(
-                        podcast = podcast,
-                        episodes = podcastEpisodes,
-                        onPlayEpisode = controller::playEpisode,
-                        onBack = { selectedPodcast.value = null },
-                    )
-                }
-                showViewMore.value != null -> {
-                    // 显示查看更多页面 - 不应用 padding，让 Scaffold 自己处理
-                    val viewMoreType = showViewMore.value!!
-                    val (title, episodes) = when (viewMoreType) {
-                        ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
-                        ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
-                    }
-                    ViewMoreScreen(
-                        title = title,
-                        episodes = episodes,
-                        onPlayEpisode = controller::playEpisode,
-                        onBack = { showViewMore.value = null },
-                    )
-                }
-
-                !showPlayerDetail.value -> {
-                    // 不显示详情页时的内容 - 应用 padding
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(
-                                top = paddingValues.calculateTopPadding(),
-                                bottom = paddingValues.calculateBottomPadding()
-                            )
-                    ) {
-                        when (appState.currentDestination) {
-                            PodiumDestination.Home -> HomeScreen(
-                                state = homeState,
-                                onPlayEpisode = controller::playEpisode,
-                                onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
-                                onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
-                            )
-
-                            PodiumDestination.Subscriptions -> SubscriptionsScreen(
-                                state = subscriptionsState,
-                                onRefresh = controller::refreshSubscriptions,
-                                onAddSubscription = controller::subscribe,
-                                onEditSubscription = controller::renameSubscription,
-                                onDeleteSubscription = controller::deleteSubscription,
-                                onPodcastClick = { podcast -> selectedPodcast.value = podcast },
-                                onClearDuplicateMessage = controller::clearDuplicateSubscriptionMessage,
-                            )
-
-                            PodiumDestination.Profile -> ProfileScreen(
-                                state = profileState,
-                                onImportClick = onImportClick,
-                                onExportClick = onExportClick,
-                                onCacheManagementClick = { showCacheManagement.value = true },
-                                onAboutClick = { showAboutDialog.value = true },
-                            )
-                        }
-                    }
                 }
             }
         }

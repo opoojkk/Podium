@@ -1,8 +1,10 @@
 package com.opoojkk.podium.ui.playlist
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -10,8 +12,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaylistItem
 import com.opoojkk.podium.presentation.PlaylistUiState
@@ -95,8 +100,8 @@ fun PlaylistScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 items(state.items, key = { it.episode.id }) { item ->
                     PlaylistItemCard(
@@ -119,110 +124,180 @@ private fun PlaylistItemCard(
     onRemoveFromPlaylist: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val progress = item.progress.durationMs?.let { duration ->
+        if (duration > 0) {
+            (item.progress.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+        } else 0f
+    } ?: 0f
+
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Episode title and podcast name
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text(
-                    text = item.episode.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                // 播客封面
+                ArtworkImage(
+                    artworkUrl = item.podcast.artworkUrl,
+                    title = item.podcast.title,
+                    modifier = Modifier.size(80.dp),
                 )
-                Text(
-                    text = item.podcast.title,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
 
-            // Progress bar
-            val progress = item.progress.durationMs?.let { duration ->
-                if (duration > 0) {
-                    (item.progress.positionMs.toFloat() / duration).coerceIn(0f, 1f)
-                } else 0f
-            } ?: 0f
-
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                // 右侧内容区域
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        text = formatDuration(item.progress.positionMs),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    item.progress.durationMs?.let {
+                    // 标题和播客名称
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         Text(
-                            text = formatDuration(it),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = item.episode.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
+                        Text(
+                            text = item.podcast.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+
+                    // 播放进度和时间
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = formatDuration(item.progress.positionMs),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            item.progress.durationMs?.let {
+                                Text(
+                                    text = formatDuration(it),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        )
+                    }
+
+                    // 操作按钮
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // 播放/继续播放按钮
+                        Button(
+                            onClick = onPlayClick,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(if (progress > 0.01f) "继续" else "播放")
+                        }
+
+                        // 标记完成按钮
+                        FilledTonalIconButton(
+                            onClick = onMarkCompleted,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "标记完成",
+                            )
+                        }
+
+                        // 移除按钮
+                        FilledTonalIconButton(
+                            onClick = onRemoveFromPlaylist,
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                            ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "移除",
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
 
-            // Action buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // Play/Continue button
-                FilledTonalButton(
-                    onClick = onPlayClick,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+@Composable
+private fun ArtworkImage(
+    artworkUrl: String?,
+    title: String,
+    modifier: Modifier = Modifier
+) {
+    val initials = title.trim().split(" ", limit = 2)
+        .mapNotNull { it.firstOrNull()?.uppercase() }
+        .joinToString(separator = "")
+        .takeIf { it.isNotBlank() }
+        ?: "播客"
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!artworkUrl.isNullOrBlank()) {
+            SubcomposeAsyncImage(
+                model = artworkUrl,
+                contentDescription = title,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                loading = {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
-                    Spacer(Modifier.width(4.dp))
-                    Text(if (progress > 0.01f) "继续播放" else "播放")
-                }
-
-                // Mark completed button
-                OutlinedButton(
-                    onClick = onMarkCompleted,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "标记完成",
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-
-                // Remove button
-                OutlinedButton(
-                    onClick = onRemoveFromPlaylist,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "移除",
-                        modifier = Modifier.size(18.dp),
+                },
+                error = {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
-            }
+            )
+        } else {
+            Text(
+                text = initials,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
         }
     }
 }
