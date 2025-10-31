@@ -17,8 +17,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.PlaybackState
 import com.opoojkk.podium.platform.BackHandler
+import com.opoojkk.podium.ui.components.DownloadButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +33,8 @@ fun PlayerDetailScreen(
     onSeekForward: () -> Unit,
     onFavoriteClick: () -> Unit = {},
     onPlaylistClick: () -> Unit = {},
-    onMoreClick: () -> Unit = {},
+    downloadStatus: DownloadStatus? = null,
+    onDownloadClick: () -> Unit = {},
     playbackSpeed: Float = 1.0f,
     onSpeedChange: () -> Unit = { /* TODO: 打开倍速选择对话框 */ },
     sleepTimerMinutes: Int? = null,
@@ -105,13 +108,11 @@ fun PlayerDetailScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = onMoreClick) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "更多",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    DownloadButton(
+                        downloadStatus = downloadStatus,
+                        onDownloadClick = onDownloadClick,
+                        iconOnly = true
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,

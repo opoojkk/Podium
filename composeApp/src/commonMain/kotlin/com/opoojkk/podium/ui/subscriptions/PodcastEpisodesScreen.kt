@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.Podcast
@@ -52,6 +53,8 @@ fun PodcastEpisodesScreen(
     onPlayEpisode: (Episode) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    downloads: Map<String, DownloadStatus> = emptyMap(),
+    onDownloadEpisode: (Episode) -> Unit = {},
 ) {
     var sortOrder by remember { mutableStateOf(SortOrder.DESCENDING) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -171,6 +174,9 @@ fun PodcastEpisodesScreen(
                     PodcastEpisodeCard(
                         episodeWithPodcast = episodeWithPodcast,
                         onPlayClick = { onPlayEpisode(episodeWithPodcast.episode) },
+                        downloadStatus = downloads[episodeWithPodcast.episode.id],
+                        onDownloadClick = { onDownloadEpisode(episodeWithPodcast.episode) },
+                        showDownloadButton = true,
                     )
                 }
             }

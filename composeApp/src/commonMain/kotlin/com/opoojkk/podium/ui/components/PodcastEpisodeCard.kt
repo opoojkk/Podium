@@ -13,6 +13,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
+import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -23,6 +24,9 @@ fun PodcastEpisodeCard(
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    downloadStatus: DownloadStatus? = null,
+    onDownloadClick: () -> Unit = {},
+    showDownloadButton: Boolean = downloadStatus != null,
 ) {
     Card(
         modifier = modifier
@@ -68,8 +72,21 @@ fun PodcastEpisodeCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Button(onClick = onPlayClick) {
-                    Text("播放")
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(onClick = onPlayClick) {
+                        Text("播放")
+                    }
+                    // 只在订阅页面显示下载按钮
+                    if (showDownloadButton) {
+                        DownloadButton(
+                            downloadStatus = downloadStatus,
+                            onDownloadClick = onDownloadClick,
+                            iconOnly = true
+                        )
+                    }
                 }
             }
         }

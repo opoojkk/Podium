@@ -92,6 +92,7 @@ fun PodiumApp(
     val sleepTimerState by controller.sleepTimerState.collectAsState()
     val allRecentListening by controller.allRecentListening.collectAsState(emptyList())
     val allRecentUpdates by controller.allRecentUpdates.collectAsState(emptyList())
+    val downloads by controller.downloads.collectAsState()
 
     // 睡眠定时器对话框状态
     val showSleepTimerDialog = remember { mutableStateOf(false) }
@@ -270,6 +271,7 @@ fun PodiumApp(
                 playbackState = playbackState,
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
+                downloads = downloads,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onOpenUrl = openUrlInBrowser,
@@ -296,6 +298,7 @@ fun PodiumApp(
                 showSpeedDialog = showSpeedDialog,
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
+                downloads = downloads,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onOpenUrl = openUrlInBrowser,
@@ -348,6 +351,7 @@ private fun DesktopLayout(
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
+    downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onOpenUrl: (String) -> Boolean,
@@ -414,6 +418,8 @@ private fun DesktopLayout(
                                 episodes = podcastEpisodes,
                                 onPlayEpisode = controller::playEpisode,
                                 onBack = { selectedPodcast.value = null },
+                                downloads = downloads,
+                                onDownloadEpisode = controller::enqueueDownload,
                             )
                         }
                         showViewMore.value != null -> {
@@ -585,6 +591,7 @@ private fun MobileLayout(
     showSpeedDialog: MutableState<Boolean>,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
+    downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onOpenUrl: (String) -> Boolean,
@@ -677,6 +684,8 @@ private fun MobileLayout(
                             episodes = podcastEpisodes,
                             onPlayEpisode = controller::playEpisode,
                             onBack = { selectedPodcast.value = null },
+                            downloads = downloads,
+                            onDownloadEpisode = controller::enqueueDownload,
                         )
                     }
                     showViewMore.value != null -> {
@@ -832,6 +841,10 @@ private fun MobileLayout(
                     showPlayerDetail.value = false
                     showPlaylistFromPlayerDetail.value = true
                     showPlaylist.value = true
+                },
+                downloadStatus = playbackState.episode?.let { downloads[it.id] },
+                onDownloadClick = {
+                    playbackState.episode?.let { controller.enqueueDownload(it) }
                 },
                 playbackSpeed = playbackState.playbackSpeed,
                 onSpeedChange = { showSpeedDialog.value = true },
