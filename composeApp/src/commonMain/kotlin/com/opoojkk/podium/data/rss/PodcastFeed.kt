@@ -1,5 +1,6 @@
 package com.opoojkk.podium.data.rss
 
+import com.opoojkk.podium.data.model.Chapter
 import kotlinx.datetime.Instant
 
 data class PodcastFeed(
@@ -20,4 +21,5 @@ data class RssEpisode(
     val publishDate: Instant,
     val duration: Long?,
     val imageUrl: String?,
+    val chapters: List<Chapter> = emptyList(),
 )

@@ -1,5 +1,6 @@
 package com.opoojkk.podium.data.rss
 
+import com.opoojkk.podium.data.model.Chapter
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
@@ -90,6 +91,8 @@ class SimpleRssParser {
                 artworkUrl,
             )
 
+            val chapters = parseChapters(itemBlock)
+
             RssEpisode(
                 id = generateEpisodeId(feedUrl, guidCandidate),
                 title = itemTitle,
@@ -98,6 +101,7 @@ class SimpleRssParser {
                 publishDate = publishDate,
                 duration = duration,
                 imageUrl = episodeImage,
+                chapters = chapters,
             )
         }.toList()
 
@@ -121,8 +125,10 @@ class SimpleRssParser {
     }
 
     private fun extractTag(block: String, tag: String): String? {
+        // Escape special regex characters in the tag name (especially colon for namespaced tags)
+        val escapedTag = Regex.escape(tag)
         val pattern = Regex(
-            "<$tag(?:\\s[^>]*)?>([\\s\\S]*?)</$tag>",
+            "<$escapedTag(?:\\s[^>]*)?>([\\s\\S]*?)</$escapedTag>",
             setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE)
         )
         val raw = pattern.find(block)?.groupValues?.get(1) ?: return null
@@ -132,8 +138,10 @@ class SimpleRssParser {
     }
 
     private fun extractAttribute(block: String, tag: String, attribute: String): String? {
+        // Escape special regex characters in the tag name
+        val escapedTag = Regex.escape(tag)
         val pattern = Regex(
-            "<$tag[^>]*\\b$attribute\\s*=\\s*['\\\"]([^'\\\"]+)['\\\"][^>]*/?>",
+            "<$escapedTag[^>]*\\b$attribute\\s*=\\s*['\\\"]([^'\\\"]+)['\\\"][^>]*/?>",
             setOf(RegexOption.IGNORE_CASE)
         )
         val raw = pattern.find(block)?.groupValues?.get(1) ?: return null
@@ -363,6 +371,126 @@ class SimpleRssParser {
         return "podcast-${urlHash}-${titleHash}"
     }
 
+    /**
+     * Parse chapters from an episode item block.
+     * Supports:
+     * 1. Podcast Namespace: <podcast:chapters url="..." type="application/json+chapters" />
+     * 2. Podlove Simple Chapters: <psc:chapters><psc:chapter start="..." title="..." /></psc:chapters>
+     */
+    private fun parseChapters(itemBlock: String): List<Chapter> {
+        // Try Podlove Simple Chapters first (embedded in RSS)
+        val podloveChapters = parsePodloveSimpleChapters(itemBlock)
+        if (podloveChapters.isNotEmpty()) {
+            return podloveChapters
+        }
+
+        // Podcast Namespace chapters would require HTTP fetching
+        // which we'll skip for now as it needs async support
+        // TODO: Implement podcast:chapters URL fetching when needed
+
+        return emptyList()
+    }
+
+    /**
+     * Parse Podlove Simple Chapters format:
+     * <psc:chapters version="1.2" xmlns:psc="http://podlove.org/simple-chapters">
+     *   <psc:chapter start="00:00:00.000" title="Opening" />
+     *   <psc:chapter start="00:03:00.500" title="Topic 1" href="..." image="..." />
+     * </psc:chapters>
+     */
+    private fun parsePodloveSimpleChapters(itemBlock: String): List<Chapter> {
+        // Extract the psc:chapters block
+        val chaptersBlock = extractTag(itemBlock, "psc:chapters")
+
+        if (chaptersBlock == null) {
+            println("⚠️ RSS Parser: psc:chapters tag not found in item block")
+            // Debug: check if the tag exists at all
+            if (itemBlock.contains("<psc:chapters")) {
+                println("⚠️ RSS Parser: Found <psc:chapters in block but extractTag failed")
+                println("First 500 chars of itemBlock: ${itemBlock.take(500)}")
+            }
+            return emptyList()
+        }
+
+        println("✓ RSS Parser: Found psc:chapters block, length: ${chaptersBlock.length}")
+
+        // Find all psc:chapter tags
+        val chapterMatches = pscChapterRegex.findAll(chaptersBlock).toList()
+        if (chapterMatches.isEmpty()) {
+            println("⚠️ RSS Parser: No psc:chapter tags found in chapters block")
+            println("Chapters block content: $chaptersBlock")
+            return emptyList()
+        }
+
+        println("✓ RSS Parser: Found ${chapterMatches.size} chapter tags")
+
+        return chapterMatches.mapNotNull { match ->
+            val chapterTag = match.value
+
+            // Extract start time (required)
+            val startTimeStr = extractAttribute(chapterTag, "psc:chapter", "start")
+            if (startTimeStr == null) {
+                println("⚠️ RSS Parser: Failed to extract start time from: $chapterTag")
+                return@mapNotNull null
+            }
+
+            val startTimeMs = parsePodloveTimeToMillis(startTimeStr)
+            if (startTimeMs == null) {
+                println("⚠️ RSS Parser: Failed to parse time: $startTimeStr")
+                return@mapNotNull null
+            }
+
+            // Extract title (required)
+            val title = extractAttribute(chapterTag, "psc:chapter", "title")
+            if (title == null) {
+                println("⚠️ RSS Parser: Failed to extract title from: $chapterTag")
+                return@mapNotNull null
+            }
+
+            // Extract optional attributes
+            val imageUrl = extractAttribute(chapterTag, "psc:chapter", "image")
+            val url = extractAttribute(chapterTag, "psc:chapter", "href")
+
+            println("✓ RSS Parser: Parsed chapter - $startTimeMs ms: $title")
+
+            Chapter(
+                startTimeMs = startTimeMs,
+                title = title,
+                imageUrl = imageUrl,
+                url = url,
+            )
+        }
+    }
+
+    /**
+     * Parse Podlove time format (HH:MM:SS.mmm) to milliseconds
+     * Examples: "00:00:00.000", "00:03:00.500", "01:15:30.250"
+     */
+    private fun parsePodloveTimeToMillis(timeStr: String): Long? {
+        val parts = timeStr.split(":")
+        if (parts.size != 3) return null
+
+        return try {
+            val hours = parts[0].toLongOrNull() ?: 0
+            val minutes = parts[1].toLongOrNull() ?: 0
+
+            // Handle seconds with optional milliseconds
+            val secondsParts = parts[2].split(".")
+            val seconds = secondsParts[0].toLongOrNull() ?: 0
+            val millis = if (secondsParts.size > 1) {
+                // Pad or truncate to 3 digits
+                val millisStr = secondsParts[1].take(3).padEnd(3, '0')
+                millisStr.toLongOrNull() ?: 0
+            } else {
+                0
+            }
+
+            (hours * 3600 + minutes * 60 + seconds) * 1000 + millis
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     companion object {
         private val channelRegex = Regex(
             "<channel>([\\s\\S]*?)</channel>",
@@ -400,6 +528,10 @@ class SimpleRssParser {
         private val isoDurationRegex = Regex("^P(T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)$", RegexOption.IGNORE_CASE)
         private val enclosureLinkRegex = Regex(
             "<((?:\\w+:)?link)[^>]*\\brel\\s*=\\s*['\"]enclosure['\"][^>]*>",
+            setOf(RegexOption.IGNORE_CASE)
+        )
+        private val pscChapterRegex = Regex(
+            "<psc:chapter[^>]*/>",
             setOf(RegexOption.IGNORE_CASE)
         )
 

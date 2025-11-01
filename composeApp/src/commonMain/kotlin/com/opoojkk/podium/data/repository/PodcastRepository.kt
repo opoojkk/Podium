@@ -307,6 +307,7 @@ class PodcastRepository(
         publishDate = publishDate,
         duration = duration,
         imageUrl = imageUrl ?: podcast.artworkUrl,
+        chapters = chapters,
     )
 
 }

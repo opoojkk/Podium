@@ -1,37 +1,37 @@
 package com.opoojkk.podium.data.util
 
 import com.opoojkk.podium.data.model.Chapter
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.builtins.ListSerializer
 
-@Serializable
-private data class ChapterDto(
-    val startTimeMs: Long,
-    val title: String,
-    val imageUrl: String? = null,
-    val url: String? = null,
-)
-
+/**
+ * Utility object for serializing and deserializing Chapter lists to/from JSON.
+ * Now directly uses the Chapter class which is @Serializable.
+ */
 object ChapterSerializer {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
 
+    private val listSerializer = ListSerializer(Chapter.serializer())
+
+    /**
+     * Serialize a list of chapters to JSON string.
+     */
     fun serialize(chapters: List<Chapter>): String {
-        val dtos = chapters.map { ChapterDto(it.startTimeMs, it.title, it.imageUrl, it.url) }
-        return json.encodeToString(dtos)
+        return json.encodeToString(listSerializer, chapters)
     }
 
+    /**
+     * Deserialize a JSON string to a list of chapters.
+     */
     fun deserialize(chaptersJson: String?): List<Chapter> {
         if (chaptersJson.isNullOrBlank()) return emptyList()
         return try {
-            val dtos = json.decodeFromString<List<ChapterDto>>(chaptersJson)
-            dtos.map { Chapter(it.startTimeMs, it.title, it.imageUrl, it.url) }
+            json.decodeFromString(listSerializer, chaptersJson)
         } catch (e: Exception) {
-            println("Failed to deserialize chapters: ${e.message}")
+            println("⚠️ ChapterSerializer: Failed to deserialize chapters: ${e.message}")
             emptyList()
         }
     }

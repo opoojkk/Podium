@@ -1,6 +1,7 @@
 package com.opoojkk.podium.data.model
 
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
 
 /**
  * Domain model representing a subscribed podcast feed.
@@ -34,6 +35,7 @@ data class Episode(
 /**
  * Chapter information for podcast episodes.
  */
+@Serializable
 data class Chapter(
     val startTimeMs: Long,
     val title: String,
