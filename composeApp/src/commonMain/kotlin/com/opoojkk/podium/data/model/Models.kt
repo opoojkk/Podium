@@ -127,3 +127,12 @@ data class SleepTimerState(
     val remainingMinutes: Int get() = (remainingMs / 60000).toInt()
     val remainingSeconds: Int get() = ((remainingMs % 60000) / 1000).toInt()
 }
+
+/**
+ * Podcast update interval options.
+ */
+enum class UpdateInterval(val displayName: String) {
+    EVERY_TIME("每次打开"),
+    DAILY("每天"),
+    MANUAL("手动");
+}

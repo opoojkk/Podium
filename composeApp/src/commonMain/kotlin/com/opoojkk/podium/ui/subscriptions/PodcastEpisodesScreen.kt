@@ -1,6 +1,7 @@
 package com.opoojkk.podium.ui.subscriptions
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -19,6 +21,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -26,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +41,8 @@ import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
 import com.opoojkk.podium.platform.BackHandler
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 enum class SortOrder {
     DESCENDING, // 降序（新到旧）
@@ -55,9 +62,13 @@ fun PodcastEpisodesScreen(
     modifier: Modifier = Modifier,
     downloads: Map<String, DownloadStatus> = emptyMap(),
     onDownloadEpisode: (Episode) -> Unit = {},
+    onRefresh: ((Int) -> Unit) -> Unit = {},
 ) {
     var sortOrder by remember { mutableStateOf(SortOrder.DESCENDING) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // 处理系统返回按钮
     BackHandler(onBack = onBack)
@@ -72,6 +83,19 @@ fun PodcastEpisodesScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                snackbar = { snackbarData ->
+                    androidx.compose.material3.Snackbar(
+                        snackbarData = snackbarData,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        shape = MaterialTheme.shapes.medium,
+                    )
+                }
+            )
+        },
         topBar = {
             TopAppBar(
                 title = { 
@@ -96,6 +120,28 @@ fun PodcastEpisodesScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            isRefreshing = true
+                            onRefresh { count ->
+                                scope.launch {
+                                    isRefreshing = false
+                                    val message = if (count > 0) {
+                                        "更新完成，发现 $count 个新节目"
+                                    } else {
+                                        "已是最新"
+                                    }
+                                    snackbarHostState.showSnackbar(message)
+                                }
+                            }
+                        },
+                        enabled = !isRefreshing
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "刷新",
+                        )
+                    }
                     IconButton(onClick = { showSortMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.Sort,

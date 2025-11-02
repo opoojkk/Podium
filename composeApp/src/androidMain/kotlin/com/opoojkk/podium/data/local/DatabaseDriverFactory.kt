@@ -52,6 +52,21 @@ actual class DatabaseDriverFactory(private val context: Context) {
                     } catch (e: Exception) {
                         Log.e("DBMigration", "Failed: ${e.message}")
                     }
+                },
+                AfterVersion(3) { driver ->
+                    // Migration from version 3 to 4: Add app_settings table
+                    Log.d("DBMigration", "Migrating from version 3: Adding app_settings table")
+                    try {
+                        driver.execute(null, """
+                            CREATE TABLE IF NOT EXISTS app_settings (
+                                key TEXT NOT NULL PRIMARY KEY,
+                                value TEXT NOT NULL
+                            )
+                        """.trimIndent(), 0)
+                        Log.d("DBMigration", "✓ Added app_settings table")
+                    } catch (e: Exception) {
+                        Log.e("DBMigration", "Failed: ${e.message}")
+                    }
                 }
             )
         )

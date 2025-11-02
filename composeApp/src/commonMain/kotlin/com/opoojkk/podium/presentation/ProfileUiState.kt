@@ -12,6 +12,7 @@ data class ProfileUiState(
     val cachedDownloads: List<ProfileCachedItem> = emptyList(),
     val inProgressDownloads: List<ProfileDownloadItem> = emptyList(),
     val queuedDownloads: List<ProfileDownloadItem> = emptyList(),
+    val updateInterval: com.opoojkk.podium.data.model.UpdateInterval = com.opoojkk.podium.data.model.UpdateInterval.DAILY,
 )
 
 data class ProfileDownloadItem(

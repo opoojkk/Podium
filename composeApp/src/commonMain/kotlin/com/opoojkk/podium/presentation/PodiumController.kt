@@ -37,7 +37,7 @@ class PodiumController(
     private val _subscriptionsState = MutableStateFlow(SubscriptionsUiState())
     val subscriptionsState: StateFlow<SubscriptionsUiState> = _subscriptionsState.asStateFlow()
 
-    private val _profileState = MutableStateFlow(ProfileUiState())
+    private val _profileState = MutableStateFlow(ProfileUiState(updateInterval = repository.getUpdateInterval()))
     val profileState: StateFlow<ProfileUiState> = _profileState.asStateFlow()
 
     private val _playlistState = MutableStateFlow(PlaylistUiState())
@@ -75,6 +75,16 @@ class PodiumController(
                 val (episode, progress) = lastPlayed
                 println("🎵 PodiumController: Restoring last played episode: ${episode.title} at ${progress.positionMs}ms")
                 player.restorePlaybackState(episode, progress.positionMs)
+            }
+        }
+
+        // 检查是否需要自动更新播客订阅
+        scope.launch {
+            if (repository.shouldAutoUpdate()) {
+                println("🔄 PodiumController: Auto-updating podcasts based on user settings")
+                refreshSubscriptions()
+            } else {
+                println("⏸️ PodiumController: Skipping auto-update (user preference or too soon)")
             }
         }
 
@@ -251,12 +261,15 @@ class PodiumController(
 
     fun setPlaybackSpeed(speed: Float) = player.setPlaybackSpeed(speed)
 
-    fun refreshSubscriptions() {
+    fun refreshSubscriptions(onComplete: ((Int) -> Unit)? = null) {
         if (refreshJob?.isActive == true) return
         _subscriptionsState.value = _subscriptionsState.value.copy(isRefreshing = true)
         refreshJob = scope.launch {
             val newEpisodesByPodcast = repository.refreshSubscriptions()
-            
+
+            // 计算新单集总数
+            val totalNewEpisodes = newEpisodesByPodcast.values.sumOf { it.size }
+
             // 对于启用自动下载的播客，下载新节目
             val podcasts = repository.observeSubscriptions().first()
             newEpisodesByPodcast.forEach { (podcastId, newEpisodes) ->
@@ -267,8 +280,31 @@ class PodiumController(
                     }
                 }
             }
-            
+
             _subscriptionsState.value = _subscriptionsState.value.copy(isRefreshing = false)
+
+            // 通知刷新完成
+            onComplete?.invoke(totalNewEpisodes)
+        }
+    }
+
+    /**
+     * Refresh a single podcast subscription.
+     */
+    fun refreshPodcast(podcastId: String, onComplete: (Int) -> Unit = {}) {
+        scope.launch {
+            val newEpisodes = repository.refreshPodcast(podcastId)
+
+            // 对于启用自动下载的播客，下载新节目
+            val podcasts = repository.observeSubscriptions().first()
+            val podcast = podcasts.find { it.id == podcastId }
+            if (podcast?.autoDownload == true && newEpisodes.isNotEmpty()) {
+                newEpisodes.forEach { episode ->
+                    downloadManager.enqueue(episode, auto = true)
+                }
+            }
+
+            onComplete(newEpisodes.size)
         }
     }
 
@@ -500,5 +536,15 @@ class PodiumController(
 
         // Trigger app exit callback
         onSleepTimerComplete?.invoke()
+    }
+
+    /**
+     * Set the podcast update interval preference.
+     */
+    fun setUpdateInterval(interval: com.opoojkk.podium.data.model.UpdateInterval) {
+        scope.launch {
+            repository.setUpdateInterval(interval)
+            _profileState.value = _profileState.value.copy(updateInterval = interval)
+        }
     }
 }

@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.map
 class PodcastRepository(
     private val dao: PodcastDao,
     private val feedService: PodcastFeedService,
+    private val appSettings: com.opoojkk.podium.data.local.AppSettings,
 ) {
     private val exporter = SubscriptionExporter()
     private val importer = SubscriptionImporter()
@@ -132,30 +133,77 @@ class PodcastRepository(
     suspend fun refreshSubscriptions(): Map<String, List<Episode>> {
         val podcasts = observeSubscriptions().first()
         val newEpisodesByPodcast = mutableMapOf<String, List<Episode>>()
-        
+
         podcasts.forEach { podcast ->
             runCatching {
                 // 获取当前已有的节目ID列表
                 val existingEpisodes = observePodcastEpisodes(podcast.id).first()
                 val existingEpisodeIds = existingEpisodes.map { it.episode.id }.toSet()
-                
+
                 val feed = feedService.fetch(podcast.feedUrl)
                 // Use the existing podcast's ID and autoDownload setting when updating
                 val updatedPodcast = feed.toPodcast(podcast.autoDownload).copy(id = podcast.id)
                 val allEpisodes = feed.episodes.map { it.toEpisode(updatedPodcast) }
-                
+
                 // 找出新的节目
                 val newEpisodes = allEpisodes.filter { it.id !in existingEpisodeIds }
                 if (newEpisodes.isNotEmpty()) {
                     newEpisodesByPodcast[podcast.id] = newEpisodes
                 }
-                
+
                 dao.upsertPodcast(updatedPodcast)
                 dao.upsertEpisodes(updatedPodcast.id, allEpisodes)
             }
         }
-        
+
+        // Update last global update timestamp
+        appSettings.updateLastGlobalUpdate(kotlinx.datetime.Clock.System.now())
+
         return newEpisodesByPodcast
+    }
+
+    /**
+     * Refresh a single podcast subscription.
+     */
+    suspend fun refreshPodcast(podcastId: String): List<Episode> {
+        val podcasts = observeSubscriptions().first()
+        val podcast = podcasts.find { it.id == podcastId } ?: return emptyList()
+
+        return runCatching {
+            // 获取当前已有的节目ID列表
+            val existingEpisodes = observePodcastEpisodes(podcast.id).first()
+            val existingEpisodeIds = existingEpisodes.map { it.episode.id }.toSet()
+
+            val feed = feedService.fetch(podcast.feedUrl)
+            // Use the existing podcast's ID and autoDownload setting when updating
+            val updatedPodcast = feed.toPodcast(podcast.autoDownload).copy(id = podcast.id)
+            val allEpisodes = feed.episodes.map { it.toEpisode(updatedPodcast) }
+
+            // 找出新的节目
+            val newEpisodes = allEpisodes.filter { it.id !in existingEpisodeIds }
+
+            dao.upsertPodcast(updatedPodcast)
+            dao.upsertEpisodes(updatedPodcast.id, allEpisodes)
+
+            newEpisodes
+        }.getOrElse { emptyList() }
+    }
+
+    /**
+     * Check if an automatic update should be performed based on user settings.
+     */
+    fun shouldAutoUpdate(): Boolean = appSettings.shouldUpdate()
+
+    /**
+     * Get the current update interval setting.
+     */
+    fun getUpdateInterval(): com.opoojkk.podium.data.model.UpdateInterval = appSettings.getUpdateInterval()
+
+    /**
+     * Set the update interval preference.
+     */
+    suspend fun setUpdateInterval(interval: com.opoojkk.podium.data.model.UpdateInterval) {
+        appSettings.setUpdateInterval(interval)
     }
 
     /**

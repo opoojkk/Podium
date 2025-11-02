@@ -17,6 +17,9 @@ class PodcastDao(private val database: PodcastDatabase) {
 
     private val queries = database.podcastQueries
 
+    // Expose queries for AppSettings
+    val podcastQueries = queries
+
     fun observePodcasts(): Flow<List<Podcast>> =
         queries.selectAllPodcasts { id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload ->
             mapPodcast(id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload)

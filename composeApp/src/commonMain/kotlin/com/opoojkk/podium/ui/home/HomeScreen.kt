@@ -1,6 +1,7 @@
 package com.opoojkk.podium.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,10 +12,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +30,7 @@ import com.opoojkk.podium.ui.components.HorizontalEpisodeRowSkeleton
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
 import com.opoojkk.podium.ui.components.PodcastEpisodeCardSkeleton
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: HomeUiState,
@@ -33,8 +38,15 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onViewMoreRecentPlayed: () -> Unit = {},
     onViewMoreRecentUpdates: () -> Unit = {},
+    onRefresh: () -> Unit = {},
+    isRefreshing: Boolean = false,
 ) {
-    LazyColumn(
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize()
+    ) {
+        LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -100,6 +112,7 @@ fun HomeScreen(
                 }
             }
         }
+    }
     }
 }
 

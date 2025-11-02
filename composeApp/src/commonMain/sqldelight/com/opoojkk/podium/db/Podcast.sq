@@ -36,6 +36,11 @@ CREATE TABLE downloads (
     filePath TEXT
 );
 
+CREATE TABLE app_settings (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 upsertPodcast:
 INSERT OR REPLACE INTO podcasts(id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload)
 VALUES (?, ?, ?, ?, ?, ?, ?);
@@ -223,3 +228,10 @@ selectPodcastByFeedUrl:
 SELECT id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload
 FROM podcasts
 WHERE feedUrl = ?;
+
+-- App settings queries
+getSetting:
+SELECT value FROM app_settings WHERE key = ?;
+
+upsertSetting:
+INSERT OR REPLACE INTO app_settings(key, value) VALUES (?, ?);

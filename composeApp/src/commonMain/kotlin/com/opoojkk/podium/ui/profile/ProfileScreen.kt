@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Podcasts
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -29,6 +30,7 @@ fun ProfileScreen(
     onExportClick: () -> Unit,
     onCacheManagementClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onUpdateIntervalClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -37,6 +39,17 @@ fun ProfileScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        // 更新间隔设置
+        ListItem(
+            headlineContent = { Text("更新频率") },
+            supportingContent = { Text(state.updateInterval.displayName) },
+            leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
+            trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onUpdateIntervalClick() },
+        )
+
         // 缓存管理入口
         ListItem(
             headlineContent = { Text("缓存管理") },
@@ -64,7 +77,7 @@ fun ProfileScreen(
                 .fillMaxWidth()
                 .clickable { onCacheManagementClick() },
         )
-        
+
         ListItem(
             headlineContent = { Text("导入订阅") },
             supportingContent = { Text("支持 OPML 和 JSON 格式") },

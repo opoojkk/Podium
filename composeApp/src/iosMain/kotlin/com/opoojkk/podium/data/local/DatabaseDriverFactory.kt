@@ -11,7 +11,7 @@ actual class DatabaseDriverFactory {
             name = "podium.db",
             onConfiguration = { config ->
                 config.copy(
-                    version = 3,
+                    version = 4,
                     upgradeBlock = { driver, oldVersion, newVersion ->
                         if (oldVersion < 2 && newVersion >= 2) {
                             // Migration 1: Add durationMs column (if needed)
@@ -24,6 +24,15 @@ actual class DatabaseDriverFactory {
                         if (oldVersion < 3 && newVersion >= 3) {
                             // Migration 2: Add chapters column
                             driver.execute(null, "ALTER TABLE episodes ADD COLUMN chapters TEXT", 0)
+                        }
+                        if (oldVersion < 4 && newVersion >= 4) {
+                            // Migration 3: Add app_settings table
+                            driver.execute(null, """
+                                CREATE TABLE IF NOT EXISTS app_settings (
+                                    key TEXT NOT NULL PRIMARY KEY,
+                                    value TEXT NOT NULL
+                                )
+                            """.trimIndent(), 0)
                         }
                     }
                 )

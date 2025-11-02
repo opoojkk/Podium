@@ -24,7 +24,7 @@ actual class DatabaseDriverFactory {
 
     private fun migrateIfNeeded(driver: SqlDriver) {
         val currentVersion = getCurrentVersion(driver)
-        val targetVersion = 3 // 当前版本号
+        val targetVersion = 4 // 当前版本号
 
         if (currentVersion < targetVersion) {
             println("🔄 Migrating database from version $currentVersion to $targetVersion")
@@ -35,6 +35,7 @@ actual class DatabaseDriverFactory {
                     0 -> migrateToV1(driver)
                     1 -> migrateToV2(driver)
                     2 -> migrateToV3(driver)
+                    3 -> migrateToV4(driver)
                 }
             }
 
@@ -147,6 +148,46 @@ actual class DatabaseDriverFactory {
             }
         } catch (e: Exception) {
             println("  ✗ Error migrating to V3: ${e.message}")
+            throw e
+        }
+    }
+
+    // 迁移到版本4：添加 app_settings 表
+    private fun migrateToV4(driver: SqlDriver) {
+        println("  → Migrating to V4: Adding app_settings table...")
+
+        try {
+            // 检查表是否已存在
+            val tableExists = driver.executeQuery(
+                identifier = null,
+                sql = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='app_settings'",
+                mapper = { cursor ->
+                    val count = cursor.getLong(0)?.toInt() ?: 0
+                    QueryResult.Value(count > 0)
+                },
+                parameters = 0,
+                binders = null
+            ).value ?: false
+
+            if (!tableExists) {
+                // 创建 app_settings 表
+                driver.execute(
+                    identifier = null,
+                    sql = """
+                        CREATE TABLE app_settings (
+                            key TEXT NOT NULL PRIMARY KEY,
+                            value TEXT NOT NULL
+                        )
+                    """.trimIndent(),
+                    parameters = 0,
+                    binders = null
+                )
+                println("  ✓ Created app_settings table")
+            } else {
+                println("  ✓ app_settings table already exists")
+            }
+        } catch (e: Exception) {
+            println("  ✗ Error migrating to V4: ${e.message}")
             throw e
         }
     }

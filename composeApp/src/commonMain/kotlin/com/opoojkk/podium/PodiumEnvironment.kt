@@ -20,6 +20,7 @@ class PodiumEnvironment internal constructor(
     internal val scope: CoroutineScope,
     val platformContext: PlatformContext,
     val fileOperations: FileOperations,
+    val appSettings: com.opoojkk.podium.data.local.AppSettings,
 ) {
     fun dispose() {
         scope.cancel()
@@ -32,9 +33,11 @@ fun createPodiumEnvironment(context: PlatformContext): PodiumEnvironment {
     val driverFactory = provideDatabaseDriverFactory(context)
     val database = PodcastDatabase(driverFactory.createDriver())
     val dao = PodcastDao(database)
+    val appSettings = com.opoojkk.podium.data.local.AppSettings(dao.podcastQueries)
     val repository = PodcastRepository(
         dao = dao,
         feedService = PodcastFeedService(httpClient, SimpleRssParser()),
+        appSettings = appSettings,
     )
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val player = providePodcastPlayer(context)
@@ -42,7 +45,7 @@ fun createPodiumEnvironment(context: PlatformContext): PodiumEnvironment {
         scope.launch { repository.saveDownloadStatus(status) }
     }
     val fileOperations = createFileOperations(context)
-    return PodiumEnvironment(repository, player, downloadManager, httpClient, scope, context, fileOperations)
+    return PodiumEnvironment(repository, player, downloadManager, httpClient, scope, context, fileOperations, appSettings)
 }
 
 fun PodiumEnvironment.createController(): PodiumController =

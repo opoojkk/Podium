@@ -25,8 +25,10 @@ import com.opoojkk.podium.ui.profile.CacheManagementScreen
 import com.opoojkk.podium.ui.profile.ExportOpmlDialog
 import com.opoojkk.podium.ui.profile.ImportOpmlDialog
 import com.opoojkk.podium.ui.profile.AboutDialog
+import com.opoojkk.podium.ui.profile.UpdateIntervalDialog
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // 查看更多页面类型
@@ -72,6 +74,7 @@ fun PodiumApp(
     val showImportDialog = remember { mutableStateOf(false) }
     val showExportDialog = remember { mutableStateOf(false) }
     val showAboutDialog = remember { mutableStateOf(false) }
+    val showUpdateIntervalDialog = remember { mutableStateOf(false) }
     val importText = remember { mutableStateOf("") }
     val importInProgress = remember { mutableStateOf(false) }
     val importResultState = remember { mutableStateOf<com.opoojkk.podium.data.repository.PodcastRepository.OpmlImportResult?>(null) }
@@ -83,6 +86,9 @@ fun PodiumApp(
 
     val platformContext = remember { environment.platformContext }
     val fileOperations = remember { environment.fileOperations }
+
+    // Snackbar state for showing notifications
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val homeState by controller.homeState.collectAsState()
     val subscriptionsState by controller.subscriptionsState.collectAsState()
@@ -228,6 +234,18 @@ fun PodiumApp(
             )
         }
 
+        // Update Interval Dialog
+        if (showUpdateIntervalDialog.value) {
+            UpdateIntervalDialog(
+                currentInterval = profileState.updateInterval,
+                onIntervalSelected = { interval ->
+                    controller.setUpdateInterval(interval)
+                    showUpdateIntervalDialog.value = false
+                },
+                onDismiss = { showUpdateIntervalDialog.value = false }
+            )
+        }
+
         // Sleep Timer Dialog
         if (showSleepTimerDialog.value) {
             SleepTimerDialog(
@@ -264,6 +282,7 @@ fun PodiumApp(
                 selectedPodcast = selectedPodcast,
                 showCacheManagement = showCacheManagement,
                 showAboutDialog = showAboutDialog,
+                showUpdateIntervalDialog = showUpdateIntervalDialog,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
@@ -275,6 +294,7 @@ fun PodiumApp(
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onOpenUrl = openUrlInBrowser,
+                snackbarHostState = snackbarHostState,
             )
         } else {
             // 移动平台：使用传统底部导航栏布局
@@ -288,6 +308,7 @@ fun PodiumApp(
                 selectedPodcast = selectedPodcast,
                 showCacheManagement = showCacheManagement,
                 showAboutDialog = showAboutDialog,
+                showUpdateIntervalDialog = showUpdateIntervalDialog,
                 homeState = homeState,
                 subscriptionsState = subscriptionsState,
                 profileState = profileState,
@@ -302,6 +323,7 @@ fun PodiumApp(
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onOpenUrl = openUrlInBrowser,
+                snackbarHostState = snackbarHostState,
             )
         }
 
@@ -344,6 +366,7 @@ private fun DesktopLayout(
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
     showAboutDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showUpdateIntervalDialog: androidx.compose.runtime.MutableState<Boolean>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
@@ -355,7 +378,9 @@ private fun DesktopLayout(
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onOpenUrl: (String) -> Boolean,
+    snackbarHostState: SnackbarHostState,
 ) {
+    val scope = rememberCoroutineScope()
     // 侧边栏展开状态
     var isNavigationExpanded by remember { mutableStateOf(true) }
 
@@ -364,6 +389,7 @@ private fun DesktopLayout(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(modifier = Modifier.weight(1f)) {
                 // 左侧导航栏 - 始终显示
@@ -420,6 +446,9 @@ private fun DesktopLayout(
                                 onBack = { selectedPodcast.value = null },
                                 downloads = downloads,
                                 onDownloadEpisode = controller::enqueueDownload,
+                                onRefresh = { onComplete ->
+                                    controller.refreshPodcast(podcast.id, onComplete)
+                                },
                             )
                         }
                         showViewMore.value != null -> {
@@ -443,6 +472,19 @@ private fun DesktopLayout(
                                     onPlayEpisode = controller::playEpisode,
                                     onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
                                     onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
+                                    onRefresh = {
+                                        controller.refreshSubscriptions { count ->
+                                            scope.launch {
+                                                val message = if (count > 0) {
+                                                    "更新完成，发现 $count 个新节目"
+                                                } else {
+                                                    "已是最新"
+                                                }
+                                                snackbarHostState.showSnackbar(message)
+                                            }
+                                        }
+                                    },
+                                    isRefreshing = subscriptionsState.isRefreshing,
                                 )
 
                                 PodiumDestination.Subscriptions -> SubscriptionsScreen(
@@ -461,6 +503,7 @@ private fun DesktopLayout(
                                     onExportClick = onExportClick,
                                     onCacheManagementClick = { showCacheManagement.value = true },
                                     onAboutClick = { showAboutDialog.value = true },
+                                    onUpdateIntervalClick = { showUpdateIntervalDialog.value = true },
                                 )
                             }
                         }
@@ -567,6 +610,21 @@ private fun DesktopLayout(
                 )
             }
         }
+
+        // Snackbar host for showing notifications
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(16.dp),
+            snackbar = { snackbarData ->
+                androidx.compose.material3.Snackbar(
+                    snackbarData = snackbarData,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = MaterialTheme.shapes.medium,
+                )
+            }
+        )
+        }
     }
 }
 
@@ -581,6 +639,7 @@ private fun MobileLayout(
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
     showAboutDialog: androidx.compose.runtime.MutableState<Boolean>,
+    showUpdateIntervalDialog: androidx.compose.runtime.MutableState<Boolean>,
     homeState: com.opoojkk.podium.presentation.HomeUiState,
     subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
@@ -595,7 +654,9 @@ private fun MobileLayout(
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onOpenUrl: (String) -> Boolean,
+    snackbarHostState: SnackbarHostState,
 ) {
+    val scope = rememberCoroutineScope()
     Box(modifier = Modifier.fillMaxSize()) {
         // 主内容区域
         Scaffold(
@@ -686,6 +747,9 @@ private fun MobileLayout(
                             onBack = { selectedPodcast.value = null },
                             downloads = downloads,
                             onDownloadEpisode = controller::enqueueDownload,
+                            onRefresh = { onComplete ->
+                                controller.refreshPodcast(podcast.id, onComplete)
+                            },
                         )
                     }
                     showViewMore.value != null -> {
@@ -719,6 +783,19 @@ private fun MobileLayout(
                                     onPlayEpisode = controller::playEpisode,
                                     onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
                                     onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
+                                    onRefresh = {
+                                        controller.refreshSubscriptions { count ->
+                                            scope.launch {
+                                                val message = if (count > 0) {
+                                                    "更新完成，发现 $count 个新节目"
+                                                } else {
+                                                    "已是最新"
+                                                }
+                                                snackbarHostState.showSnackbar(message)
+                                            }
+                                        }
+                                    },
+                                    isRefreshing = subscriptionsState.isRefreshing,
                                 )
 
                                 PodiumDestination.Subscriptions -> SubscriptionsScreen(
@@ -737,6 +814,7 @@ private fun MobileLayout(
                                     onExportClick = onExportClick,
                                     onCacheManagementClick = { showCacheManagement.value = true },
                                     onAboutClick = { showAboutDialog.value = true },
+                                    onUpdateIntervalClick = { showUpdateIntervalDialog.value = true },
                                 )
                             }
                         }
@@ -852,5 +930,19 @@ private fun MobileLayout(
                 onSleepTimerClick = { showSleepTimerDialog.value = true },
             )
         }
+
+        // Snackbar host for showing notifications
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(16.dp),
+            snackbar = { snackbarData ->
+                androidx.compose.material3.Snackbar(
+                    snackbarData = snackbarData,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = MaterialTheme.shapes.medium,
+                )
+            }
+        )
     }
 }
