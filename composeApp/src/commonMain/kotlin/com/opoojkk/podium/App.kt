@@ -470,6 +470,8 @@ private fun DesktopLayout(
                                 PodiumDestination.Home -> HomeScreen(
                                     state = homeState,
                                     onPlayEpisode = controller::playEpisode,
+                                    onSearchQueryChange = controller::onHomeSearchQueryChange,
+                                    onClearSearch = controller::clearHomeSearch,
                                     onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
                                     onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
                                     onRefresh = {
@@ -781,6 +783,8 @@ private fun MobileLayout(
                                 PodiumDestination.Home -> HomeScreen(
                                     state = homeState,
                                     onPlayEpisode = controller::playEpisode,
+                                    onSearchQueryChange = controller::onHomeSearchQueryChange,
+                                    onClearSearch = controller::clearHomeSearch,
                                     onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
                                     onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
                                     onRefresh = {

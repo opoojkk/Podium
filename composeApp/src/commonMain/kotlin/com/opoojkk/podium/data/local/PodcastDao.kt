@@ -11,6 +11,7 @@ import com.opoojkk.podium.db.PodcastDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 
 class PodcastDao(private val database: PodcastDatabase) {
@@ -61,6 +62,20 @@ class PodcastDao(private val database: PodcastDatabase) {
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
+
+    suspend fun searchEpisodes(query: String, limit: Int): List<EpisodeWithPodcast> =
+        withContext(Dispatchers.Default) {
+            val sanitized = query.trim()
+            if (sanitized.isEmpty()) {
+                return@withContext emptyList()
+            }
+            val pattern = "%$sanitized%"
+            val cappedLimit = limit.coerceAtMost(50).coerceAtLeast(1)
+            queries.searchEpisodes(pattern, pattern, cappedLimit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+                mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
+            }
+                .executeAsList()
+        }
 
     fun observeRecentListening(limit: Int): Flow<List<EpisodeWithPodcast>> =
         queries.selectRecentPlayback(limit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->

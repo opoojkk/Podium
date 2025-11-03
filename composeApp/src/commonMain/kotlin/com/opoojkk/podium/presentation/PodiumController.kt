@@ -11,14 +11,20 @@ import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.platform.fileLastModifiedMillis
 import com.opoojkk.podium.platform.fileSizeInBytes
 import com.opoojkk.podium.player.PodcastPlayer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
-import kotlin.system.exitProcess
 
 class PodiumController(
     private val repository: PodcastRepository,
@@ -27,12 +33,8 @@ class PodiumController(
     private val scope: CoroutineScope,
 ) {
 
-    val homeState: StateFlow<HomeUiState> = repository.observeHomeState()
-        .stateIn(
-            scope = scope,
-            started = SharingStarted.Eagerly,
-            initialValue = HomeUiState(isLoading = true)
-        )
+    private val _homeState = MutableStateFlow(HomeUiState(isLoading = true))
+    val homeState: StateFlow<HomeUiState> = _homeState.asStateFlow()
 
     private val _subscriptionsState = MutableStateFlow(SubscriptionsUiState())
     val subscriptionsState: StateFlow<SubscriptionsUiState> = _subscriptionsState.asStateFlow()
@@ -50,6 +52,7 @@ class PodiumController(
     private val downloadEpisodeCacheMutex = Mutex()
 
     val playbackState: StateFlow<com.opoojkk.podium.data.model.PlaybackState> = player.state
+    private var homeSearchJob: Job? = null
 
     // Sleep timer state
     private val _sleepTimerState = MutableStateFlow(SleepTimerState())
@@ -63,6 +66,73 @@ class PodiumController(
 
     // 获取特定播客的所有单集
     fun getPodcastEpisodes(podcastId: String) = repository.observePodcastEpisodes(podcastId)
+
+    fun onHomeSearchQueryChange(query: String) {
+        val sanitizedQuery = query.take(200)
+        val effectiveQuery = sanitizedQuery.trim()
+
+        homeSearchJob?.cancel()
+
+        _homeState.update { current ->
+            current.copy(
+                searchQuery = sanitizedQuery,
+                isSearchActive = effectiveQuery.isNotEmpty(),
+                searchErrorMessage = null,
+                isSearching = effectiveQuery.isNotEmpty(),
+                searchResults = if (current.searchQuery == sanitizedQuery) current.searchResults else emptyList(),
+            )
+        }
+
+        if (effectiveQuery.isEmpty()) {
+            _homeState.update { current ->
+                current.copy(
+                    searchResults = emptyList(),
+                    isSearching = false,
+                    isSearchActive = false,
+                )
+            }
+            return
+        }
+
+        homeSearchJob = scope.launch {
+            kotlinx.coroutines.delay(250)
+            try {
+                val results = repository.searchEpisodes(effectiveQuery)
+                _homeState.update { current ->
+                    current.copy(
+                        searchResults = results,
+                        isSearching = false,
+                        isSearchActive = true,
+                        searchErrorMessage = null,
+                    )
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                _homeState.update { current ->
+                    current.copy(
+                        searchResults = emptyList(),
+                        isSearching = false,
+                        isSearchActive = true,
+                        searchErrorMessage = throwable.message ?: "搜索失败，请稍后重试。",
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearHomeSearch() {
+        homeSearchJob?.cancel()
+        _homeState.update { current ->
+            current.copy(
+                searchQuery = "",
+                searchResults = emptyList(),
+                isSearchActive = false,
+                isSearching = false,
+                searchErrorMessage = null,
+            )
+        }
+    }
 
     private var refreshJob: Job? = null
     private var playbackSaveJob: Job? = null
@@ -120,7 +190,19 @@ class PodiumController(
             }
         }
 
-        // homeState now uses stateIn, no need for manual collection
+        scope.launch {
+            repository.observeHomeState().collect { data ->
+                _homeState.update { current ->
+                    current.copy(
+                        recentPlayed = data.recentPlayed,
+                        recentUpdates = data.recentUpdates,
+                        isLoading = data.isLoading,
+                        errorMessage = data.errorMessage,
+                    )
+                }
+            }
+        }
+
         scope.launch {
             repository.observePlaylist().collect { playlistItems ->
                 println("📋 Playlist updated: ${playlistItems.size} items")

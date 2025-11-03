@@ -52,6 +52,11 @@ class PodcastRepository(
     fun observePodcastEpisodes(podcastId: String): Flow<List<EpisodeWithPodcast>> = 
         dao.observeEpisodesWithPodcast(podcastId)
 
+    suspend fun searchEpisodes(query: String, limit: Int = 30): List<EpisodeWithPodcast> {
+        if (query.isBlank()) return emptyList()
+        return dao.searchEpisodes(query, limit)
+    }
+
     fun observeDownloads(): Flow<Map<String, DownloadStatus>> =
         dao.observeDownloads().map { rows ->
             rows.mapValues { (episodeId, statusTriple) ->

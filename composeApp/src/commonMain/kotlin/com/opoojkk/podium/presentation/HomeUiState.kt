@@ -10,4 +10,9 @@ data class HomeUiState(
     val recentUpdates: List<EpisodeWithPodcast> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val searchQuery: String = "",
+    val searchResults: List<EpisodeWithPodcast> = emptyList(),
+    val isSearchActive: Boolean = false,
+    val isSearching: Boolean = false,
+    val searchErrorMessage: String? = null,
 )
