@@ -6,6 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
+import com.opoojkk.podium.data.model.Episode
+import com.opoojkk.podium.data.model.PlaybackState
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
 import com.opoojkk.podium.platform.SetStatusBarColor
@@ -35,6 +37,15 @@ import kotlinx.coroutines.launch
 enum class ViewMoreType {
     RECENT_PLAYED,
     RECENT_UPDATES,
+}
+
+private const val PLAYBACK_COMPLETION_THRESHOLD_MS = 5_000L
+
+private fun PlaybackState.isEpisodeNearCompletion(): Boolean {
+    val currentEpisode = episode ?: return false
+    val duration = (durationMs ?: currentEpisode.duration)?.takeIf { it > 0 } ?: return false
+    val remaining = duration - positionMs
+    return remaining <= PLAYBACK_COMPLETION_THRESHOLD_MS || positionMs >= duration
 }
 
 @Composable
@@ -209,6 +220,70 @@ fun PodiumApp(
         { url -> openUrl(platformContext, url) }
     }
 
+    var pendingEpisodeId by remember { mutableStateOf<String?>(null) }
+    var previousPlaybackState by remember { mutableStateOf(playbackState) }
+    var lastHandledCompletionId by remember { mutableStateOf<String?>(null) }
+
+    val playEpisode: (Episode) -> Unit = remember(controller) {
+        { episode ->
+            pendingEpisodeId = episode.id
+            controller.playEpisode(episode)
+        }
+    }
+
+    LaunchedEffect(playbackState) {
+        val previousState = previousPlaybackState
+        val currentState = playbackState
+        val currentEpisodeId = currentState.episode?.id
+
+        if (currentEpisodeId != null && currentEpisodeId == pendingEpisodeId) {
+            pendingEpisodeId = null
+        }
+
+        val previousEpisode = previousState.episode
+        val episodeCompleted = if (
+            previousEpisode != null &&
+            currentState.episode?.id != previousEpisode.id &&
+            pendingEpisodeId == null &&
+            previousState.isEpisodeNearCompletion()
+        ) {
+            previousEpisode
+        } else {
+            null
+        }
+
+        val completedEpisodeId = episodeCompleted?.id
+        if (completedEpisodeId != null && completedEpisodeId != lastHandledCompletionId) {
+            lastHandledCompletionId = completedEpisodeId
+
+            controller.markEpisodeCompleted(completedEpisodeId)
+            controller.removeFromPlaylist(completedEpisodeId)
+
+            val nextEpisode = playlistState.items
+                .asSequence()
+                .map { it.episode }
+                .firstOrNull { it.id != completedEpisodeId }
+
+            if (nextEpisode != null) {
+                playEpisode(nextEpisode)
+            } else {
+                if (showPlayerDetail.value) {
+                    showPlayerDetail.value = false
+                    showPlaylistFromPlayerDetail.value = false
+                }
+                if (appState.currentDestination != PodiumDestination.Home) {
+                    appState.navigateTo(PodiumDestination.Home)
+                }
+            }
+        }
+
+        if (currentEpisodeId != null) {
+            lastHandledCompletionId = null
+        }
+
+        previousPlaybackState = currentState
+    }
+
     // 检测当前平台
     val platform = remember { getPlatform() }
     val isDesktop = remember(platform) {
@@ -293,6 +368,7 @@ fun PodiumApp(
                 downloads = downloads,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
+                onPlayEpisode = playEpisode,
                 onOpenUrl = openUrlInBrowser,
                 snackbarHostState = snackbarHostState,
             )
@@ -322,6 +398,7 @@ fun PodiumApp(
                 downloads = downloads,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
+                onPlayEpisode = playEpisode,
                 onOpenUrl = openUrlInBrowser,
                 snackbarHostState = snackbarHostState,
             )
@@ -377,6 +454,7 @@ private fun DesktopLayout(
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
+    onPlayEpisode: (Episode) -> Unit,
     onOpenUrl: (String) -> Boolean,
     snackbarHostState: SnackbarHostState,
 ) {
@@ -442,7 +520,7 @@ private fun DesktopLayout(
                             PodcastEpisodesScreen(
                                 podcast = podcast,
                                 episodes = podcastEpisodes,
-                                onPlayEpisode = controller::playEpisode,
+                                onPlayEpisode = onPlayEpisode,
                                 onBack = { selectedPodcast.value = null },
                                 downloads = downloads,
                                 onDownloadEpisode = controller::enqueueDownload,
@@ -461,7 +539,7 @@ private fun DesktopLayout(
                             ViewMoreScreen(
                                 title = title,
                                 episodes = episodes,
-                                onPlayEpisode = controller::playEpisode,
+                                onPlayEpisode = onPlayEpisode,
                                 onBack = { showViewMore.value = null },
                             )
                         }
@@ -469,7 +547,7 @@ private fun DesktopLayout(
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
                                     state = homeState,
-                                    onPlayEpisode = controller::playEpisode,
+                                    onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
                                     onClearSearch = controller::clearHomeSearch,
                                     onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
@@ -542,7 +620,7 @@ private fun DesktopLayout(
                         com.opoojkk.podium.ui.playlist.PlaylistScreen(
                             state = playlistState,
                             onPlayEpisode = { episode ->
-                                controller.playEpisode(episode)
+                                onPlayEpisode(episode)
                                 showPlaylist.value = false
                                 if (showPlaylistFromPlayerDetail.value) {
                                     showPlayerDetail.value = true
@@ -655,6 +733,7 @@ private fun MobileLayout(
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
+    onPlayEpisode: (Episode) -> Unit,
     onOpenUrl: (String) -> Boolean,
     snackbarHostState: SnackbarHostState,
 ) {
@@ -745,7 +824,7 @@ private fun MobileLayout(
                         PodcastEpisodesScreen(
                             podcast = podcast,
                             episodes = podcastEpisodes,
-                            onPlayEpisode = controller::playEpisode,
+                            onPlayEpisode = onPlayEpisode,
                             onBack = { selectedPodcast.value = null },
                             downloads = downloads,
                             onDownloadEpisode = controller::enqueueDownload,
@@ -764,7 +843,7 @@ private fun MobileLayout(
                         ViewMoreScreen(
                             title = title,
                             episodes = episodes,
-                            onPlayEpisode = controller::playEpisode,
+                            onPlayEpisode = onPlayEpisode,
                             onBack = { showViewMore.value = null },
                         )
                     }
@@ -782,7 +861,7 @@ private fun MobileLayout(
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
                                     state = homeState,
-                                    onPlayEpisode = controller::playEpisode,
+                                    onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
                                     onClearSearch = controller::clearHomeSearch,
                                     onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
@@ -856,7 +935,7 @@ private fun MobileLayout(
                     com.opoojkk.podium.ui.playlist.PlaylistScreen(
                         state = playlistState,
                         onPlayEpisode = { episode ->
-                            controller.playEpisode(episode)
+                            onPlayEpisode(episode)
                             showPlaylist.value = false
                             if (showPlaylistFromPlayerDetail.value) {
                                 showPlayerDetail.value = true
