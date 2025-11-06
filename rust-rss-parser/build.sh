@@ -195,7 +195,8 @@ build_android() {
     if [ -d "$JNILIBS_DIR" ]; then
         rm -rf "$JNILIBS_DIR"
     fi
-    cp -r "$ANDROID_OUTPUT_DIR" "$JNILIBS_DIR"
+    mkdir -p "$JNILIBS_DIR"
+    cp -r "$ANDROID_OUTPUT_DIR"/* "$JNILIBS_DIR/"
 
     print_success "Android libraries copied to $JNILIBS_DIR"
 }
@@ -266,14 +267,21 @@ build_macos() {
 
     # Copy to composeApp jvmMain resources directory
     JVM_RESOURCES_DIR="$SCRIPT_DIR/../composeApp/src/jvmMain/resources"
-    if [ -d "$JVM_RESOURCES_DIR" ]; then
-        mkdir -p "$JVM_RESOURCES_DIR/darwin-aarch64"
-        mkdir -p "$JVM_RESOURCES_DIR/darwin-x86_64"
+    mkdir -p "$JVM_RESOURCES_DIR/darwin-aarch64"
+    mkdir -p "$JVM_RESOURCES_DIR/darwin-x86_64"
 
-        cp "$MACOS_ARM_OUTPUT_DIR/librust_rss_parser.dylib" "$JVM_RESOURCES_DIR/darwin-aarch64/" 2>/dev/null || true
-        cp "$MACOS_OUTPUT_DIR/librust_rss_parser.dylib" "$JVM_RESOURCES_DIR/darwin-x86_64/" 2>/dev/null || true
+    if [ -f "$MACOS_ARM_OUTPUT_DIR/librust_rss_parser.dylib" ]; then
+        cp "$MACOS_ARM_OUTPUT_DIR/librust_rss_parser.dylib" "$JVM_RESOURCES_DIR/darwin-aarch64/"
+        print_success "Copied aarch64 library to $JVM_RESOURCES_DIR/darwin-aarch64/"
+    else
+        print_warning "aarch64 library not found at $MACOS_ARM_OUTPUT_DIR/librust_rss_parser.dylib"
+    fi
 
-        print_success "macOS libraries copied to $JVM_RESOURCES_DIR"
+    if [ -f "$MACOS_OUTPUT_DIR/librust_rss_parser.dylib" ]; then
+        cp "$MACOS_OUTPUT_DIR/librust_rss_parser.dylib" "$JVM_RESOURCES_DIR/darwin-x86_64/"
+        print_success "Copied x86_64 library to $JVM_RESOURCES_DIR/darwin-x86_64/"
+    else
+        print_warning "x86_64 library not found at $MACOS_OUTPUT_DIR/librust_rss_parser.dylib"
     fi
 }
 

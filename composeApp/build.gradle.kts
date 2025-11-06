@@ -11,6 +11,37 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
+// Task to build Rust RSS parser
+val buildRustRssParser by tasks.registering(Exec::class) {
+    val scriptFile = project.file("../rust-rss-parser/build.sh")
+
+    // Set working directory
+    workingDir(project.file("../rust-rss-parser"))
+
+    // Run the build script with bash (bash handles permissions)
+    commandLine("bash", scriptFile.absolutePath)
+
+    // Define inputs so Gradle can track changes
+    inputs.file(scriptFile)
+    inputs.dir("../rust-rss-parser/src")
+    inputs.file("../rust-rss-parser/Cargo.toml")
+    inputs.file("../rust-rss-parser/Cargo.lock")
+
+    // Define outputs so Gradle can cache and track changes
+    outputs.dir("../rust-rss-parser/target/outputs")
+    outputs.dir("src/androidMain/jniLibs")
+    outputs.dir("src/jvmMain/resources/darwin-aarch64")
+    outputs.dir("src/jvmMain/resources/darwin-x86_64")
+}
+
+// Make Kotlin compilation depend on Rust build
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    dependsOn(buildRustRssParser)
+}
+
+// For Android, also ensure preBuild depends on Rust build
+tasks.findByName("preBuild")?.dependsOn(buildRustRssParser)
+
 kotlin {
     androidTarget {
         compilerOptions {
