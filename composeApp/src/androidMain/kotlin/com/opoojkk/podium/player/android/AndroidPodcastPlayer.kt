@@ -1,8 +1,11 @@
 package com.opoojkk.podium.player.android
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
-import android.net.Uri
+import android.os.Build
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaybackState
 import com.opoojkk.podium.player.PodcastPlayer
@@ -21,6 +24,27 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
     private var notificationManager: MediaNotificationManager? = null
     private var wasPlayingBeforeSeek = false
     private var currentPlaybackSpeed: Float = 1.0f
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var resumeOnFocusGain = false
+    private var isDucked = false
+    private val playbackAudioAttributes: AudioAttributes? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+        } else {
+            null
+        }
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_GAIN -> handleAudioFocusGain()
+            AudioManager.AUDIOFOCUS_LOSS -> handleAudioFocusLoss()
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> handleAudioFocusLossTransient()
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> handleAudioFocusDuck()
+        }
+    }
 
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
@@ -59,7 +83,13 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                 }
                 
                 releasePlayer()
+                if (!requestAudioFocus()) {
+                    println("❌ Android Player: Failed to gain audio focus, aborting playback")
+                    _state.value = PlaybackState(null, 0L, false, playbackSpeed = currentPlaybackSpeed)
+                    return@withContext
+                }
 				mediaPlayer = MediaPlayer().apply {
+                    configureAudioOutput()
                     // 对于HTTP/HTTPS URL，直接使用URL字符串
                     setDataSource(episode.audioUrl)
                     setOnPreparedListener { player ->
@@ -78,6 +108,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                             wasPlayingBeforeSeek = true  // 标记准备播放
                             player.seekTo(startPositionMs.toInt())
                             player.start()
+                            resumeOnFocusGain = false
                             // 保持 isBuffering = true，等待 seek 完成
                             val newState = PlaybackState(
                                 episode = episode,
@@ -92,6 +123,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                         } else {
                             // 从头开始播放，不需要 seek
                             player.start()
+                            resumeOnFocusGain = false
                             val newState = PlaybackState(
                                 episode = episode,
                                 positionMs = 0L,
@@ -158,12 +190,14 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                     setOnCompletionListener {
                         stopPositionUpdates()
 						_state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
-                        releasePlayer()
+                        updateNotification(_state.value)
+                        releasePlayer(abandonFocus = true)
                     }
                     setOnErrorListener { _, what, extra ->
                         stopPositionUpdates()
 						_state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
-                        releasePlayer()
+                        updateNotification(_state.value)
+                        releasePlayer(abandonFocus = true)
                         true
                     }
                     prepareAsync()
@@ -176,7 +210,8 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
                 // Handle any errors during MediaPlayer setup or URI parsing
                 stopPositionUpdates()
 				_state.value = PlaybackState(null, 0L, false, null, false, currentPlaybackSpeed)
-                releasePlayer()
+                updateNotification(_state.value)
+                releasePlayer(abandonFocus = true)
             }
         }
     }
@@ -212,6 +247,12 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
         } else {
             mediaPlayer?.let { player ->
                 if (!player.isPlaying) {
+                    if (!requestAudioFocus()) {
+                        println("❌ Android Player: Failed to regain audio focus on resume")
+                        return@let
+                    }
+                    player.setVolume(1f, 1f)
+                    resumeOnFocusGain = false
                     player.start()
                     startPositionUpdates()
                     val newState = PlaybackState(
@@ -234,9 +275,10 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
         mediaPlayer?.let { player ->
             player.stop()
         }
-        releasePlayer()
-        _state.value = PlaybackState(null, 0L, false, null, playbackSpeed = currentPlaybackSpeed)
-        notificationManager?.hideNotification()
+        val stoppedState = PlaybackState(null, 0L, false, null, playbackSpeed = currentPlaybackSpeed)
+        _state.value = stoppedState
+        updateNotification(stoppedState)
+        releasePlayer(abandonFocus = true)
     }
 
 	override fun seekTo(positionMs: Long) {
@@ -307,11 +349,111 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 		)
 	}
 
-    private fun releasePlayer() {
+    private fun requestAudioFocus(): Boolean {
+        val manager = audioManager ?: return true
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val focusRequest = audioFocusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).apply {
+                playbackAudioAttributes?.let { setAudioAttributes(it) }
+                setOnAudioFocusChangeListener(audioFocusChangeListener)
+                setAcceptsDelayedFocusGain(true)
+                setWillPauseWhenDucked(false)
+            }.build().also { audioFocusRequest = it }
+            manager.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        } else {
+            @Suppress("DEPRECATION")
+            manager.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            ) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        val manager = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { manager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            manager.abandonAudioFocus(audioFocusChangeListener)
+        }
+        audioFocusRequest = null
+    }
+
+    private fun handleAudioFocusGain() {
+        CoroutineScope(Dispatchers.Main).launch {
+            isDucked = false
+            val player = mediaPlayer ?: return@launch
+            player.setVolume(1f, 1f)
+            if (resumeOnFocusGain && !player.isPlaying) {
+                resumeOnFocusGain = false
+                player.start()
+                startPositionUpdates()
+                val newState = PlaybackState(
+                    episode = currentEpisode,
+                    positionMs = player.currentPosition.toLong(),
+                    isPlaying = true,
+                    durationMs = runCatching { player.duration.toLong() }.getOrNull()?.takeIf { it > 0 } ?: currentEpisode?.duration,
+                    isBuffering = false,
+                    playbackSpeed = currentPlaybackSpeed,
+                )
+                _state.value = newState
+                updateNotification(newState)
+            } else {
+                resumeOnFocusGain = false
+            }
+        }
+    }
+
+    private fun handleAudioFocusLoss() {
+        CoroutineScope(Dispatchers.Main).launch {
+            resumeOnFocusGain = false
+            stop()
+        }
+    }
+
+    private fun handleAudioFocusLossTransient() {
+        CoroutineScope(Dispatchers.Main).launch {
+            val player = mediaPlayer
+            if (player?.isPlaying == true) {
+                resumeOnFocusGain = true
+                pause()
+            }
+        }
+    }
+
+    private fun handleAudioFocusDuck() {
+        CoroutineScope(Dispatchers.Main).launch {
+            val player = mediaPlayer
+            if (player?.isPlaying == true) {
+                isDucked = true
+                player.setVolume(0.3f, 0.3f)
+            }
+        }
+    }
+
+    private fun MediaPlayer.configureAudioOutput() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            playbackAudioAttributes?.let { setAudioAttributes(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            setAudioStreamType(AudioManager.STREAM_MUSIC)
+        }
+        setVolume(1f, 1f)
+    }
+
+    private fun releasePlayer(abandonFocus: Boolean = false) {
         stopPositionUpdates()
         mediaPlayer?.release()
         mediaPlayer = null
         currentEpisode = null
+        wasPlayingBeforeSeek = false
+        isDucked = false
+        resumeOnFocusGain = false
+        if (abandonFocus) {
+            abandonAudioFocus()
+            notificationManager?.hideNotification()
+        }
     }
 
 	private fun startPositionUpdates() {

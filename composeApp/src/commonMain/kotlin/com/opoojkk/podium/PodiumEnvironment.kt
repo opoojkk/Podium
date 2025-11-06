@@ -3,7 +3,7 @@ package com.opoojkk.podium
 import com.opoojkk.podium.data.local.PodcastDao
 import com.opoojkk.podium.data.repository.PodcastRepository
 import com.opoojkk.podium.data.rss.PodcastFeedService
-import com.opoojkk.podium.data.rss.SimpleRssParser
+import com.opoojkk.podium.data.rss.createDefaultRssParser
 import com.opoojkk.podium.db.PodcastDatabase
 import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.platform.*
@@ -36,7 +36,7 @@ fun createPodiumEnvironment(context: PlatformContext): PodiumEnvironment {
     val appSettings = com.opoojkk.podium.data.local.AppSettings(dao.podcastQueries)
     val repository = PodcastRepository(
         dao = dao,
-        feedService = PodcastFeedService(httpClient, SimpleRssParser()),
+        feedService = PodcastFeedService(httpClient, createDefaultRssParser()),
         appSettings = appSettings,
     )
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

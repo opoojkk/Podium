@@ -1,0 +1,32 @@
+# Cargo configuration for cross-platform builds
+
+# Android configuration
+# Note: Linker settings are commented out to let the build.sh script's
+# environment variables (CC, CXX, AR, RANLIB) take precedence.
+# Always use the build.sh script for Android builds.
+#[target.aarch64-linux-android]
+#linker = "aarch64-linux-android24-clang"
+
+#[target.armv7-linux-androideabi]
+#linker = "armv7a-linux-androideabi24-clang"
+
+#[target.i686-linux-android]
+#linker = "i686-linux-android24-clang"
+
+#[target.x86_64-linux-android]
+#linker = "x86_64-linux-android24-clang"
+
+# Windows configuration
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+
+# Build settings
+[build]
+# Uncomment to set a default target
+# target = "aarch64-linux-android"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
