@@ -10,8 +10,9 @@ use parking_lot::Mutex;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
 use oboe::{
-    AudioOutputStreamSafe,
     AudioStreamBuilder,
+    AudioStreamAsync,
+    Output,
     DataCallbackResult,
     PerformanceMode,
     SharingMode,
@@ -30,7 +31,6 @@ struct PlayerAudioCallback {
     ring_buffer: Arc<Mutex<AudioRingBuffer>>,
     is_playing: Arc<AtomicBool>,
     sample_count: Arc<Mutex<u64>>,
-    channels: u16,
 }
 
 impl AudioOutputCallback for PlayerAudioCallback {
@@ -38,13 +38,13 @@ impl AudioOutputCallback for PlayerAudioCallback {
 
     fn on_audio_ready(
         &mut self,
-        _stream: &mut dyn AudioOutputStreamSafe,
-        output: &mut [(f32, Stereo)],
+        _stream: &mut dyn oboe::AudioOutputStreamSafe,
+        output: &mut [(f32, f32)],
     ) -> DataCallbackResult {
         if !self.is_playing.load(Ordering::Relaxed) {
             // Fill with silence when not playing
             for frame in output.iter_mut() {
-                *frame = (0.0, Stereo);
+                *frame = (0.0, 0.0);
             }
             return DataCallbackResult::Continue;
         }
@@ -62,9 +62,9 @@ impl AudioOutputCallback for PlayerAudioCallback {
             let idx = i * 2;
             if idx + 1 < samples_read {
                 frame.0 = interleaved[idx];     // Left channel
-                frame.1 = interleaved[idx + 1]; // Right channel (embedded in Stereo type)
+                frame.1 = interleaved[idx + 1]; // Right channel
             } else {
-                *frame = (0.0, Stereo); // Silence
+                *frame = (0.0, 0.0); // Silence
             }
         }
 
@@ -80,7 +80,7 @@ impl AudioOutputCallback for PlayerAudioCallback {
 pub struct AndroidAudioPlayer {
     state_container: PlayerStateContainer,
     callback_manager: Arc<CallbackManager>,
-    audio_stream: Option<Box<dyn AudioOutputStreamSafe>>,
+    audio_stream: Option<AudioStreamAsync<Output, PlayerAudioCallback>>,
     ring_buffer: Arc<Mutex<AudioRingBuffer>>,
     is_playing: Arc<AtomicBool>,
     sample_count: Arc<Mutex<u64>>,
@@ -114,8 +114,8 @@ impl AndroidAudioPlayer {
         log::info!("Initializing audio stream: {}Hz, {} channels", sample_rate, channels);
 
         // Close existing stream if any
-        if let Some(mut stream) = self.audio_stream.take() {
-            let _ = stream.stop();
+        if let Some(stream) = self.audio_stream.take() {
+            drop(stream);
         }
 
         // Only support stereo for now (Oboe's type system requires compile-time channel count)
@@ -130,7 +130,6 @@ impl AndroidAudioPlayer {
             ring_buffer: self.ring_buffer.clone(),
             is_playing: self.is_playing.clone(),
             sample_count: self.sample_count.clone(),
-            channels,
         };
 
         // Build audio stream using type parameters

@@ -6,7 +6,7 @@ use jni::JNIEnv;
 #[cfg(target_os = "android")]
 use jni::objects::{JClass, JObject, JString, JByteArray, GlobalRef};
 #[cfg(target_os = "android")]
-use jni::sys::{jlong, jfloat, jint, jstring, jbyteArray};
+use jni::sys::{jlong, jfloat, jint, jstring};
 #[cfg(target_os = "android")]
 use std::sync::Arc;
 #[cfg(target_os = "android")]
@@ -67,7 +67,7 @@ impl PlayerCallback for JniCallback {
 
 // Helper function to convert Java string to Rust string
 #[cfg(target_os = "android")]
-fn jstring_to_string(env: &JNIEnv, jstr: &JString) -> Result<String, jni::errors::Error> {
+fn jstring_to_string(env: &mut JNIEnv, jstr: &JString) -> Result<String, jni::errors::Error> {
     let java_str = env.get_string(jstr)?;
     Ok(java_str.into())
 }
@@ -116,12 +116,12 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeCreate(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadFile(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     player_id: jlong,
     path: JString,
 ) -> jint {
-    let path_str = match jstring_to_string(&env, &path) {
+    let path_str = match jstring_to_string(&mut env, &path) {
         Ok(s) => s,
         Err(e) => {
             log::error!("Failed to convert path: {}", e);
@@ -153,7 +153,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadFile(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadBuffer(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     player_id: jlong,
     buffer: JByteArray,
