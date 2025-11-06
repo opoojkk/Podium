@@ -34,13 +34,36 @@ val buildRustRssParser by tasks.registering(Exec::class) {
     outputs.dir("src/jvmMain/resources/darwin-x86_64")
 }
 
-// Make Kotlin compilation depend on Rust build
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    dependsOn(buildRustRssParser)
+// Task to build Rust Audio Player
+val buildRustAudioPlayer by tasks.registering(Exec::class) {
+    val scriptFile = project.file("../rust-audio-player/build.sh")
+
+    // Set working directory
+    workingDir(project.file("../rust-audio-player"))
+
+    // Run the build script with bash (bash handles permissions)
+    commandLine("bash", scriptFile.absolutePath)
+
+    // Define inputs so Gradle can track changes
+    inputs.file(scriptFile)
+    inputs.dir("../rust-audio-player/src")
+    inputs.file("../rust-audio-player/Cargo.toml")
+
+    // Define outputs so Gradle can cache and track changes
+    outputs.dir("../rust-audio-player/target/outputs")
+    outputs.dir("src/androidMain/jniLibs")
+    outputs.dir("src/jvmMain/resources/darwin-aarch64")
+    outputs.dir("src/jvmMain/resources/darwin-x86_64")
 }
 
-// For Android, also ensure preBuild depends on Rust build
-tasks.findByName("preBuild")?.dependsOn(buildRustRssParser)
+// Make Kotlin compilation depend on Rust builds
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    dependsOn(buildRustRssParser)
+    dependsOn(buildRustAudioPlayer)
+}
+
+// For Android, also ensure preBuild depends on Rust builds
+tasks.findByName("preBuild")?.dependsOn(buildRustRssParser, buildRustAudioPlayer)
 
 kotlin {
     androidTarget {
