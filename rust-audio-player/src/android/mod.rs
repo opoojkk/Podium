@@ -10,14 +10,13 @@ use parking_lot::Mutex;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
 use oboe::{
-    AudioOutputStream,
     AudioOutputStreamSafe,
     AudioStreamBuilder,
     DataCallbackResult,
     PerformanceMode,
     SharingMode,
     AudioOutputCallback,
-    AudioFormat as OboeAudioFormat,
+    Stereo,
 };
 
 /// Ring buffer size (in samples, 4 seconds at 48kHz stereo)
@@ -35,30 +34,43 @@ struct PlayerAudioCallback {
 }
 
 impl AudioOutputCallback for PlayerAudioCallback {
-    type FrameType = f32;
+    type FrameType = (f32, Stereo);
 
     fn on_audio_ready(
         &mut self,
         _stream: &mut dyn AudioOutputStreamSafe,
-        output: &mut [f32],
+        output: &mut [(f32, Stereo)],
     ) -> DataCallbackResult {
         if !self.is_playing.load(Ordering::Relaxed) {
             // Fill with silence when not playing
-            output.fill(0.0);
+            for frame in output.iter_mut() {
+                *frame = (0.0, Stereo);
+            }
             return DataCallbackResult::Continue;
         }
 
-        let mut buffer = self.ring_buffer.lock();
-        let read = buffer.read(output);
+        // Read interleaved data from ring buffer
+        let frame_count = output.len();
+        let mut interleaved = vec![0.0f32; frame_count * 2]; // 2 channels
 
-        // Fill remaining with silence if not enough data
-        if read < output.len() {
-            output[read..].fill(0.0);
+        let mut buffer = self.ring_buffer.lock();
+        let samples_read = buffer.read(&mut interleaved);
+        drop(buffer);
+
+        // Convert interleaved to frame format
+        for (i, frame) in output.iter_mut().enumerate() {
+            let idx = i * 2;
+            if idx + 1 < samples_read {
+                frame.0 = interleaved[idx];     // Left channel
+                frame.1 = interleaved[idx + 1]; // Right channel (embedded in Stereo type)
+            } else {
+                *frame = (0.0, Stereo); // Silence
+            }
         }
 
         // Update sample count for position tracking
         let mut count = self.sample_count.lock();
-        *count += (read / self.channels as usize) as u64;
+        *count += frame_count as u64;
 
         DataCallbackResult::Continue
     }
@@ -68,7 +80,7 @@ impl AudioOutputCallback for PlayerAudioCallback {
 pub struct AndroidAudioPlayer {
     state_container: PlayerStateContainer,
     callback_manager: Arc<CallbackManager>,
-    audio_stream: Option<AudioOutputStream<PlayerAudioCallback>>,
+    audio_stream: Option<Box<dyn AudioOutputStreamSafe>>,
     ring_buffer: Arc<Mutex<AudioRingBuffer>>,
     is_playing: Arc<AtomicBool>,
     sample_count: Arc<Mutex<u64>>,
@@ -102,8 +114,15 @@ impl AndroidAudioPlayer {
         log::info!("Initializing audio stream: {}Hz, {} channels", sample_rate, channels);
 
         // Close existing stream if any
-        if let Some(stream) = self.audio_stream.take() {
+        if let Some(mut stream) = self.audio_stream.take() {
             let _ = stream.stop();
+        }
+
+        // Only support stereo for now (Oboe's type system requires compile-time channel count)
+        if channels != 2 {
+            return Err(AudioError::UnsupportedFormat(
+                format!("Only stereo (2 channels) supported, got {} channels", channels)
+            ));
         }
 
         // Create audio callback
@@ -114,17 +133,15 @@ impl AndroidAudioPlayer {
             channels,
         };
 
-        // Build audio stream
-        let mut stream_result = AudioStreamBuilder::default()
+        // Build audio stream using type parameters
+        let stream = AudioStreamBuilder::default()
             .set_performance_mode(PerformanceMode::LowLatency)
             .set_sharing_mode(SharingMode::Exclusive)
-            .set_format(OboeAudioFormat::F32)
-            .set_channel_count(channels as i32)
+            .set_format::<f32>()
+            .set_channel_count::<Stereo>()
             .set_sample_rate(sample_rate as i32)
             .set_callback(callback)
-            .open_stream();
-
-        let stream = stream_result
+            .open_stream()
             .map_err(|e| AudioError::InitializationError(format!("Failed to open audio stream: {:?}", e)))?;
 
         self.audio_stream = Some(stream);

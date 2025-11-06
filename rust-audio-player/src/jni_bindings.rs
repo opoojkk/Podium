@@ -4,9 +4,9 @@
 #[cfg(target_os = "android")]
 use jni::JNIEnv;
 #[cfg(target_os = "android")]
-use jni::objects::{JClass, JObject, JString, GlobalRef};
+use jni::objects::{JClass, JObject, JString, JByteArray, GlobalRef};
 #[cfg(target_os = "android")]
-use jni::sys::{jlong, jfloat, jint, jstring, jobject};
+use jni::sys::{jlong, jfloat, jint, jstring, jbyteArray};
 #[cfg(target_os = "android")]
 use std::sync::Arc;
 #[cfg(target_os = "android")]
@@ -67,7 +67,7 @@ impl PlayerCallback for JniCallback {
 
 // Helper function to convert Java string to Rust string
 #[cfg(target_os = "android")]
-fn jstring_to_string(env: &JNIEnv, jstr: JString) -> Result<String, jni::errors::Error> {
+fn jstring_to_string(env: &JNIEnv, jstr: &JString) -> Result<String, jni::errors::Error> {
     let java_str = env.get_string(jstr)?;
     Ok(java_str.into())
 }
@@ -84,7 +84,7 @@ fn string_to_jstring(env: &JNIEnv, s: &str) -> Result<jstring, jni::errors::Erro
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeCreate(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
 ) -> jlong {
     crate::init_logging();
@@ -121,7 +121,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadFile(
     player_id: jlong,
     path: JString,
 ) -> jint {
-    let path_str = match jstring_to_string(&env, path) {
+    let path_str = match jstring_to_string(&env, &path) {
         Ok(s) => s,
         Err(e) => {
             log::error!("Failed to convert path: {}", e);
@@ -156,9 +156,9 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadBuffer
     env: JNIEnv,
     _class: JClass,
     player_id: jlong,
-    buffer: jni::sys::jbyteArray,
+    buffer: JByteArray,
 ) -> jint {
-    let buffer_data = match env.convert_byte_array(buffer) {
+    let buffer_data = match env.convert_byte_array(&buffer) {
         Ok(data) => data,
         Err(e) => {
             log::error!("Failed to convert buffer: {}", e);
@@ -190,7 +190,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadBuffer
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativePlay(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
 ) -> jint {
@@ -215,7 +215,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativePlay(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativePause(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
 ) -> jint {
@@ -240,7 +240,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativePause(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeStop(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
 ) -> jint {
@@ -265,7 +265,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeStop(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeSeek(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
     position_ms: jlong,
@@ -291,7 +291,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeSeek(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeSetVolume(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
     volume: jfloat,
@@ -317,7 +317,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeSetVolume(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetPosition(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
 ) -> jlong {
@@ -335,7 +335,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetPositio
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetDuration(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
 ) -> jlong {
@@ -353,7 +353,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetDuratio
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetState(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
 ) -> jint {
@@ -379,7 +379,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetState(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeRelease(
-    env: JNIEnv,
+    _env: JNIEnv,
     _class: JClass,
     player_id: jlong,
 ) -> jint {

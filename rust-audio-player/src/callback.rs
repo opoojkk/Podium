@@ -1,7 +1,7 @@
 // Thread-safe callback mechanism for player events
 // Addresses the issue of high-frequency JNI callbacks by batching and throttling
 
-use crate::player::{PlayerState, PlaybackStatus};
+use crate::player::PlayerState;
 use std::sync::Arc;
 use parking_lot::Mutex;
 use std::time::{Duration, Instant};

@@ -1,10 +1,6 @@
 // Cross-platform audio player library
 // Supports Android (x86, ARM, ARMv8), iOS, Windows, and macOS
 
-use std::sync::Arc;
-use parking_lot::{Mutex, RwLock};
-use std::path::Path;
-
 // Platform-specific modules
 #[cfg(target_os = "android")]
 pub mod android;

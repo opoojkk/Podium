@@ -95,6 +95,7 @@ pub trait AudioPlayer: Send + Sync {
 }
 
 /// Thread-safe player state container
+#[derive(Clone)]
 pub struct PlayerStateContainer {
     state: Arc<RwLock<PlayerState>>,
     status: Arc<RwLock<PlaybackStatus>>,

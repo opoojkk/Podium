@@ -10,7 +10,7 @@ use symphonia::core::io::{MediaSourceStream, MediaSource};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 use std::fs::File;
-use std::io::{BufReader, Cursor};
+use std::io::Cursor;
 use std::path::Path;
 
 /// Audio format information
@@ -36,7 +36,7 @@ impl AudioDecoder {
         let file = File::open(path)
             .map_err(|e| AudioError::LoadError(format!("Failed to open file: {}", e)))?;
 
-        let media_source = Box::new(BufReader::new(file));
+        let media_source = Box::new(file);
         let hint = Self::create_hint_from_path(path);
 
         Self::from_media_source(media_source, hint)
@@ -63,7 +63,7 @@ impl AudioDecoder {
             .format(&hint, media_source_stream, &FormatOptions::default(), &MetadataOptions::default())
             .map_err(|e| AudioError::LoadError(format!("Failed to probe media: {}", e)))?;
 
-        let mut format_reader = probe_result.format;
+        let format_reader = probe_result.format;
 
         // Get the default track
         let track = format_reader
@@ -133,7 +133,7 @@ impl AudioDecoder {
             .map_err(|e| AudioError::DecodingError(format!("Failed to decode packet: {}", e)))?;
 
         // Convert audio buffer to f32 samples
-        let samples = self.convert_to_f32(&decoded)?;
+        let samples = Self::convert_to_f32(&decoded)?;
 
         Ok(Some(samples))
     }
@@ -156,8 +156,7 @@ impl AudioDecoder {
     }
 
     /// Convert AudioBufferRef to f32 samples (interleaved)
-    fn convert_to_f32(&self, buffer: &AudioBufferRef) -> Result<Vec<f32>> {
-        use symphonia::core::audio::AudioBuffer;
+    fn convert_to_f32(buffer: &AudioBufferRef) -> Result<Vec<f32>> {
         use symphonia::core::conv::IntoSample;
 
         let mut samples = Vec::new();
