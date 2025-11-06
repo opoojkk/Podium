@@ -36,7 +36,7 @@ mkdir -p "$OUTPUT_DIR"
 
 # Detect Android NDK
 detect_android_ndk() {
-    print_info "Detecting Android NDK..."
+    print_info "Detecting Android NDK..." >&2
 
     # Priority 1: Environment variable ANDROID_NDK_HOME
     if [ -n "$ANDROID_NDK_HOME" ] && [ -d "$ANDROID_NDK_HOME" ]; then
@@ -78,7 +78,7 @@ detect_android_ndk() {
         fi
     fi
 
-    print_error "Android NDK not found. Please set ANDROID_NDK_HOME or ANDROID_NDK environment variable."
+    print_error "Android NDK not found. Please set ANDROID_NDK_HOME or ANDROID_NDK environment variable." >&2
     return 1
 }
 
@@ -101,6 +101,11 @@ install_targets() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         rustup target add x86_64-apple-darwin || true
         rustup target add aarch64-apple-darwin || true
+
+        # iOS targets
+        rustup target add aarch64-apple-ios || true
+        rustup target add aarch64-apple-ios-sim || true
+        rustup target add x86_64-apple-ios || true
     fi
 
     print_success "Rust targets installed"
@@ -163,10 +168,15 @@ build_android() {
         export AR="$TOOLCHAIN/bin/llvm-ar"
         export RANLIB="$TOOLCHAIN/bin/llvm-ranlib"
 
+        # Set Cargo-specific linker environment variable
+        TARGET_UPPER=$(echo "$TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+        export CARGO_TARGET_${TARGET_UPPER}_LINKER="$CC"
+
         # Special handling for armv7
         if [ "$TARGET" = "armv7-linux-androideabi" ]; then
             export CC="$TOOLCHAIN/bin/armv7a-linux-androideabi${ANDROID_API}-clang"
             export CXX="$TOOLCHAIN/bin/armv7a-linux-androideabi${ANDROID_API}-clang++"
+            export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$CC"
         fi
 
         # Build
@@ -253,6 +263,75 @@ build_macos() {
             -output "$MACOS_UNIVERSAL_DIR/librust_rss_parser.dylib"
         print_success "Created universal macOS binary"
     fi
+
+    # Copy to composeApp jvmMain resources directory
+    JVM_RESOURCES_DIR="$SCRIPT_DIR/../composeApp/src/jvmMain/resources"
+    if [ -d "$JVM_RESOURCES_DIR" ]; then
+        mkdir -p "$JVM_RESOURCES_DIR/darwin-aarch64"
+        mkdir -p "$JVM_RESOURCES_DIR/darwin-x86_64"
+
+        cp "$MACOS_ARM_OUTPUT_DIR/librust_rss_parser.dylib" "$JVM_RESOURCES_DIR/darwin-aarch64/" 2>/dev/null || true
+        cp "$MACOS_OUTPUT_DIR/librust_rss_parser.dylib" "$JVM_RESOURCES_DIR/darwin-x86_64/" 2>/dev/null || true
+
+        print_success "macOS libraries copied to $JVM_RESOURCES_DIR"
+    fi
+}
+
+# Build for iOS
+build_ios() {
+    if [[ "$OSTYPE" != "darwin"* ]]; then
+        print_warning "Skipping iOS build - not running on macOS"
+        return 0
+    fi
+
+    print_info "Building for iOS..."
+
+    # Build for aarch64 (iOS devices - arm64)
+    cargo build --release --target aarch64-apple-ios
+    IOS_ARM64_OUTPUT_DIR="$OUTPUT_DIR/ios/aarch64"
+    mkdir -p "$IOS_ARM64_OUTPUT_DIR"
+    cp "target/aarch64-apple-ios/release/librust_rss_parser.a" "$IOS_ARM64_OUTPUT_DIR/" || true
+    print_success "Built for iOS arm64"
+
+    # Build for aarch64 simulator (Apple Silicon Macs)
+    cargo build --release --target aarch64-apple-ios-sim
+    IOS_SIM_ARM64_OUTPUT_DIR="$OUTPUT_DIR/ios/aarch64-sim"
+    mkdir -p "$IOS_SIM_ARM64_OUTPUT_DIR"
+    cp "target/aarch64-apple-ios-sim/release/librust_rss_parser.a" "$IOS_SIM_ARM64_OUTPUT_DIR/" || true
+    print_success "Built for iOS Simulator arm64"
+
+    # Build for x86_64 simulator (Intel Macs)
+    cargo build --release --target x86_64-apple-ios
+    IOS_SIM_X86_OUTPUT_DIR="$OUTPUT_DIR/ios/x86_64-sim"
+    mkdir -p "$IOS_SIM_X86_OUTPUT_DIR"
+    cp "target/x86_64-apple-ios/release/librust_rss_parser.a" "$IOS_SIM_X86_OUTPUT_DIR/" || true
+    print_success "Built for iOS Simulator x86_64"
+
+    # Create XCFramework if xcodebuild is available
+    if command -v xcodebuild &> /dev/null; then
+        print_info "Creating XCFramework..."
+        XCFRAMEWORK_DIR="$OUTPUT_DIR/ios/RustRssParser.xcframework"
+        rm -rf "$XCFRAMEWORK_DIR"
+
+        # Create universal simulator library
+        print_info "Creating universal iOS simulator library..."
+        SIM_UNIVERSAL="$OUTPUT_DIR/ios/librust_rss_parser_sim.a"
+        lipo -create \
+            "target/aarch64-apple-ios-sim/release/librust_rss_parser.a" \
+            "target/x86_64-apple-ios/release/librust_rss_parser.a" \
+            -output "$SIM_UNIVERSAL"
+
+        # Create XCFramework with static libraries
+        xcodebuild -create-xcframework \
+            -library "target/aarch64-apple-ios/release/librust_rss_parser.a" \
+            -library "$SIM_UNIVERSAL" \
+            -output "$XCFRAMEWORK_DIR"
+
+        print_success "Created XCFramework"
+
+        # Clean up temporary file
+        rm -f "$SIM_UNIVERSAL"
+    fi
 }
 
 # Main build process
@@ -267,6 +346,7 @@ main() {
     build_android
     build_windows
     build_macos
+    build_ios
 
     # Summary
     echo ""
@@ -290,6 +370,13 @@ main() {
     if [ -d "$OUTPUT_DIR/macos" ]; then
         print_info "macOS libraries:"
         find "$OUTPUT_DIR/macos" -name "*.dylib" -o -name "*.a" | while read -r lib; do
+            echo "  - $lib"
+        done
+    fi
+
+    if [ -d "$OUTPUT_DIR/ios" ]; then
+        print_info "iOS libraries:"
+        find "$OUTPUT_DIR/ios" -name "*.a" -o -name "*.xcframework" | while read -r lib; do
             echo "  - $lib"
         done
     fi

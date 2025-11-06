@@ -12,9 +12,9 @@ import kotlin.math.abs
  * A lightweight RSS parser that extracts the information required for the UI while remaining
  * resilient against the many variants of podcast feeds found in the wild.
  */
-class SimpleRssParser {
+class SimpleRssParser : RssParser {
 
-    fun parse(feedUrl: String, xml: String): PodcastFeed {
+    override fun parse(feedUrl: String, xml: String): PodcastFeed {
         val sanitizedXml = xml.removePrefix("\uFEFF")
         val channelBlock = channelRegex.find(sanitizedXml)?.groupValues?.get(1) ?: sanitizedXml
 

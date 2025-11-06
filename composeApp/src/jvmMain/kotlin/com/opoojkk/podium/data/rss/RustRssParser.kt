@@ -5,19 +5,89 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
+import java.io.File
+import java.nio.file.Files
 
 /**
- * Rust-based RSS parser using feed-rs library.
+ * Rust-based RSS parser using feed-rs library for JVM/Desktop platform.
  * This provides a high-performance alternative to the SimpleRssParser.
  */
 object RustRssParser {
 
+    private var libraryLoaded = false
+
     init {
         try {
-            System.loadLibrary("rust_rss_parser")
+            loadNativeLibrary()
+            libraryLoaded = true
         } catch (e: UnsatisfiedLinkError) {
             println("Warning: Failed to load native library rust_rss_parser: ${e.message}")
             println("Falling back to SimpleRssParser if needed")
+        } catch (e: Exception) {
+            println("Warning: Error loading native library: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Load the native library based on the current OS and architecture.
+     */
+    private fun loadNativeLibrary() {
+        val osName = System.getProperty("os.name").lowercase()
+        val osArch = System.getProperty("os.arch").lowercase()
+
+        val libraryPath = when {
+            osName.contains("mac") || osName.contains("darwin") -> {
+                when {
+                    osArch.contains("aarch64") || osArch.contains("arm") ->
+                        "darwin-aarch64/librust_rss_parser.dylib"
+                    else ->
+                        "darwin-x86_64/librust_rss_parser.dylib"
+                }
+            }
+            osName.contains("windows") -> {
+                "windows-x86_64/rust_rss_parser.dll"
+            }
+            osName.contains("linux") -> {
+                when {
+                    osArch.contains("aarch64") || osArch.contains("arm") ->
+                        "linux-aarch64/librust_rss_parser.so"
+                    else ->
+                        "linux-x86_64/librust_rss_parser.so"
+                }
+            }
+            else -> throw UnsatisfiedLinkError("Unsupported OS: $osName")
+        }
+
+        // Extract library from resources to a temporary file
+        val inputStream = RustRssParser::class.java.classLoader.getResourceAsStream(libraryPath)
+            ?: throw UnsatisfiedLinkError("Library not found in resources: $libraryPath")
+
+        val tempFile = Files.createTempFile("librust_rss_parser", getLibraryExtension()).toFile()
+        tempFile.deleteOnExit()
+
+        inputStream.use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        // Set executable permissions on Unix-like systems
+        if (!osName.contains("windows")) {
+            tempFile.setExecutable(true)
+            tempFile.setReadable(true)
+        }
+
+        System.load(tempFile.absolutePath)
+        println("Successfully loaded native library from: ${tempFile.absolutePath}")
+    }
+
+    private fun getLibraryExtension(): String {
+        val osName = System.getProperty("os.name").lowercase()
+        return when {
+            osName.contains("mac") || osName.contains("darwin") -> ".dylib"
+            osName.contains("windows") -> ".dll"
+            else -> ".so"
         }
     }
 
@@ -29,6 +99,11 @@ object RustRssParser {
      * @return Parsed PodcastFeed or null if parsing failed
      */
     fun parse(feedUrl: String, xmlContent: String): PodcastFeed? {
+        if (!libraryLoaded) {
+            println("Native library not loaded, cannot parse with Rust parser")
+            return null
+        }
+
         return try {
             val jsonResult = parseRss(feedUrl, xmlContent)
             val result = Json.decodeFromString<RustPodcastFeed>(jsonResult)

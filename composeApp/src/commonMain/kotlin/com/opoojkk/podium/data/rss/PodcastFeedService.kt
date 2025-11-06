@@ -8,7 +8,7 @@ import io.ktor.http.contentType
 
 class PodcastFeedService(
     private val httpClient: HttpClient,
-    private val parser: SimpleRssParser,
+    private val parser: RssParser,
 ) {
     suspend fun fetch(feedUrl: String): PodcastFeed {
         val response = httpClient.get(feedUrl) {
