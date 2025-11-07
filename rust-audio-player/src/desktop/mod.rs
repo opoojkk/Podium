@@ -22,7 +22,8 @@ const POSITION_UPDATE_INTERVAL_MS: u64 = 100;
 pub struct DesktopAudioPlayer {
     state_container: PlayerStateContainer,
     callback_manager: Arc<CallbackManager>,
-    audio_stream: Option<Stream>,
+    // Wrapped in Arc<Mutex> because cpal::Stream is not Send+Sync on all platforms
+    audio_stream: Arc<Mutex<Option<Stream>>>,
     ring_buffer: Arc<Mutex<AudioRingBuffer>>,
     is_playing: Arc<AtomicBool>,
     sample_count: Arc<Mutex<u64>>,
@@ -49,7 +50,7 @@ impl DesktopAudioPlayer {
         Ok(Self {
             state_container: PlayerStateContainer::new(),
             callback_manager: Arc::new(CallbackManager::new()),
-            audio_stream: None,
+            audio_stream: Arc::new(Mutex::new(None)),
             ring_buffer: Arc::new(Mutex::new(AudioRingBuffer::new(RING_BUFFER_SIZE))),
             is_playing: Arc::new(AtomicBool::new(false)),
             sample_count: Arc::new(Mutex::new(0)),
@@ -67,7 +68,7 @@ impl DesktopAudioPlayer {
         log::info!("Initializing audio stream: {}Hz, {} channels", sample_rate, channels);
 
         // Drop existing stream
-        self.audio_stream = None;
+        *self.audio_stream.lock() = None;
 
         let device = self.device.as_ref()
             .ok_or_else(|| AudioError::DeviceError("No audio device".to_string()))?;
@@ -123,7 +124,7 @@ impl DesktopAudioPlayer {
         )
         .map_err(|e| AudioError::InitializationError(format!("Failed to build output stream: {}", e)))?;
 
-        self.audio_stream = Some(stream);
+        *self.audio_stream.lock() = Some(stream);
 
         log::info!("Audio stream initialized successfully");
         Ok(())
@@ -297,12 +298,14 @@ impl AudioPlayer for DesktopAudioPlayer {
             ));
         }
 
-        if let Some(ref stream) = self.audio_stream {
+        let stream_guard = self.audio_stream.lock();
+        if let Some(ref stream) = *stream_guard {
             stream.play()
                 .map_err(|e| AudioError::PlaybackError(format!("Failed to start stream: {}", e)))?;
         } else {
             return Err(AudioError::PlaybackError("No audio stream available".to_string()));
         }
+        drop(stream_guard);
 
         if self.decoder_thread.is_none() {
             self.start_decoder_thread();
@@ -331,10 +334,12 @@ impl AudioPlayer for DesktopAudioPlayer {
 
         self.is_playing.store(false, Ordering::Relaxed);
 
-        if let Some(ref stream) = self.audio_stream {
+        let stream_guard = self.audio_stream.lock();
+        if let Some(ref stream) = *stream_guard {
             stream.pause()
                 .map_err(|e| AudioError::PlaybackError(format!("Failed to pause stream: {}", e)))?;
         }
+        drop(stream_guard);
 
         self.state_container.set_state(PlayerState::Paused);
         self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
@@ -352,10 +357,12 @@ impl AudioPlayer for DesktopAudioPlayer {
         self.is_playing.store(false, Ordering::Relaxed);
         self.stop_decoder_thread();
 
-        if let Some(ref stream) = self.audio_stream {
+        let stream_guard = self.audio_stream.lock();
+        if let Some(ref stream) = *stream_guard {
             stream.pause()
                 .map_err(|e| AudioError::PlaybackError(format!("Failed to stop stream: {}", e)))?;
         }
+        drop(stream_guard);
 
         self.ring_buffer.lock().clear();
         *self.sample_count.lock() = 0;
@@ -466,7 +473,7 @@ impl AudioPlayer for DesktopAudioPlayer {
 
         self.stop()?;
         self.stop_decoder_thread();
-        self.audio_stream = None;
+        *self.audio_stream.lock() = None;
         *self.decoder.lock() = None;
         self.state_container.set_state(PlayerState::Idle);
 
