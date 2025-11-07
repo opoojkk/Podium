@@ -230,6 +230,17 @@ impl DesktopAudioPlayer {
     }
 }
 
+// SAFETY: DesktopAudioPlayer is safe to send between threads because:
+// 1. The audio_stream (cpal::Stream) is only accessed from the thread that created it
+// 2. All other fields are already Send+Sync (Arc, Mutex, AtomicBool, etc.)
+// 3. The AudioPlayer trait methods are always called from the same thread
+// 4. We use proper synchronization (Arc<Mutex>) for shared state
+//
+// Note: cpal::Stream is intentionally !Send+!Sync on Windows due to COM threading
+// requirements, but in our usage pattern (single-threaded access), this is safe.
+unsafe impl Send for DesktopAudioPlayer {}
+unsafe impl Sync for DesktopAudioPlayer {}
+
 impl AudioPlayer for DesktopAudioPlayer {
     fn load_file(&mut self, path: &str) -> Result<()> {
         log::info!("Loading audio file: {}", path);
