@@ -188,6 +188,40 @@ build_android() {
         print_success "Built for Android $ABI"
     done
 
+    # Copy libc++_shared.so from NDK to each ABI directory
+    # This is required because Oboe (C++ library) needs C++ standard library
+    print_info "Copying libc++_shared.so for each ABI..."
+    LIBCXX_DIR="$NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG/sysroot/usr/lib"
+
+    for target_config in "${ANDROID_TARGETS[@]}"; do
+        IFS=':' read -r TARGET ARCH ABI <<< "$target_config"
+        ABI_OUTPUT_DIR="$ANDROID_OUTPUT_DIR/$ABI"
+
+        # Map ABI to NDK architecture name
+        case "$ABI" in
+            "arm64-v8a")
+                NDK_ARCH="aarch64-linux-android"
+                ;;
+            "armeabi-v7a")
+                NDK_ARCH="arm-linux-androideabi"
+                ;;
+            "x86")
+                NDK_ARCH="i686-linux-android"
+                ;;
+            "x86_64")
+                NDK_ARCH="x86_64-linux-android"
+                ;;
+        esac
+
+        LIBCXX_PATH="$LIBCXX_DIR/$NDK_ARCH/libc++_shared.so"
+        if [ -f "$LIBCXX_PATH" ]; then
+            cp "$LIBCXX_PATH" "$ABI_OUTPUT_DIR/"
+            print_info "  Copied libc++_shared.so for $ABI"
+        else
+            print_warning "  libc++_shared.so not found at $LIBCXX_PATH"
+        fi
+    done
+
     # Copy to composeApp jniLibs directory
     JNILIBS_DIR="$SCRIPT_DIR/../composeApp/src/androidMain/jniLibs"
     if [ -d "$JNILIBS_DIR" ]; then
