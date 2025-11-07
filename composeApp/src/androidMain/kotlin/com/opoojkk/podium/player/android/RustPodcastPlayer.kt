@@ -113,6 +113,12 @@ class RustPodcastPlayer(
     override fun pause() {
         Log.d(TAG, "pause()")
 
+        // Check if currently playing
+        if (!_state.value.isPlaying) {
+            Log.w(TAG, "Cannot pause - not currently playing")
+            return
+        }
+
         try {
             rustPlayer.pause()
             stopPositionUpdates()
@@ -129,6 +135,19 @@ class RustPodcastPlayer(
 
     override fun resume() {
         Log.d(TAG, "resume()")
+
+        // Check if there's an episode loaded
+        if (currentEpisode == null) {
+            Log.w(TAG, "Cannot resume - no episode loaded")
+            return
+        }
+
+        // Check current state
+        val playerState = rustPlayer.getState()
+        if (playerState == RustAudioPlayer.PlayerState.IDLE) {
+            Log.w(TAG, "Cannot resume - player is in Idle state (no audio loaded)")
+            return
+        }
 
         try {
             rustPlayer.play()
