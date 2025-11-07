@@ -232,6 +232,10 @@ build_android() {
             ABI_NAME=$(basename "$abi_dir")
             mkdir -p "$JNILIBS_DIR/$ABI_NAME"
             cp "$abi_dir"/librust_audio_player.so "$JNILIBS_DIR/$ABI_NAME/"
+            # Also copy libc++_shared.so if it exists
+            if [ -f "$abi_dir/libc++_shared.so" ]; then
+                cp "$abi_dir"/libc++_shared.so "$JNILIBS_DIR/$ABI_NAME/"
+            fi
         fi
     done
 

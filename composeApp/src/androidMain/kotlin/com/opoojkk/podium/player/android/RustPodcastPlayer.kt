@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
+import java.net.URL
 
 /**
  * Rust-based implementation of PodcastPlayer
@@ -55,8 +56,11 @@ class RustPodcastPlayer(
                 isPlaying = false
             )
 
-            // Get audio file path
-            val audioPath = getAudioFilePath(episode)
+            // Get audio file path (download if needed)
+            val audioPath = withContext(Dispatchers.IO) {
+                getAudioFilePath(episode)
+            }
+
             if (audioPath == null) {
                 Log.e(TAG, "No audio file found for episode: ${episode.title}")
                 updateState(
@@ -310,9 +314,9 @@ class RustPodcastPlayer(
 
     /**
      * Get the audio file path for an episode
-     * Checks download cache first, then uses stream URL
+     * Checks download cache first, downloads to temp file if needed
      */
-    private fun getAudioFilePath(episode: Episode): String? {
+    private suspend fun getAudioFilePath(episode: Episode): String? {
         // Check if episode is downloaded
         val downloadedFile = getDownloadedFile(episode)
         if (downloadedFile != null && downloadedFile.exists()) {
@@ -320,10 +324,52 @@ class RustPodcastPlayer(
             return downloadedFile.absolutePath
         }
 
-        // Use stream URL (Rust player doesn't support URL streaming yet)
-        // TODO: Implement URL streaming in Rust player or download first
-        Log.w(TAG, "Episode not downloaded, URL streaming not yet supported: ${episode.audioUrl}")
-        return null
+        // Download to temporary file for streaming
+        Log.i(TAG, "Episode not cached, downloading from URL: ${episode.audioUrl}")
+        return downloadToTempFile(episode)
+    }
+
+    /**
+     * Download episode to temporary cache file for playback
+     */
+    private suspend fun downloadToTempFile(episode: Episode): String? = withContext(Dispatchers.IO) {
+        try {
+            // Create streaming cache directory
+            val streamingCacheDir = File(context.cacheDir, "streaming")
+            if (!streamingCacheDir.exists()) {
+                streamingCacheDir.mkdirs()
+            }
+
+            // Use episode ID as filename
+            val tempFile = File(streamingCacheDir, "${episode.id}.mp3")
+
+            // If file already exists in streaming cache, use it
+            if (tempFile.exists() && tempFile.length() > 0) {
+                Log.d(TAG, "Using existing streaming cache: ${tempFile.absolutePath}")
+                return@withContext tempFile.absolutePath
+            }
+
+            Log.d(TAG, "Downloading to temp file: ${tempFile.absolutePath}")
+
+            // Download from URL
+            val url = URL(episode.audioUrl)
+            val connection = url.openConnection()
+            connection.connectTimeout = 10000 // 10 seconds
+            connection.readTimeout = 30000 // 30 seconds
+
+            connection.getInputStream().use { input ->
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            Log.i(TAG, "Download complete: ${tempFile.length()} bytes")
+            tempFile.absolutePath
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to download episode", e)
+            null
+        }
     }
 
     /**
@@ -351,6 +397,29 @@ class RustPodcastPlayer(
     }
 
     /**
+     * Clean up old streaming cache files
+     * Keeps only files accessed within the last 24 hours
+     */
+    private fun cleanupStreamingCache() {
+        try {
+            val streamingCacheDir = File(context.cacheDir, "streaming")
+            if (!streamingCacheDir.exists()) return
+
+            val now = System.currentTimeMillis()
+            val maxAge = 24 * 60 * 60 * 1000L // 24 hours
+
+            streamingCacheDir.listFiles()?.forEach { file ->
+                if (file.isFile && now - file.lastModified() > maxAge) {
+                    Log.d(TAG, "Deleting old cache file: ${file.name}")
+                    file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to cleanup streaming cache", e)
+        }
+    }
+
+    /**
      * Clean up resources when player is no longer needed
      */
     fun release() {
@@ -358,5 +427,6 @@ class RustPodcastPlayer(
         stopPositionUpdates()
         coroutineScope.cancel()
         rustPlayer.release()
+        cleanupStreamingCache()
     }
 }

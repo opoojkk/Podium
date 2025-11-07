@@ -113,19 +113,23 @@ impl AndroidAudioPlayer {
     }
 
     fn initialize_audio_stream(&mut self, sample_rate: u32, channels: u16) -> Result<()> {
-        log::info!("Initializing audio stream: {}Hz, {} channels", sample_rate, channels);
+        log::info!("Initializing audio stream: {}Hz, {} channels (input)", sample_rate, channels);
 
         // Close existing stream if any
         if let Some(stream) = self.audio_stream.take() {
             drop(stream);
         }
 
-        // Only support stereo for now (Oboe's type system requires compile-time channel count)
-        if channels != 2 {
+        // We support mono and stereo input. Mono is converted to stereo by the decoder.
+        // We don't support more than 2 channels
+        if channels < 1 || channels > 2 {
             return Err(AudioError::UnsupportedFormat(
-                format!("Only stereo (2 channels) supported, got {} channels", channels)
+                format!("Only mono (1) and stereo (2) channels supported, got {} channels", channels)
             ));
         }
+
+        // Note: Output is always stereo. Mono input is converted to stereo in the decoder.
+        log::info!("Creating stereo audio stream for playback");
 
         // Create audio callback
         let callback = PlayerAudioCallback {

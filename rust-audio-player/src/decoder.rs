@@ -133,9 +133,24 @@ impl AudioDecoder {
             .map_err(|e| AudioError::DecodingError(format!("Failed to decode packet: {}", e)))?;
 
         // Convert audio buffer to f32 samples
-        let samples = Self::convert_to_f32(&decoded)?;
+        let mut samples = Self::convert_to_f32(&decoded)?;
+
+        // Convert mono to stereo if needed
+        if self.format.channels == 1 {
+            samples = Self::mono_to_stereo(samples);
+        }
 
         Ok(Some(samples))
+    }
+
+    /// Convert mono samples to stereo by duplicating each sample
+    fn mono_to_stereo(mono_samples: Vec<f32>) -> Vec<f32> {
+        let mut stereo_samples = Vec::with_capacity(mono_samples.len() * 2);
+        for sample in mono_samples {
+            stereo_samples.push(sample); // Left channel
+            stereo_samples.push(sample); // Right channel (same as left)
+        }
+        stereo_samples
     }
 
     /// Seek to a specific time position
