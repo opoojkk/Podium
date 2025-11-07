@@ -141,7 +141,8 @@ class RustPodcastPlayer(
         Log.d(TAG, "resume()")
 
         // Check if there's an episode loaded
-        if (currentEpisode == null) {
+        val episode = currentEpisode
+        if (episode == null) {
             Log.w(TAG, "Cannot resume - no episode loaded")
             return
         }
@@ -149,7 +150,17 @@ class RustPodcastPlayer(
         // Check current state
         val playerState = rustPlayer.getState()
         if (playerState == RustAudioPlayer.PlayerState.IDLE) {
-            Log.w(TAG, "Cannot resume - player is in Idle state (no audio loaded)")
+            // If player is in Idle state but we have an episode, reload it
+            Log.i(TAG, "Player is in Idle state, reloading audio and resuming from position: ${_state.value.positionMs}")
+
+            coroutineScope.launch {
+                try {
+                    // Reload the episode from the last known position
+                    play(episode, _state.value.positionMs)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to reload and resume playback", e)
+                }
+            }
             return
         }
 
