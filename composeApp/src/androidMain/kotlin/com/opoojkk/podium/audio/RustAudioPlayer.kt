@@ -14,10 +14,23 @@ class RustAudioPlayer {
         // Load native library
         init {
             try {
+                // Load C++ standard library first (required by Oboe)
+                // This ensures libc++ is available before loading our native library
+                try {
+                    System.loadLibrary("c++_shared")
+                    Log.d(TAG, "C++ standard library loaded")
+                } catch (e: UnsatisfiedLinkError) {
+                    // If c++_shared is not available, try to continue
+                    // (system may already have it loaded, or we're using static linking)
+                    Log.w(TAG, "Could not load c++_shared, will try to continue: ${e.message}")
+                }
+
+                // Load our Rust audio player library
                 System.loadLibrary("rust_audio_player")
                 Log.i(TAG, "Native library loaded successfully")
             } catch (e: UnsatisfiedLinkError) {
                 Log.e(TAG, "Failed to load native library", e)
+                Log.e(TAG, "Make sure you have run: cd rust-audio-player && ./build.sh")
                 throw e
             }
         }
