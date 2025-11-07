@@ -12,6 +12,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use oboe::{
     AudioStreamBuilder,
     AudioStreamAsync,
+    AudioStream,
+    AudioOutputStream,
     Output,
     DataCallbackResult,
     PerformanceMode,

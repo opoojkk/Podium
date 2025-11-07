@@ -153,7 +153,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadFile(
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadBuffer(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
     player_id: jlong,
     buffer: JByteArray,
