@@ -224,11 +224,16 @@ build_android() {
 
     # Copy to composeApp jniLibs directory
     JNILIBS_DIR="$SCRIPT_DIR/../composeApp/src/androidMain/jniLibs"
-    if [ -d "$JNILIBS_DIR" ]; then
-        rm -rf "$JNILIBS_DIR"
-    fi
     mkdir -p "$JNILIBS_DIR"
-    cp -r "$ANDROID_OUTPUT_DIR"/* "$JNILIBS_DIR/"
+
+    # Copy each ABI directory, preserving other libraries in the same directory
+    for abi_dir in "$ANDROID_OUTPUT_DIR"/*; do
+        if [ -d "$abi_dir" ]; then
+            ABI_NAME=$(basename "$abi_dir")
+            mkdir -p "$JNILIBS_DIR/$ABI_NAME"
+            cp "$abi_dir"/librust_audio_player.so "$JNILIBS_DIR/$ABI_NAME/"
+        fi
+    done
 
     print_success "Android libraries copied to $JNILIBS_DIR"
 }
