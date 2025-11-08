@@ -65,6 +65,11 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 // For Android, also ensure preBuild depends on Rust builds
 tasks.findByName("preBuild")?.dependsOn(buildRustRssParser, buildRustAudioPlayer)
 
+// For JVM, ensure jvmProcessResources depends on Rust builds
+tasks.matching { it.name == "jvmProcessResources" }.configureEach {
+    dependsOn(buildRustRssParser, buildRustAudioPlayer)
+}
+
 kotlin {
     androidTarget {
         compilerOptions {
@@ -192,7 +197,7 @@ sqldelight {
         create("PodcastDatabase") {
             packageName.set("com.opoojkk.podium.db")
             schemaOutputDirectory.set(file("src/commonMain/sqldelight"))
-            version = 3
+            version = 5
         }
     }
 }

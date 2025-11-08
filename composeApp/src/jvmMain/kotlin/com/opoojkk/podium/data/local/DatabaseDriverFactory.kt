@@ -24,7 +24,7 @@ actual class DatabaseDriverFactory {
 
     private fun migrateIfNeeded(driver: SqlDriver) {
         val currentVersion = getCurrentVersion(driver)
-        val targetVersion = 4 // 当前版本号
+        val targetVersion = 5 // 当前版本号
 
         if (currentVersion < targetVersion) {
             println("🔄 Migrating database from version $currentVersion to $targetVersion")
@@ -36,6 +36,7 @@ actual class DatabaseDriverFactory {
                     1 -> migrateToV2(driver)
                     2 -> migrateToV3(driver)
                     3 -> migrateToV4(driver)
+                    4 -> migrateToV5(driver)
                 }
             }
 
@@ -188,6 +189,64 @@ actual class DatabaseDriverFactory {
             }
         } catch (e: Exception) {
             println("  ✗ Error migrating to V4: ${e.message}")
+            throw e
+        }
+    }
+
+    // 迁移到版本5：添加 playback_state.isCompleted 和 addedToPlaylist 字段
+    private fun migrateToV5(driver: SqlDriver) {
+        println("  → Migrating to V5: Adding isCompleted and addedToPlaylist to playback_state...")
+
+        try {
+            // 检查 isCompleted 字段是否已存在
+            val hasIsCompleted = driver.executeQuery(
+                identifier = null,
+                sql = "SELECT COUNT(*) FROM pragma_table_info('playback_state') WHERE name='isCompleted'",
+                mapper = { cursor ->
+                    val count = cursor.getLong(0)?.toInt() ?: 0
+                    QueryResult.Value(count > 0)
+                },
+                parameters = 0,
+                binders = null
+            ).value ?: false
+
+            if (!hasIsCompleted) {
+                driver.execute(
+                    identifier = null,
+                    sql = "ALTER TABLE playback_state ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0",
+                    parameters = 0,
+                    binders = null
+                )
+                println("  ✓ Added isCompleted column to playback_state")
+            } else {
+                println("  ✓ isCompleted column already exists")
+            }
+
+            // 检查 addedToPlaylist 字段是否已存在
+            val hasAddedToPlaylist = driver.executeQuery(
+                identifier = null,
+                sql = "SELECT COUNT(*) FROM pragma_table_info('playback_state') WHERE name='addedToPlaylist'",
+                mapper = { cursor ->
+                    val count = cursor.getLong(0)?.toInt() ?: 0
+                    QueryResult.Value(count > 0)
+                },
+                parameters = 0,
+                binders = null
+            ).value ?: false
+
+            if (!hasAddedToPlaylist) {
+                driver.execute(
+                    identifier = null,
+                    sql = "ALTER TABLE playback_state ADD COLUMN addedToPlaylist INTEGER NOT NULL DEFAULT 1",
+                    parameters = 0,
+                    binders = null
+                )
+                println("  ✓ Added addedToPlaylist column to playback_state")
+            } else {
+                println("  ✓ addedToPlaylist column already exists")
+            }
+        } catch (e: Exception) {
+            println("  ✗ Error migrating to V5: ${e.message}")
             throw e
         }
     }

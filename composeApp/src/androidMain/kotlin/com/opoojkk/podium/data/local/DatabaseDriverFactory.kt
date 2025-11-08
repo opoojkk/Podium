@@ -67,6 +67,22 @@ actual class DatabaseDriverFactory(private val context: Context) {
                     } catch (e: Exception) {
                         Log.e("DBMigration", "Failed: ${e.message}")
                     }
+                },
+                AfterVersion(4) { driver ->
+                    // Migration from version 4 to 5: Add isCompleted and addedToPlaylist columns
+                    Log.d("DBMigration", "Migrating from version 4: Adding isCompleted and addedToPlaylist columns")
+                    try {
+                        driver.execute(null, "ALTER TABLE playback_state ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0", 0)
+                        Log.d("DBMigration", "✓ Added isCompleted column")
+                    } catch (e: Exception) {
+                        Log.e("DBMigration", "Failed to add isCompleted: ${e.message}")
+                    }
+                    try {
+                        driver.execute(null, "ALTER TABLE playback_state ADD COLUMN addedToPlaylist INTEGER NOT NULL DEFAULT 1", 0)
+                        Log.d("DBMigration", "✓ Added addedToPlaylist column")
+                    } catch (e: Exception) {
+                        Log.e("DBMigration", "Failed to add addedToPlaylist: ${e.message}")
+                    }
                 }
             )
         )
