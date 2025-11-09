@@ -1,6 +1,7 @@
 package com.opoojkk.podium.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Person
@@ -12,5 +13,6 @@ enum class PodiumDestination(
 ) {
     Home(Icons.Default.Home, "首页"),
     Subscriptions(Icons.Default.LibraryMusic, "订阅"),
+    Categories(Icons.Default.Category, "分类"),
     Profile(Icons.Default.Person, "我的"),
 }

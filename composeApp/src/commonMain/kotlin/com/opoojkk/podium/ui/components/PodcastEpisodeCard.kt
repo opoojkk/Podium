@@ -28,54 +28,56 @@ fun PodcastEpisodeCard(
     onDownloadClick: () -> Unit = {},
     showDownloadButton: Boolean = downloadStatus != null,
 ) {
-    Surface(
+    Card(
         modifier = modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        tonalElevation = 0.dp,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(
             modifier = Modifier
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top,
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             ArtworkPlaceholder(
                 artworkUrl = episodeWithPodcast.podcast.artworkUrl,
                 title = episodeWithPodcast.podcast.title,
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(80.dp),
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
                     text = episodeWithPodcast.episode.title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = episodeWithPodcast.podcast.title,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = episodeWithPodcast.episode.publishDate
+                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                        .date
+                        .toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FilledTonalButton(
-                        onClick = onPlayClick,
-                        modifier = Modifier.height(32.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                    ) {
-                        Text("播放", style = MaterialTheme.typography.labelMedium)
+                    Button(onClick = onPlayClick) {
+                        Text("播放")
                     }
                     // 只在订阅页面显示下载按钮
                     if (showDownloadButton) {
@@ -116,7 +118,6 @@ private fun ArtworkPlaceholder(
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
                 loading = {
-                    // 加载中显示占位符
                     Text(
                         text = initials,
                         style = MaterialTheme.typography.titleMedium,
@@ -124,7 +125,6 @@ private fun ArtworkPlaceholder(
                     )
                 },
                 error = {
-                    // 加载失败显示占位符
                     Text(
                         text = initials,
                         style = MaterialTheme.typography.titleMedium,
@@ -133,7 +133,6 @@ private fun ArtworkPlaceholder(
                 }
             )
         } else {
-            // 没有图片URL时显示占位符
             Text(
                 text = initials,
                 style = MaterialTheme.typography.titleMedium,
