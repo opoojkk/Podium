@@ -1,0 +1,135 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-11-09",
+  "description": "精选热门中文播客RSS订阅源",
+  "categories": [
+    {
+      "id": "culture_interview",
+      "name": "文化访谈",
+      "description": "深度访谈和文化观察类播客",
+      "podcasts": [
+        {
+          "id": "storyfm",
+          "name": "故事FM",
+          "description": "用你的声音，讲述你的故事。一档由普通人讲述自己生活故事的播客节目",
+          "host": "寇爱哲",
+          "rssUrl": "https://feeds.storyfm.cn/storyfm.xml",
+          "website": "https://storyfm.cn",
+          "verified": true
+        },
+        {
+          "id": "shengdongjixi",
+          "name": "声东击西",
+          "description": "帮你推开一些意想不到的窗户，触及不一样的信息，激发不一样的思考",
+          "producer": "声动活泼",
+          "rssUrl": "https://feeds.fireside.fm/shengdongjixi/rss",
+          "website": "https://etw.fm",
+          "verified": true
+        },
+        {
+          "id": "bafen",
+          "name": "梁文道·八分",
+          "description": "知名文化评论人梁文道的文化音频节目",
+          "host": "梁文道",
+          "rssUrl": "https://api.vistopia.com.cn/rss/program/11.xml",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "id": "current_affairs",
+      "name": "时事评论",
+      "description": "关注时事热点和社会议题的播客",
+      "podcasts": [
+        {
+          "id": "huzuohuyou",
+          "name": "忽左忽右",
+          "description": "JustPod出品的沙龙式对谈播客，探讨公共议题",
+          "producer": "JustPod",
+          "rssUrl": "https://feed.xyzfm.space/cv4bkgpuglwp",
+          "website": "http://justpodmedia.com",
+          "verified": true
+        },
+        {
+          "id": "eastasiaobservatory",
+          "name": "东亚观察局",
+          "description": "聚焦东亚地区的热点话题、文化现象和历史典故",
+          "host": "梵一如, 沙青青, 权小星",
+          "appleId": "1508293790",
+          "updateFrequency": "每周五更新",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "feminism_society",
+      "name": "女性主义与社会",
+      "description": "从女性视角探讨社会文化议题",
+      "podcasts": [
+        {
+          "id": "stochasticvolatility",
+          "name": "随机波动StochasticVolatility",
+          "description": "由三位女性媒体人发起的泛文化类播客",
+          "rssUrl": "https://www.stovol.club/rss",
+          "website": "https://www.stovol.club",
+          "updateFrequency": "每周三中午12:00更新",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "id": "business_finance",
+      "name": "商业财经",
+      "description": "商业观察和财经分析类播客",
+      "podcasts": [
+        {
+          "id": "beiwanglu",
+          "name": "贝望录",
+          "description": "媒体人、营销行业管理者、商业操盘手、创意人、创业者等讲述他们面对技术革新与市场变局的思考和行动",
+          "host": "Bessie李倩玲",
+          "producer": "Withinlink",
+          "appleId": "1492415440",
+          "awards": ["2019年度精选播客", "2019年度最受欢迎新播客"],
+          "verified": false
+        },
+        {
+          "id": "thatsbusiness",
+          "name": "商业就是这样",
+          "description": "用简单易懂的语言解读商业现象",
+          "updateFrequency": "每周更新",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "lifestyle_culture",
+      "name": "生活方式",
+      "description": "都市文化和生活方式类播客",
+      "podcasts": [
+        {
+          "id": "ritanpark",
+          "name": "日谈公园",
+          "description": "谈电影、音乐、文学、动漫、旅行、美食、时尚和生活方式的脱口秀节目",
+          "host": "李志明(李叔), 冯广健(小伙子)",
+          "appleId": "1166949390",
+          "website": "https://www.ritanbbpark.com",
+          "verified": false
+        },
+        {
+          "id": "theweirdo",
+          "name": "不合时宜",
+          "description": "几个身处不同时区的媒体人所做的一档闲聊播客，探讨公共议题、文化现象和生活方式",
+          "rssUrl": "https://www.buheshiyi.com/rss",
+          "website": "https://www.buheshiyi.com",
+          "verified": false
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "verification": "verified字段为true表示RSS链接已经过验证可用",
+    "appleId": "部分播客提供了Apple Podcasts ID，可以通过 https://podcasts.apple.com/podcast/id{appleId} 访问",
+    "platforms": "大多数中文播客可在小宇宙、Apple Podcasts、Spotify、喜马拉雅、网易云音乐等平台收听",
+    "rssAlternative": "对于未提供RSS URL的播客，可以尝试使用 https://getpodcast.xyz/ 等服务获取RSS源"
+  }
+}
