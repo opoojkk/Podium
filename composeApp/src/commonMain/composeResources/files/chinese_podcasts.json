@@ -298,7 +298,8 @@
           "host": "李志明(李叔), 冯广健(小伙子)",
           "appleId": "1166949390",
           "website": "https://www.ritanbbpark.com",
-          "verified": false
+          "verified": true,
+          "rssUrl": "https://www.ximalaya.com/album/5574153.xml"
         },
         {
           "id": "theweirdo",
