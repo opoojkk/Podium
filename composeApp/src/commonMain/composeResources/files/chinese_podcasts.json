@@ -299,9 +299,11 @@
         {
           "id": "soonerorlater",
           "name": "迟早更新",
-          "description": "探讨科技、商业和设计的播客",
+          "description": "探讨科技、商业和设计的播客，风险基金ONES Ventures关于热情、趣味和好奇心的音频记录",
+          "rssUrl": "https://podcast.weareones.com/feed/audio.xml",
+          "website": "https://podcast.weareones.com",
           "appleId": "1195487241",
-          "verified": false
+          "verified": true
         }
       ]
     },
@@ -313,10 +315,18 @@
         {
           "id": "anyway",
           "name": "Anyway.FM 设计杂谈",
-          "description": "设计师聊设计、聊工作、聊生活",
+          "description": "设计师聊设计、聊工作、聊生活，让你的听觉更懂视觉",
           "rssUrl": "https://anyway.fm/rss.xml",
           "website": "https://anyway.fm",
-          "verified": false
+          "verified": true
+        },
+        {
+          "id": "architalk",
+          "name": "所建所闻",
+          "description": "建筑设计相关的播客节目",
+          "rssUrl": "https://feeds.fireside.fm/architalk/rss",
+          "website": "https://architalk.fireside.fm",
+          "verified": true
         },
         {
           "id": "uxcoffee",
@@ -447,6 +457,104 @@
           "name": "松鼠大侦探",
           "description": "融入专业知识的罪案播客",
           "verified": false
+        }
+      ]
+    },
+    {
+      "id": "medical_health",
+      "name": "医疗健康",
+      "description": "医学知识和健康话题",
+      "podcasts": [
+        {
+          "id": "taiyilaile",
+          "name": "太医来了",
+          "description": "中文互联网第一档医生谈话类播客",
+          "rssUrl": "https://taiyilaile.com/feed/audio.xml",
+          "website": "https://taiyilaile.com",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "id": "fashion_lifestyle",
+      "name": "时尚生活",
+      "description": "时尚、生活方式和品味",
+      "podcasts": [
+        {
+          "id": "fashionmonster",
+          "name": "时尚怪物",
+          "description": "一档不只谈时尚的播客节目",
+          "rssUrl": "https://monslog.com/feed/audio.xml",
+          "website": "http://fashionmonster.fm",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "id": "media_observation",
+      "name": "媒体观察",
+      "description": "媒体分析和内容评论",
+      "podcasts": [
+        {
+          "id": "yitianshijie",
+          "name": "一天世界",
+          "description": "浓烟烈焰，摄魄勾魂。翱翔万里，神采飞扬",
+          "host": "不鳥萬如一",
+          "rssUrl": "https://yitianshijie.net/feed/audio.xml",
+          "website": "https://yitianshijie.net",
+          "verified": true
+        },
+        {
+          "id": "miechakucha",
+          "name": "灭茶苦茶",
+          "description": "不伦不类、不易流行。了解日本是不够的，我们要活用日本",
+          "rssUrl": "https://miechakucha.com/feed/audio.xml",
+          "website": "https://miechakucha.com",
+          "verified": true
+        },
+        {
+          "id": "hardimage",
+          "name": "硬影像",
+          "description": "关注影像之一切的播客，谈论影像背后的技术、历史和哲理",
+          "rssUrl": "http://hardimage.pro/feed/audio.xml",
+          "website": "http://hardimage.pro",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "id": "finance_investment",
+      "name": "金融投资",
+      "description": "金融市场和投资分析",
+      "podcasts": [
+        {
+          "id": "zjblr",
+          "name": "正经不良人",
+          "description": "商业财经节目，不定期邀请专业领域的嘉宾",
+          "rssUrl": "https://media.rss.com/zjblrfm/feed.xml",
+          "verified": true
+        },
+        {
+          "id": "jiexianyuan",
+          "name": "接线员",
+          "description": "JustPod出品的商业播客",
+          "rssUrl": "https://feed.xyzfm.space/7qpjhul3hq4e",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "id": "travel_exploration",
+      "name": "旅行探索",
+      "description": "旅行见闻和探险故事",
+      "podcasts": [
+        {
+          "id": "lushu",
+          "name": "路书",
+          "description": "历史与旅行相关的播客",
+          "rssUrl": "https://feeds.fireside.fm/lushu/rss",
+          "website": "https://lushu88.com",
+          "verified": true
         }
       ]
     }
