@@ -30,6 +30,10 @@ import com.opoojkk.podium.ui.profile.AboutDialog
 import com.opoojkk.podium.ui.profile.UpdateIntervalDialog
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
+import com.opoojkk.podium.ui.categories.CategoriesScreen
+import com.opoojkk.podium.ui.categories.CategoryDetailScreen
+import com.opoojkk.podium.data.repository.RecommendedPodcastRepository
+import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -81,7 +85,31 @@ fun PodiumApp(
     val showPlaylistFromPlayerDetail = remember { mutableStateOf(false) }
     val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }
     val selectedPodcast = remember { mutableStateOf<com.opoojkk.podium.data.model.Podcast?>(null) }
+    val selectedCategory = remember { mutableStateOf<PodcastCategory?>(null) }
     val showCacheManagement = remember { mutableStateOf(false) }
+
+    // Categories state
+    val categoriesState = remember { mutableStateOf<List<PodcastCategory>>(emptyList()) }
+    val categoriesLoading = remember { mutableStateOf(false) }
+    val recommendedPodcastRepository = remember { RecommendedPodcastRepository() }
+
+    // Load categories on app start
+    LaunchedEffect(Unit) {
+        categoriesLoading.value = true
+        val result = recommendedPodcastRepository.getAllCategories()
+        result.onSuccess { categories ->
+            categoriesState.value = categories
+        }
+        categoriesLoading.value = false
+
+        // Load recommended podcasts for home screen
+        val recommendedResult = recommendedPodcastRepository.getRandomRecommendedPodcasts(10)
+        recommendedResult.onSuccess { podcasts ->
+            // We'll pass this to HomeScreen via controller later
+            // For now, just log it
+            println("📻 Loaded ${podcasts.size} recommended podcasts")
+        }
+    }
     val showImportDialog = remember { mutableStateOf(false) }
     val showExportDialog = remember { mutableStateOf(false) }
     val showAboutDialog = remember { mutableStateOf(false) }
@@ -355,6 +383,7 @@ fun PodiumApp(
                 showPlaylistFromPlayerDetail = showPlaylistFromPlayerDetail,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
+                selectedCategory = selectedCategory,
                 showCacheManagement = showCacheManagement,
                 showAboutDialog = showAboutDialog,
                 showUpdateIntervalDialog = showUpdateIntervalDialog,
@@ -366,6 +395,8 @@ fun PodiumApp(
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
                 downloads = downloads,
+                categories = categoriesState.value,
+                categoriesLoading = categoriesLoading.value,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onPlayEpisode = playEpisode,
@@ -382,6 +413,7 @@ fun PodiumApp(
                 showPlaylistFromPlayerDetail = showPlaylistFromPlayerDetail,
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
+                selectedCategory = selectedCategory,
                 showCacheManagement = showCacheManagement,
                 showAboutDialog = showAboutDialog,
                 showUpdateIntervalDialog = showUpdateIntervalDialog,
@@ -396,6 +428,8 @@ fun PodiumApp(
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
                 downloads = downloads,
+                categories = categoriesState.value,
+                categoriesLoading = categoriesLoading.value,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onPlayEpisode = playEpisode,
@@ -441,6 +475,7 @@ private fun DesktopLayout(
     showPlaylistFromPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
+    selectedCategory: androidx.compose.runtime.MutableState<PodcastCategory?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
     showAboutDialog: androidx.compose.runtime.MutableState<Boolean>,
     showUpdateIntervalDialog: androidx.compose.runtime.MutableState<Boolean>,
@@ -452,6 +487,8 @@ private fun DesktopLayout(
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
+    categories: List<PodcastCategory>,
+    categoriesLoading: Boolean,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
@@ -511,6 +548,18 @@ private fun DesktopLayout(
                                     showPlaylistFromPlayerDetail.value = true
                                     showPlaylist.value = true
                                 },
+                            )
+                        }
+                        selectedCategory.value != null -> {
+                            // 显示分类详情页
+                            val category = selectedCategory.value!!
+                            CategoryDetailScreen(
+                                category = category,
+                                onBack = { selectedCategory.value = null },
+                                onPodcastClick = { podcast ->
+                                    // TODO: Handle podcast click (maybe subscribe or view)
+                                    println("📻 Podcast clicked: ${podcast.name}")
+                                }
                             )
                         }
                         selectedPodcast.value != null -> {
@@ -575,6 +624,12 @@ private fun DesktopLayout(
                                     onDeleteSubscription = controller::deleteSubscription,
                                     onPodcastClick = { podcast -> selectedPodcast.value = podcast },
                                     onClearDuplicateMessage = controller::clearDuplicateSubscriptionMessage,
+                                )
+
+                                PodiumDestination.Categories -> CategoriesScreen(
+                                    categories = categories,
+                                    isLoading = categoriesLoading,
+                                    onCategoryClick = { category -> selectedCategory.value = category }
                                 )
 
                                 PodiumDestination.Profile -> ProfileScreen(
@@ -717,6 +772,7 @@ private fun MobileLayout(
     showPlaylistFromPlayerDetail: androidx.compose.runtime.MutableState<Boolean>,
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
+    selectedCategory: androidx.compose.runtime.MutableState<PodcastCategory?>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
     showAboutDialog: androidx.compose.runtime.MutableState<Boolean>,
     showUpdateIntervalDialog: androidx.compose.runtime.MutableState<Boolean>,
@@ -731,6 +787,8 @@ private fun MobileLayout(
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
+    categories: List<PodcastCategory>,
+    categoriesLoading: Boolean,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
@@ -817,6 +875,18 @@ private fun MobileLayout(
                             onClearCache = { /* TODO: 实现清除缓存功能 */ },
                         )
                     }
+                    selectedCategory.value != null -> {
+                        // 显示分类详情页
+                        val category = selectedCategory.value!!
+                        CategoryDetailScreen(
+                            category = category,
+                            onBack = { selectedCategory.value = null },
+                            onPodcastClick = { podcast ->
+                                // TODO: Handle podcast click (maybe subscribe or view)
+                                println("📻 Podcast clicked: ${podcast.name}")
+                            }
+                        )
+                    }
                     selectedPodcast.value != null -> {
                         // 显示播客单集列表
                         val podcast = selectedPodcast.value!!
@@ -898,6 +968,12 @@ private fun MobileLayout(
                                     onCacheManagementClick = { showCacheManagement.value = true },
                                     onAboutClick = { showAboutDialog.value = true },
                                     onUpdateIntervalClick = { showUpdateIntervalDialog.value = true },
+                                )
+
+                                PodiumDestination.Categories -> CategoriesScreen(
+                                    categories = categories,
+                                    isLoading = categoriesLoading,
+                                    onCategoryClick = { category -> selectedCategory.value = category }
                                 )
                             }
                         }
