@@ -248,6 +248,13 @@
           "verified": false
         },
         {
+          "id": "startupinsider",
+          "name": "创业内幕 Startup Insider",
+          "description": "GGV纪源资本出品，分享创业故事和经验",
+          "rssUrl": "https://www.ximalaya.com/album/20119986.xml",
+          "verified": true
+        },
+        {
           "id": "whatsext",
           "name": "What's Next|科技早知道",
           "description": "探讨前沿科技趋势和创业机会",
@@ -331,9 +338,11 @@
         {
           "id": "uxcoffee",
           "name": "UX Coffee 设计咖",
-          "description": "关于用户体验设计的播客",
+          "description": "关于用户体验设计的播客，聊聊设计和用户体验",
+          "rssUrl": "https://uxcoffee.typlog.io/feed/audio.xml",
+          "website": "http://www.uxcoffee.com",
           "appleId": "1253143751",
-          "verified": false
+          "verified": true
         }
       ]
     },
@@ -352,9 +361,11 @@
         {
           "id": "culturelimited",
           "name": "文化有限",
-          "description": "聊聊书、电影和文化现象",
-          "appleId": "1220848235",
-          "verified": false
+          "description": "每周二更新，和你分享最打动我们的作品",
+          "host": "大壹, 星光, 超哥",
+          "rssUrl": "https://s1.proxy.wavpub.com/weknownothing.xml",
+          "appleId": "1482731836",
+          "verified": true
         },
         {
           "id": "zhankaijj",
@@ -381,6 +392,13 @@
           "name": "loudreader",
           "description": "大声朗读者，分享文学和思想",
           "verified": false
+        },
+        {
+          "id": "untitledpodcast",
+          "name": "未命名播客",
+          "description": "历史与文化话题探讨",
+          "rssUrl": "https://feeds.fireside.fm/untitledpodcast/rss",
+          "verified": true
         }
       ]
     },
