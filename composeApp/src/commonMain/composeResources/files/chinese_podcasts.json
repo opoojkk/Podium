@@ -1,7 +1,7 @@
 {
-  "version": "5.1",
+  "version": "6.0",
   "lastUpdated": "2025-11-09",
-  "description": "精选热门中文播客RSS订阅源 - 包含140+优质播客节目",
+  "description": "精选热门中文播客RSS订阅源 - 包含150+优质播客节目",
   "categories": [
     {
       "id": "culture_interview",
@@ -283,6 +283,13 @@
           "description": "访谈类播客。寻找真诚、有感染力的新一代行业领袖",
           "rssUrl": "https://www.ximalaya.com/album/7070786.xml",
           "verified": true
+        },
+        {
+          "id": "jiuyeyibai",
+          "name": "九又一百",
+          "description": "商业故事和财经观察",
+          "rssUrl": "https://feeds.simplecast.com/tOK0P8y7",
+          "verified": false
         }
       ]
     },
@@ -490,6 +497,13 @@
           "description": "透过人物观点来讨论社会议题的节目",
           "rssUrl": "https://www.omnycontent.com/d/playlist/a4cc0a4a-642d-45d7-ac5d-ac5600c620b0/31365e91-0226-49ef-96a9-ac5b007b3787/a9df1f4d-154d-4b27-9b13-ac5b007b378b/podcast.rss",
           "verified": true
+        },
+        {
+          "id": "sanwuhuan",
+          "name": "三五环",
+          "description": "北京文化观察播客，关注城市生活与文化现象",
+          "rssUrl": "https://feeds.acast.com/public/shows/5f5705f0ed0ce805255e0b89",
+          "verified": false
         }
       ]
     },
@@ -625,6 +639,13 @@
           "description": "Golang, Software Engineering discussions from the Go community",
           "rssUrl": "https://changelog.com/gotime/feed",
           "verified": true
+        },
+        {
+          "id": "codenong",
+          "name": "代码乱炖",
+          "description": "技术播客，讨论编程和开发者生活",
+          "rssUrl": "https://www.ximalaya.com/album/37853515.xml",
+          "verified": false
         }
       ]
     },
@@ -750,10 +771,11 @@
         },
         {
           "id": "whatsext",
-          "name": "What's Next|科技早知道",
-          "description": "探讨前沿科技趋势和创业机会",
+          "name": "What's Next｜科技早知道",
+          "description": "原「硅谷早知道」，全新改版的「What's Next｜科技早知道」我们会继续放眼全球，不仅聚焦纯科技的话题，也会关注科技引领世界以及商业格局变化等新话题",
           "appleId": "1448157407",
-          "verified": false
+          "rssUrl": "https://feeds.fireside.fm/guiguzaozhidao/rss",
+          "verified": true
         }
       ]
     },
@@ -964,6 +986,13 @@
           "description": "由读库团队制作出品的音频节目，老六张立宪与小伙伴的陪伴",
           "rssUrl": "https://feeds.acast.com/public/shows/60f54a3215143f001a4e0ad6",
           "verified": true
+        },
+        {
+          "id": "booksandstories",
+          "name": "书和远方",
+          "description": "文学作品与旅行故事分享",
+          "rssUrl": "https://feeds.transistor.fm/books-stories",
+          "verified": false
         }
       ]
     },
