@@ -396,7 +396,7 @@ private fun HorizontalRecommendedPodcastCard(
                 Text(
                     text = podcast.name,
                     style = MaterialTheme.typography.titleSmall,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
