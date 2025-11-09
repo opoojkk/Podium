@@ -1,5 +1,5 @@
 {
-  "version": "5.0",
+  "version": "5.1",
   "lastUpdated": "2025-11-09",
   "description": "精选热门中文播客RSS订阅源 - 包含140+优质播客节目",
   "categories": [
@@ -192,6 +192,13 @@
           "name": "心都野了Heartbeast",
           "description": "都市野人播客，用野人的视角观察社会",
           "rssUrl": "https://feed.xyzfm.space/33aw4yrtuj9v",
+          "verified": true
+        },
+        {
+          "id": "bierenxing",
+          "name": "别任性",
+          "description": "由性与性别博士Alexwood主持，从性别角度看一切",
+          "rssUrl": "https://feeds.acast.com/public/shows/5e79b43429d1401a1a8c0015",
           "verified": true
         }
       ]
@@ -948,6 +955,13 @@
           "name": "一起文學吧",
           "description": "台湾文学播客，品味创作、阅读与聆听",
           "rssUrl": "https://feed.mirrorvoice.com.tw/rss/Literacy.xml",
+          "verified": true
+        },
+        {
+          "id": "duku",
+          "name": "读库立体声",
+          "description": "由读库团队制作出品的音频节目，老六张立宪与小伙伴的陪伴",
+          "rssUrl": "https://feeds.acast.com/public/shows/60f54a3215143f001a4e0ad6",
           "verified": true
         }
       ]
