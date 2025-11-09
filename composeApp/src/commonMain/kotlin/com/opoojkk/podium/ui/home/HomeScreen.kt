@@ -355,7 +355,7 @@ private fun HorizontalRecommendedPodcastCard(
 ) {
     Card(
         modifier = modifier
-            .width(200.dp)
+            .width(160.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -369,7 +369,7 @@ private fun HorizontalRecommendedPodcastCard(
             // 播客封面占位符
             Box(
                 modifier = Modifier
-                    .size(176.dp)
+                    .size(136.dp)
                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
