@@ -7,6 +7,7 @@ import com.opoojkk.podium.data.model.EpisodeWithPodcast
  */
 data class HomeUiState(
     val recentPlayed: List<EpisodeWithPodcast> = emptyList(),
+    val recommendedEpisodes: List<EpisodeWithPodcast> = emptyList(),
     val recentUpdates: List<EpisodeWithPodcast> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,

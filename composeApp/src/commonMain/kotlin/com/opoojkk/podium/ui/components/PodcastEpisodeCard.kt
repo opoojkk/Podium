@@ -28,56 +28,54 @@ fun PodcastEpisodeCard(
     onDownloadClick: () -> Unit = {},
     showDownloadButton: Boolean = downloadStatus != null,
 ) {
-    Card(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        tonalElevation = 0.dp,
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
         ) {
             ArtworkPlaceholder(
                 artworkUrl = episodeWithPodcast.podcast.artworkUrl,
                 title = episodeWithPodcast.podcast.title,
-                modifier = Modifier.size(80.dp),
+                modifier = Modifier.size(64.dp),
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     text = episodeWithPodcast.episode.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = episodeWithPodcast.podcast.title,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = episodeWithPodcast.episode.publishDate
-                        .toLocalDateTime(TimeZone.currentSystemDefault())
-                        .date
-                        .toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(onClick = onPlayClick) {
-                        Text("播放")
+                    FilledTonalButton(
+                        onClick = onPlayClick,
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                    ) {
+                        Text("播放", style = MaterialTheme.typography.labelMedium)
                     }
                     // 只在订阅页面显示下载按钮
                     if (showDownloadButton) {

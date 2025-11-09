@@ -145,6 +145,26 @@ fun HomeScreen(
                     }
                 }
 
+                // 推荐部分
+                if (state.recommendedEpisodes.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "推荐",
+                            description = "为你精选的优质节目",
+                            onViewMore = null,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
+
+                    items(state.recommendedEpisodes.take(5), key = { it.episode.id }) { item ->
+                        PodcastEpisodeCard(
+                            episodeWithPodcast = item,
+                            onPlayClick = { onPlayEpisode(item.episode) },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
+                }
+
                 item {
                     SectionHeader(
                         title = "最近更新",
