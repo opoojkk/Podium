@@ -19,7 +19,7 @@ import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
 import com.opoojkk.podium.data.rss.PodcastFeed
 import com.opoojkk.podium.data.rss.RssEpisode
-import com.opoojkk.podium.ui.home.PodcastEpisodeCardSkeleton
+import com.opoojkk.podium.ui.components.PodcastEpisodeCardSkeleton
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -99,7 +99,7 @@ fun RecommendedPodcastDetailScreen(
                             modifier = Modifier.padding(top = 8.dp)
                         )
                     }
-                    items(state.feed.episodes, key = { it.guid }) { episode ->
+                    items(state.feed.episodes, key = { it.id }) { episode ->
                         EpisodeListItem(
                             episode = episode,
                             onClick = { onPlayEpisode(episode) }
@@ -269,7 +269,7 @@ private fun EpisodeListItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = formatDate(episode.pubDate),
+                    text = formatDate(episode.publishDate),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

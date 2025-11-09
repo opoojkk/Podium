@@ -394,6 +394,8 @@ fun PodiumApp(
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
                 selectedCategory = selectedCategory,
+                selectedRecommendedPodcast = selectedRecommendedPodcast,
+                showRecommendedPodcastDetail = showRecommendedPodcastDetail,
                 showCacheManagement = showCacheManagement,
                 showAboutDialog = showAboutDialog,
                 showUpdateIntervalDialog = showUpdateIntervalDialog,
@@ -408,6 +410,7 @@ fun PodiumApp(
                 categories = categoriesState.value,
                 categoriesLoading = categoriesLoading.value,
                 recommendedPodcasts = recommendedPodcasts.value,
+                environment = environment,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onPlayEpisode = playEpisode,
@@ -425,6 +428,8 @@ fun PodiumApp(
                 showViewMore = showViewMore,
                 selectedPodcast = selectedPodcast,
                 selectedCategory = selectedCategory,
+                selectedRecommendedPodcast = selectedRecommendedPodcast,
+                showRecommendedPodcastDetail = showRecommendedPodcastDetail,
                 showCacheManagement = showCacheManagement,
                 showAboutDialog = showAboutDialog,
                 showUpdateIntervalDialog = showUpdateIntervalDialog,
@@ -442,6 +447,7 @@ fun PodiumApp(
                 categories = categoriesState.value,
                 categoriesLoading = categoriesLoading.value,
                 recommendedPodcasts = recommendedPodcasts.value,
+                environment = environment,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onPlayEpisode = playEpisode,
@@ -488,6 +494,8 @@ private fun DesktopLayout(
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     selectedCategory: androidx.compose.runtime.MutableState<PodcastCategory?>,
+    selectedRecommendedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.recommended.RecommendedPodcast?>,
+    showRecommendedPodcastDetail: androidx.compose.runtime.MutableState<Boolean>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
     showAboutDialog: androidx.compose.runtime.MutableState<Boolean>,
     showUpdateIntervalDialog: androidx.compose.runtime.MutableState<Boolean>,
@@ -502,6 +510,7 @@ private fun DesktopLayout(
     categories: List<PodcastCategory>,
     categoriesLoading: Boolean,
     recommendedPodcasts: List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>,
+    environment: PodiumEnvironment,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
@@ -577,9 +586,10 @@ private fun DesktopLayout(
                         }
                         showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
                             // 显示推荐播客详情页
-                            val podcast = selectedRecommendedPodcast.value!!
+                            val podcastToShow = selectedRecommendedPodcast.value!!
+                            val podcastName = podcastToShow.name
                             com.opoojkk.podium.ui.podcast.RecommendedPodcastDetailScreen(
-                                podcast = podcast,
+                                podcast = podcastToShow,
                                 onBack = {
                                     showRecommendedPodcastDetail.value = false
                                     selectedRecommendedPodcast.value = null
@@ -587,7 +597,7 @@ private fun DesktopLayout(
                                 onSubscribe = { rssUrl ->
                                     controller.subscribe(rssUrl)
                                     scope.launch {
-                                        snackbarHostState.showSnackbar("已订阅《${podcast.name}》")
+                                        snackbarHostState.showSnackbar("已订阅《${podcastName}》")
                                     }
                                 },
                                 onPlayEpisode = { episode ->
@@ -819,6 +829,8 @@ private fun MobileLayout(
     showViewMore: androidx.compose.runtime.MutableState<ViewMoreType?>,
     selectedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.Podcast?>,
     selectedCategory: androidx.compose.runtime.MutableState<PodcastCategory?>,
+    selectedRecommendedPodcast: androidx.compose.runtime.MutableState<com.opoojkk.podium.data.model.recommended.RecommendedPodcast?>,
+    showRecommendedPodcastDetail: androidx.compose.runtime.MutableState<Boolean>,
     showCacheManagement: androidx.compose.runtime.MutableState<Boolean>,
     showAboutDialog: androidx.compose.runtime.MutableState<Boolean>,
     showUpdateIntervalDialog: androidx.compose.runtime.MutableState<Boolean>,
@@ -836,6 +848,7 @@ private fun MobileLayout(
     categories: List<PodcastCategory>,
     categoriesLoading: Boolean,
     recommendedPodcasts: List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>,
+    environment: PodiumEnvironment,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
@@ -936,9 +949,10 @@ private fun MobileLayout(
                     }
                     showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
                         // 显示推荐播客详情页
-                        val podcast = selectedRecommendedPodcast.value!!
+                        val podcastToShow = selectedRecommendedPodcast.value!!
+                        val podcastName = podcastToShow.name
                         com.opoojkk.podium.ui.podcast.RecommendedPodcastDetailScreen(
-                            podcast = podcast,
+                            podcast = podcastToShow,
                             onBack = {
                                 showRecommendedPodcastDetail.value = false
                                 selectedRecommendedPodcast.value = null
@@ -946,7 +960,7 @@ private fun MobileLayout(
                             onSubscribe = { rssUrl ->
                                 controller.subscribe(rssUrl)
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("已订阅《${podcast.name}》")
+                                    snackbarHostState.showSnackbar("已订阅《${podcastName}》")
                                 }
                             },
                             onPlayEpisode = { episode ->
