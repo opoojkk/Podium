@@ -27,5 +27,6 @@ data class RecommendedPodcast(
     val rssUrl: String? = null,
     val website: String? = null,
     val appleId: String? = null,
+    val artworkUrl: String? = null,
     val verified: Boolean = false,
 )

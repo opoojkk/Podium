@@ -366,13 +366,14 @@ private fun HorizontalRecommendedPodcastCard(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // 播客封面占位符
+            // 播客封面
             Box(
                 modifier = Modifier
                     .size(136.dp)
                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
+                val artworkUrl = podcast.artworkUrl
                 val initials = podcast.name
                     .trim()
                     .split(" ", limit = 2)
@@ -381,11 +382,37 @@ private fun HorizontalRecommendedPodcastCard(
                     .takeIf { it.isNotBlank() }
                     ?: "播客"
 
-                Text(
-                    text = initials,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                // 加载图片或显示占位符
+                if (!artworkUrl.isNullOrBlank()) {
+                    SubcomposeAsyncImage(
+                        model = artworkUrl,
+                        contentDescription = podcast.name,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        },
+                        error = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    )
+                } else {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
 
             // 播客名称
