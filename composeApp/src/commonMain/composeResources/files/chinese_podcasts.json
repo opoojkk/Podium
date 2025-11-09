@@ -1,7 +1,7 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "lastUpdated": "2025-11-09",
-  "description": "精选热门中文播客RSS订阅源",
+  "description": "精选热门中文播客RSS订阅源 - 包含40+优质播客节目",
   "categories": [
     {
       "id": "culture_interview",
@@ -121,6 +121,331 @@
           "description": "几个身处不同时区的媒体人所做的一档闲聊播客，探讨公共议题、文化现象和生活方式",
           "rssUrl": "https://www.buheshiyi.com/rss",
           "website": "https://www.buheshiyi.com",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "tech_digital",
+      "name": "科技数码",
+      "description": "科技趋势、数码产品和互联网行业观察",
+      "podcasts": [
+        {
+          "id": "jinjinledao",
+          "name": "津津乐道",
+          "description": "由互联网老兵和各领域达人共同制作的高质量播客，内容涵盖泛科技、创业、科技、商业、生活方式等话题",
+          "rssUrl": "https://dao.fm/feed/",
+          "website": "https://dao.fm",
+          "verified": true
+        },
+        {
+          "id": "kernelpanic",
+          "name": "内核恐慌",
+          "description": "专注于操作系统、虚拟化、容器技术等基础软件领域的技术播客",
+          "rssUrl": "https://kernelpanic.fm/feed",
+          "website": "https://kernelpanic.fm",
+          "verified": false
+        },
+        {
+          "id": "bytecoffee",
+          "name": "Byte.Coffee",
+          "description": "程序员的闲聊播客，聊技术、聊行业、聊生活",
+          "appleId": "1530287932",
+          "verified": false
+        },
+        {
+          "id": "codetime",
+          "name": "代码时间",
+          "description": "和开发者聊聊写代码这件事",
+          "appleId": "1570547173",
+          "verified": false
+        },
+        {
+          "id": "ggtalk",
+          "name": "GGTalk",
+          "description": "聊聊游戏、设计、科技和文化",
+          "appleId": "1440443653",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "knowledge_education",
+      "name": "知识科普",
+      "description": "科学、历史、博物等知识类播客",
+      "podcasts": [
+        {
+          "id": "bowuzhi",
+          "name": "博物志",
+          "description": "泛博物馆主题播客，探索博物馆背后的故事",
+          "host": "婉莹",
+          "rssUrl": "https://bowuzhi.fm/feed/audio.xml",
+          "website": "https://bowuzhi.fm",
+          "verified": true
+        },
+        {
+          "id": "carbonbase",
+          "name": "碳基生物生存指南",
+          "description": "用科学的方式探讨生活中的各种话题",
+          "appleId": "1482873162",
+          "verified": false
+        },
+        {
+          "id": "naturalselection",
+          "name": "自然选择",
+          "description": "探讨生物学、进化论和自然科学的播客",
+          "appleId": "1477958407",
+          "verified": false
+        },
+        {
+          "id": "pageseven",
+          "name": "PAGE SEVEN 胡先笙",
+          "description": "涵盖物理、生化、文史等领域的知识分享",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "music_audio",
+      "name": "音乐音频",
+      "description": "音乐文化和音频制作类播客",
+      "podcasts": [
+        {
+          "id": "antiwave",
+          "name": "反波 Antiwave",
+          "description": "创办于2005年的先锋音乐播客，曾获德国之声国际博客大赛最佳播客奖",
+          "host": "平客, 飞猪",
+          "rssUrl": "https://antiwave.xyz/feed/podcast/",
+          "website": "https://antiwave.xyz",
+          "verified": true
+        },
+        {
+          "id": "loudspeaker",
+          "name": "大内密谈",
+          "description": "聊音乐、电影、文化和生活的播客",
+          "appleId": "908838818",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "entrepreneurship",
+      "name": "创业投资",
+      "description": "创业、投资和商业故事",
+      "podcasts": [
+        {
+          "id": "crazycapital",
+          "name": "疯投圈",
+          "description": "分享创投圈的观察和思考",
+          "appleId": "1356717947",
+          "verified": false
+        },
+        {
+          "id": "venture42",
+          "name": "42章经",
+          "description": "专注早期投资的思考与分享",
+          "appleId": "1449467292",
+          "verified": false
+        },
+        {
+          "id": "whatsext",
+          "name": "What's Next|科技早知道",
+          "description": "探讨前沿科技趋势和创业机会",
+          "appleId": "1448157407",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "film_entertainment",
+      "name": "影视娱乐",
+      "description": "电影、电视剧和娱乐文化",
+      "podcasts": [
+        {
+          "id": "movieparadise",
+          "name": "电影巨辩",
+          "description": "深度讨论电影的播客节目",
+          "verified": false
+        },
+        {
+          "id": "blowyourmind",
+          "name": "Blow Your Mind",
+          "description": "涉及电影、心理学等多元内容的文化播客",
+          "appleId": "731698287",
+          "verified": false
+        },
+        {
+          "id": "cinemadazzle",
+          "name": "跳岛FM",
+          "description": "和有趣的人聊有趣的事",
+          "appleId": "1553771208",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "personal_growth",
+      "name": "个人成长",
+      "description": "自我提升和生活智慧",
+      "podcasts": [
+        {
+          "id": "beartalk",
+          "name": "狗熊有话说",
+          "description": "阅读、旅行、科技、互联网、个人成长",
+          "host": "大狗熊",
+          "appleId": "1003546947",
+          "verified": false
+        },
+        {
+          "id": "soonerorlater",
+          "name": "迟早更新",
+          "description": "探讨科技、商业和设计的播客",
+          "appleId": "1195487241",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "design_creativity",
+      "name": "设计创意",
+      "description": "设计思维和创意产业",
+      "podcasts": [
+        {
+          "id": "anyway",
+          "name": "Anyway.FM 设计杂谈",
+          "description": "设计师聊设计、聊工作、聊生活",
+          "rssUrl": "https://anyway.fm/rss.xml",
+          "website": "https://anyway.fm",
+          "verified": false
+        },
+        {
+          "id": "uxcoffee",
+          "name": "UX Coffee 设计咖",
+          "description": "关于用户体验设计的播客",
+          "appleId": "1253143751",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "literature_reading",
+      "name": "文学阅读",
+      "description": "文学作品和阅读分享",
+      "podcasts": [
+        {
+          "id": "kanlixiang",
+          "name": "看理想圆桌",
+          "description": "看理想出品的文化类播客节目",
+          "appleId": "1418358464",
+          "verified": false
+        },
+        {
+          "id": "culturelimited",
+          "name": "文化有限",
+          "description": "聊聊书、电影和文化现象",
+          "appleId": "1220848235",
+          "verified": false
+        },
+        {
+          "id": "zhankaijj",
+          "name": "展开讲讲",
+          "description": "深度对谈类文化播客",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "history_humanities",
+      "name": "历史人文",
+      "description": "历史故事和人文思考",
+      "podcasts": [
+        {
+          "id": "shijianxian",
+          "name": "时间线",
+          "description": "用声音记录历史",
+          "appleId": "1572924080",
+          "verified": false
+        },
+        {
+          "id": "loudreader",
+          "name": "loudreader",
+          "description": "大声朗读者，分享文学和思想",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "psychology_health",
+      "name": "心理健康",
+      "description": "心理学和身心健康",
+      "podcasts": [
+        {
+          "id": "knoller",
+          "name": "knowyourself",
+          "description": "心理学相关的播客节目",
+          "verified": false
+        },
+        {
+          "id": "simple",
+          "name": "简单心理",
+          "description": "专业心理健康播客",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "sports_fitness",
+      "name": "运动健身",
+      "description": "运动、健身和户外",
+      "podcasts": [
+        {
+          "id": "yesrunning",
+          "name": "跑步者说",
+          "description": "关于跑步的一切",
+          "verified": false
+        },
+        {
+          "id": "outdoorfm",
+          "name": "户外探险电台",
+          "description": "户外运动和探险故事",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "food_travel",
+      "name": "美食旅行",
+      "description": "美食文化和旅行见闻",
+      "podcasts": [
+        {
+          "id": "foodtopia",
+          "name": "味之道",
+          "description": "探索美食背后的文化",
+          "verified": false
+        },
+        {
+          "id": "worldtour",
+          "name": "世界旅人",
+          "description": "旅行者的故事和见闻",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "crime_mystery",
+      "name": "罪案悬疑",
+      "description": "真实罪案和悬疑故事",
+      "podcasts": [
+        {
+          "id": "yidilogin",
+          "name": "异地登录",
+          "description": "用多元视角讲述罪案故事",
+          "verified": false
+        },
+        {
+          "id": "squirreldetective",
+          "name": "松鼠大侦探",
+          "description": "融入专业知识的罪案播客",
           "verified": false
         }
       ]
