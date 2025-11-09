@@ -1,7 +1,7 @@
 {
-  "version": "4.0",
+  "version": "5.0",
   "lastUpdated": "2025-11-09",
-  "description": "精选热门中文播客RSS订阅源 - 包含130+优质播客节目",
+  "description": "精选热门中文播客RSS订阅源 - 包含140+优质播客节目",
   "categories": [
     {
       "id": "culture_interview",
@@ -123,6 +123,13 @@
           "name": "当户织-木兰的播客",
           "description": "女性视角的文化观察",
           "rssUrl": "https://www.ximalaya.com/album/69138237.xml",
+          "verified": true
+        },
+        {
+          "id": "kanlixiangyuanzhuo",
+          "name": "看理想圆桌",
+          "description": "看理想出品，以多元视角探讨当下议题",
+          "rssUrl": "https://api.vistopia.com.cn/rss/program/13.xml",
           "verified": true
         }
       ]
@@ -440,6 +447,41 @@
           "description": "个人生活思考类播客",
           "rssUrl": "https://www.ximalaya.com/album/76845185.xml",
           "verified": true
+        },
+        {
+          "id": "lichangbo",
+          "name": "栗長波DailyWave",
+          "description": "每日波段话题讨论",
+          "rssUrl": "https://www.ximalaya.com/album/77072392.xml",
+          "verified": true
+        },
+        {
+          "id": "hubulianwang",
+          "name": "互不联网",
+          "description": "用声音拿回身体的主导权，分享具体细微又真实的社会话题",
+          "rssUrl": "https://www.ximalaya.com/album/77112790.xml",
+          "verified": true
+        },
+        {
+          "id": "nanbeichao",
+          "name": "南北潮",
+          "description": "聚焦南北文化差异的精神对话播客",
+          "rssUrl": "https://www.ximalaya.com/album/77236959.xml",
+          "verified": true
+        },
+        {
+          "id": "chatla",
+          "name": "Chat LA",
+          "description": "洛杉矶30+女性的生活日常、职场心得与成长感悟",
+          "rssUrl": "https://www.ximalaya.com/album/77306505.xml",
+          "verified": true
+        },
+        {
+          "id": "beforemonday",
+          "name": "星期天晚上 Before Monday",
+          "description": "透过人物观点来讨论社会议题的节目",
+          "rssUrl": "https://www.omnycontent.com/d/playlist/a4cc0a4a-642d-45d7-ac5d-ac5600c620b0/31365e91-0226-49ef-96a9-ac5b007b3787/a9df1f4d-154d-4b27-9b13-ac5b007b378b/podcast.rss",
+          "verified": true
         }
       ]
     },
@@ -568,6 +610,13 @@
           "description": "Kotlin 编程语言相关讨论",
           "rssUrl": "https://www.ximalaya.com/album/68370676.xml",
           "verified": true
+        },
+        {
+          "id": "gotime",
+          "name": "Go Time",
+          "description": "Golang, Software Engineering discussions from the Go community",
+          "rssUrl": "https://changelog.com/gotime/feed",
+          "verified": true
         }
       ]
     },
@@ -624,6 +673,13 @@
           "name": "除你武器",
           "description": "知识科普和思维训练",
           "rssUrl": "https://www.ximalaya.com/album/73927500.xml",
+          "verified": true
+        },
+        {
+          "id": "zhishihhw",
+          "name": "知識好好玩",
+          "description": "台湾知识科普节目，用有趣的方式说给你听",
+          "rssUrl": "https://feed.mirrorvoice.com.tw/rss/knowledgeprogram.xml",
           "verified": true
         }
       ]
@@ -885,6 +941,13 @@
           "name": "囫囵吞",
           "description": "读书和文学讨论",
           "rssUrl": "https://www.ximalaya.com/album/69105917.xml",
+          "verified": true
+        },
+        {
+          "id": "yiqiwenxue",
+          "name": "一起文學吧",
+          "description": "台湾文学播客，品味创作、阅读与聆听",
+          "rssUrl": "https://feed.mirrorvoice.com.tw/rss/Literacy.xml",
           "verified": true
         }
       ]
