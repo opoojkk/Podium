@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
@@ -125,6 +126,7 @@ private fun CategoryCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryDetailScreen(
     category: PodcastCategory,
@@ -238,6 +240,3 @@ private fun PodcastItemCard(
         }
     }
 }
-
-// Import for graphicsLayer
-import androidx.compose.ui.graphics.graphicsLayer

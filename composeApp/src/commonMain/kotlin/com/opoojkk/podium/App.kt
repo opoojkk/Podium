@@ -398,6 +398,7 @@ fun PodiumApp(
                 downloads = downloads,
                 categories = categoriesState.value,
                 categoriesLoading = categoriesLoading.value,
+                recommendedPodcasts = recommendedPodcasts.value,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onPlayEpisode = playEpisode,
@@ -431,6 +432,7 @@ fun PodiumApp(
                 downloads = downloads,
                 categories = categoriesState.value,
                 categoriesLoading = categoriesLoading.value,
+                recommendedPodcasts = recommendedPodcasts.value,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onPlayEpisode = playEpisode,
@@ -490,6 +492,7 @@ private fun DesktopLayout(
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     categories: List<PodcastCategory>,
     categoriesLoading: Boolean,
+    recommendedPodcasts: List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
@@ -596,7 +599,7 @@ private fun DesktopLayout(
                         else -> {
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
-                                    state = homeState.copy(recommendedPodcasts = recommendedPodcasts.value),
+                                    state = homeState.copy(recommendedPodcasts = recommendedPodcasts),
                                     onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
                                     onClearSearch = controller::clearHomeSearch,
@@ -798,6 +801,7 @@ private fun MobileLayout(
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     categories: List<PodcastCategory>,
     categoriesLoading: Boolean,
+    recommendedPodcasts: List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
@@ -939,7 +943,7 @@ private fun MobileLayout(
                         ) {
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
-                                    state = homeState.copy(recommendedPodcasts = recommendedPodcasts.value),
+                                    state = homeState.copy(recommendedPodcasts = recommendedPodcasts),
                                     onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
                                     onClearSearch = controller::clearHomeSearch,
