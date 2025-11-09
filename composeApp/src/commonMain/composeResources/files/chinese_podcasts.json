@@ -1,7 +1,7 @@
 {
-  "version": "3.0",
+  "version": "4.0",
   "lastUpdated": "2025-11-09",
-  "description": "精选热门中文播客RSS订阅源 - 包含100+优质播客节目",
+  "description": "精选热门中文播客RSS订阅源 - 包含130+优质播客节目",
   "categories": [
     {
       "id": "culture_interview",
@@ -81,6 +81,48 @@
           "name": "剧谈社",
           "description": "翻译艺术品，深度讨论影视剧作",
           "rssUrl": "https://www.ximalaya.com/album/43127335.xml",
+          "verified": true
+        },
+        {
+          "id": "huozi",
+          "name": "活字电波",
+          "description": "活字文化编辑部播客，观照热点话题、思想动态以及生活现实",
+          "rssUrl": "https://www.ximalaya.com/album/37301628.xml",
+          "verified": true
+        },
+        {
+          "id": "zheiye",
+          "name": "职夜班",
+          "description": "邀请从事不同职业的人分享他们的职业故事",
+          "rssUrl": "https://www.ximalaya.com/album/40931705.xml",
+          "verified": true
+        },
+        {
+          "id": "budongss",
+          "name": "不动声色",
+          "description": "声音记录档案，呈现多样且有趣的声音",
+          "rssUrl": "https://bds.wht.one/feed.xml",
+          "verified": true
+        },
+        {
+          "id": "zhizutalk",
+          "name": "智族Talk",
+          "description": "文化和社会议题讨论",
+          "rssUrl": "https://www.ximalaya.com/album/26080525.xml",
+          "verified": true
+        },
+        {
+          "id": "talk3lian",
+          "name": "Talk三联",
+          "description": "三联生活周刊出品的文化播客",
+          "rssUrl": "https://www.ximalaya.com/album/55884537.xml",
+          "verified": true
+        },
+        {
+          "id": "danghuzhi",
+          "name": "当户织-木兰的播客",
+          "description": "女性视角的文化观察",
+          "rssUrl": "https://www.ximalaya.com/album/69138237.xml",
           "verified": true
         }
       ]
@@ -328,6 +370,76 @@
           "description": "独居在香港的台湾女子，与她脑子里的小宇宙",
           "rssUrl": "https://api.soundon.fm/v2/podcasts/fa237e2c-0c2e-4b96-9dce-48edf7598c4d/feed.xml",
           "verified": true
+        },
+        {
+          "id": "niuyouguo",
+          "name": "牛油果烤面包",
+          "description": "聊科技发展趋势，聊各行业来龙去脉，硅谷第一线的资深专家分享",
+          "rssUrl": "https://avocadotoast.typlog.io/feed/audio.xml",
+          "verified": true
+        },
+        {
+          "id": "sago",
+          "name": "sago散讲",
+          "description": "穿堂风/Simona的声音周记本。我散着讲讲，你随便听听",
+          "rssUrl": "https://blog.simona.life/feed/audio.xml",
+          "verified": true
+        },
+        {
+          "id": "yishixingqi",
+          "name": "一时兴起Whim",
+          "description": "关于百分之百的小事与简单复杂道理，一个laid-back的电台",
+          "rssUrl": "https://www.ximalaya.com/album/23672358.xml",
+          "verified": true
+        },
+        {
+          "id": "dagedianh",
+          "name": "打个电话给你",
+          "description": "居住在香港和北京的女性主播，聊电影、人类学和社会创新",
+          "rssUrl": "https://www.ximalaya.com/album/29294593.xml",
+          "verified": true
+        },
+        {
+          "id": "whynew",
+          "name": "What's New!",
+          "description": "关于每周发生的新鲜事的聊天节目",
+          "rssUrl": "https://www.ximalaya.com/album/39601158.xml",
+          "verified": true
+        },
+        {
+          "id": "shuodiansha",
+          "name": "说点sa",
+          "description": "关注与女性、儿童、家庭有关的一切",
+          "rssUrl": "https://www.ximalaya.com/album/44993310.xml",
+          "verified": true
+        },
+        {
+          "id": "moxijie",
+          "name": "墨西姐生活",
+          "description": "墨西姐的生活分享播客",
+          "rssUrl": "https://www.ximalaya.com/album/69118088.xml",
+          "verified": true
+        },
+        {
+          "id": "chaoyanggrr",
+          "name": "朝阳公园人",
+          "description": "朝阳公园周边生活观察",
+          "rssUrl": "https://www.ximalaya.com/album/76148437.xml",
+          "verified": true
+        },
+        {
+          "id": "dongtalk",
+          "name": "东TALK",
+          "description": "东方文化和生活讨论",
+          "rssUrl": "https://www.ximalaya.com/album/76711358.xml",
+          "verified": true
+        },
+        {
+          "id": "zishgui",
+          "name": "我是一个自私鬼",
+          "description": "个人生活思考类播客",
+          "rssUrl": "https://www.ximalaya.com/album/76845185.xml",
+          "verified": true
         }
       ]
     },
@@ -435,6 +547,27 @@
           "description": "分享当下最新鲜的技术、知识与思想的科技播客",
           "rssUrl": "https://feeds.fireside.fm/sv101/rss",
           "verified": true
+        },
+        {
+          "id": "alcbeijing",
+          "name": "ALC Beijing Podcast",
+          "description": "Apache 相关的文化、项目、孵化、共同体建设",
+          "rssUrl": "https://www.ximalaya.com/album/37853515.xml",
+          "verified": true
+        },
+        {
+          "id": "fview",
+          "name": "FView Friday",
+          "description": "爱否科技全新音视频直播节目",
+          "rssUrl": "https://www.ximalaya.com/album/41563226.xml",
+          "verified": true
+        },
+        {
+          "id": "kotlinchat",
+          "name": "Kotlin 炉边漫谈",
+          "description": "Kotlin 编程语言相关讨论",
+          "rssUrl": "https://www.ximalaya.com/album/68370676.xml",
+          "verified": true
         }
       ]
     },
@@ -477,6 +610,20 @@
           "name": "明日之路",
           "description": "关注可持续生活的行动团体播客",
           "rssUrl": "https://www.ximalaya.com/album/47208927.xml",
+          "verified": true
+        },
+        {
+          "id": "heylisten",
+          "name": "Hey Listen 请听好",
+          "description": "短时有趣的闲聊英文频道",
+          "rssUrl": "https://www.ximalaya.com/album/53700116.xml",
+          "verified": true
+        },
+        {
+          "id": "chuyouwq",
+          "name": "除你武器",
+          "description": "知识科普和思维训练",
+          "rssUrl": "https://www.ximalaya.com/album/73927500.xml",
           "verified": true
         }
       ]
@@ -576,6 +723,20 @@
           "name": "FC 红白传说",
           "description": "任天堂游戏机回忆录",
           "rssUrl": "https://www.ximalaya.com/album/53004244.xml",
+          "verified": true
+        },
+        {
+          "id": "zhongchang",
+          "name": "中场时间",
+          "description": "影视娱乐和文化讨论",
+          "rssUrl": "https://www.ximalaya.com/album/68342506.xml",
+          "verified": true
+        },
+        {
+          "id": "dyjubian",
+          "name": "电影巨辩",
+          "description": "深度讨论电影的播客节目",
+          "rssUrl": "https://www.ximalaya.com/album/76473718.xml",
           "verified": true
         }
       ]
@@ -697,6 +858,34 @@
           "name": "展开讲讲",
           "description": "深度对谈类文化播客",
           "verified": false
+        },
+        {
+          "id": "yebian",
+          "name": "页边笔记",
+          "description": "人文通识教育的尝试，讨论重要但不紧迫的事情",
+          "rssUrl": "https://www.ximalaya.com/album/50278948.xml",
+          "verified": true
+        },
+        {
+          "id": "youyiben",
+          "name": "又一本",
+          "description": "关于好奇心带来的思考，尝试用读书和聊天连接世界",
+          "rssUrl": "https://www.ximalaya.com/album/52018488.xml",
+          "verified": true
+        },
+        {
+          "id": "mihuan",
+          "name": "蜜獾吃书",
+          "description": "小型杂食性读书节目，讨论各种奇奇怪怪的话题",
+          "rssUrl": "https://www.ximalaya.com/album/64689453.xml",
+          "verified": true
+        },
+        {
+          "id": "hulunton",
+          "name": "囫囵吞",
+          "description": "读书和文学讨论",
+          "rssUrl": "https://www.ximalaya.com/album/69105917.xml",
+          "verified": true
         }
       ]
     },
@@ -762,6 +951,13 @@
           "name": "户外探险电台",
           "description": "户外运动和探险故事",
           "verified": false
+        },
+        {
+          "id": "yueweioff",
+          "name": "越位offside",
+          "description": "足球迷的瞎聊天，体坛无节操探讨",
+          "rssUrl": "https://www.ximalaya.com/album/39406010.xml",
+          "verified": true
         }
       ]
     },
