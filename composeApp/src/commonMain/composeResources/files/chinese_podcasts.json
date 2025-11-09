@@ -1,7 +1,7 @@
 {
-  "version": "2.0",
+  "version": "3.0",
   "lastUpdated": "2025-11-09",
-  "description": "精选热门中文播客RSS订阅源 - 包含40+优质播客节目",
+  "description": "精选热门中文播客RSS订阅源 - 包含100+优质播客节目",
   "categories": [
     {
       "id": "culture_interview",
@@ -32,6 +32,55 @@
           "description": "知名文化评论人梁文道的文化音频节目",
           "host": "梁文道",
           "rssUrl": "https://api.vistopia.com.cn/rss/program/11.xml",
+          "verified": true
+        },
+        {
+          "id": "luosizai",
+          "name": "螺丝在拧紧",
+          "description": "单读主编吴琦的播客。在剧烈的社会转型中继续提出问题",
+          "rssUrl": "https://www.ximalaya.com/album/47008946.xml",
+          "verified": true
+        },
+        {
+          "id": "yinchao",
+          "name": "旧青年街垒",
+          "description": "三个来自苏南县城但流落世界各地的旧青年创立的podcast",
+          "rssUrl": "https://media.rss.com/oyb/feed.xml",
+          "verified": true
+        },
+        {
+          "id": "quan",
+          "name": "泉",
+          "description": "关注各种视觉与文本材料的播客节目",
+          "rssUrl": "https://media.rss.com/izumi/feed.xml",
+          "verified": true
+        },
+        {
+          "id": "renshengzhi",
+          "name": "人生之书·与你共读",
+          "description": "西安欧亚学院与不止读书创办者魏小河共同开启的读书节目",
+          "rssUrl": "https://feed.xyzfm.space/dkp9mrvxkpyh",
+          "verified": true
+        },
+        {
+          "id": "shenrulianliao",
+          "name": "深入聊聊",
+          "description": "既然都要见面，不如深入聊聊。聚焦产品相关的深度垂直方向",
+          "rssUrl": "https://www.ximalaya.com/album/40326277.xml",
+          "verified": true
+        },
+        {
+          "id": "tingtsaoxuan",
+          "name": "听涛轩 Taothatstory",
+          "description": "为您梳理热点时事，数尽风流人物",
+          "rssUrl": "http://rss.lizhi.fm/rss/176389682.xml",
+          "verified": true
+        },
+        {
+          "id": "jutan",
+          "name": "剧谈社",
+          "description": "翻译艺术品，深度讨论影视剧作",
+          "rssUrl": "https://www.ximalaya.com/album/43127335.xml",
           "verified": true
         }
       ]
@@ -74,6 +123,27 @@
           "website": "https://www.stovol.club",
           "updateFrequency": "每周三中午12:00更新",
           "verified": true
+        },
+        {
+          "id": "bnnv",
+          "name": "不男不女读书会",
+          "description": "以女性主义作品与文本的阅读与讨论为主的开放包容的读书会",
+          "rssUrl": "https://feeds.fireside.fm/genderless/rss",
+          "verified": true
+        },
+        {
+          "id": "liaoyangyu",
+          "name": "聊养院",
+          "description": "成立于2018年的女性+电影播客。专注女性视角，输出专业电影内容",
+          "rssUrl": "https://s1.proxy.wavpub.com/qualite.xml",
+          "verified": true
+        },
+        {
+          "id": "xinduyele",
+          "name": "心都野了Heartbeast",
+          "description": "都市野人播客，用野人的视角观察社会",
+          "rssUrl": "https://feed.xyzfm.space/33aw4yrtuj9v",
+          "verified": true
         }
       ]
     },
@@ -89,7 +159,10 @@
           "host": "Bessie李倩玲",
           "producer": "Withinlink",
           "appleId": "1492415440",
-          "awards": ["2019年度精选播客", "2019年度最受欢迎新播客"],
+          "awards": [
+            "2019年度精选播客",
+            "2019年度最受欢迎新播客"
+          ],
           "verified": false
         },
         {
@@ -98,6 +171,62 @@
           "description": "用简单易懂的语言解读商业现象",
           "updateFrequency": "每周更新",
           "verified": false
+        },
+        {
+          "id": "shengdongzaokaffe",
+          "name": "声动早咖啡",
+          "description": "一个十五分钟的晨间仪式，轻松同步日常生活与商业世界",
+          "rssUrl": "https://feeds.fireside.fm/sheng-espresso/rss",
+          "verified": true
+        },
+        {
+          "id": "luanfanshu",
+          "name": "乱翻书",
+          "description": "关注商业、科技和历史的对话节目",
+          "rssUrl": "https://feed.xyzfm.space/yxuruh3f9mc4",
+          "verified": true
+        },
+        {
+          "id": "mactalk",
+          "name": "MacTalk·夜航西飞",
+          "description": "MacTalk 公众号作者，墨问西东创始人。聊聊互联网、书、产品、职场",
+          "rssUrl": "https://feed.xyzfm.space/9mkbwqtmr8ma",
+          "verified": true
+        },
+        {
+          "id": "tianyu2fm",
+          "name": "TIANYU2FM",
+          "description": "每期对谈一个陌生行业，拓展未知领域",
+          "rssUrl": "https://feeds.fireside.fm/tianyu2/rss",
+          "verified": true
+        },
+        {
+          "id": "jingdizhiwa",
+          "name": "井底之挖",
+          "description": "深挖新鲜无国界。来自中美的两兄弟分享生活故事",
+          "rssUrl": "https://feeds.captivate.fm/jingdizhiwa/",
+          "verified": true
+        },
+        {
+          "id": "donglaxi",
+          "name": "东拉西扯",
+          "description": "跨文化、无主题的生活清谈节目",
+          "rssUrl": "https://media.rss.com/donglaxiche/feed.xml",
+          "verified": true
+        },
+        {
+          "id": "zaijian",
+          "name": "再见老板",
+          "description": "自由职业者音频访谈节目，了解自由职业者千奇百怪的赚钱方式",
+          "rssUrl": "https://s1.proxy.wavpub.com/zaijianlaoban.xml",
+          "verified": true
+        },
+        {
+          "id": "cong0dao1",
+          "name": "从零道一",
+          "description": "访谈类播客。寻找真诚、有感染力的新一代行业领袖",
+          "rssUrl": "https://www.ximalaya.com/album/7070786.xml",
+          "verified": true
         }
       ]
     },
@@ -122,6 +251,83 @@
           "rssUrl": "https://www.buheshiyi.com/rss",
           "website": "https://www.buheshiyi.com",
           "verified": false
+        },
+        {
+          "id": "wuhuhaisi",
+          "name": "五湖四海",
+          "description": "邀请生活在世界各地的朋友们以创作者、设计师、异乡人这三重视角分享",
+          "rssUrl": "https://5l4s.de/feed/audio.xml",
+          "verified": true
+        },
+        {
+          "id": "yirenyige",
+          "name": "一人有一个",
+          "description": "两个女生的闲聊播客，每期一人分享一个快乐烦恼",
+          "rssUrl": "https://oneatatime.typlog.io/feed/audio.xml",
+          "verified": true
+        },
+        {
+          "id": "qingshan",
+          "name": "请三十",
+          "description": "生活方式播客",
+          "rssUrl": "https://www.ximalaya.com/album/52741380.xml",
+          "verified": true
+        },
+        {
+          "id": "shudiao",
+          "name": "薯条码头",
+          "description": "生活分享类播客",
+          "rssUrl": "https://www.ximalaya.com/album/60372693.xml",
+          "verified": true
+        },
+        {
+          "id": "kongjian",
+          "name": "空间",
+          "description": "探讨生活空间和体验的播客",
+          "rssUrl": "https://www.ximalaya.com/album/55336429.xml",
+          "verified": true
+        },
+        {
+          "id": "beifanggongyuan",
+          "name": "北方公园NorthPark",
+          "description": "北方生活观察类播客",
+          "rssUrl": "http://rss.lizhi.fm/rss/100588506.xml",
+          "verified": true
+        },
+        {
+          "id": "yichelandhua",
+          "name": "一车烂话",
+          "description": "生活闲聊类播客",
+          "rssUrl": "https://www.ximalaya.com/album/15996341.xml",
+          "verified": true
+        },
+        {
+          "id": "shuodiansha",
+          "name": "说点傻话",
+          "description": "轻松闲聊的生活播客",
+          "rssUrl": "https://www.ximalaya.com/album/51639589.xml",
+          "verified": true
+        },
+        {
+          "id": "yuanjindiantai",
+          "name": "远近电台",
+          "description": "原创情感好文分享",
+          "rssUrl": "https://www.ximalaya.com/album/3325.xml",
+          "verified": true
+        },
+        {
+          "id": "guokan",
+          "name": "过刊",
+          "description": "回顾过往的内容和故事",
+          "rssUrl": "https://www.ximalaya.com/album/36470328.xml",
+          "verified": true
+        },
+        {
+          "id": "ohfudge",
+          "name": "oh fudge!",
+          "description": "独居在香港的台湾女子，与她脑子里的小宇宙",
+          "rssUrl": "https://api.soundon.fm/v2/podcasts/fa237e2c-0c2e-4b96-9dce-48edf7598c4d/feed.xml",
+          "verified": true
         }
       ]
     },
@@ -166,6 +372,69 @@
           "description": "聊聊游戏、设计、科技和文化",
           "appleId": "1440443653",
           "verified": false
+        },
+        {
+          "id": "bytetalk",
+          "name": "ByteTalk",
+          "description": "聊聊程序员的故事",
+          "rssUrl": "https://bytetalk.fm/index.xml",
+          "verified": true
+        },
+        {
+          "id": "rusttalk",
+          "name": "RustTalk",
+          "description": "RustTalk 是一档专注在 Rust 社区的程序员闲聊节目",
+          "rssUrl": "https://rusttalk.github.io/podcast/index.xml",
+          "verified": true
+        },
+        {
+          "id": "teahour",
+          "name": "Teahour",
+          "description": "专注程序员感兴趣的话题，包括 Web 设计和开发，移动应用设计和开发",
+          "rssUrl": "https://feeds.fireside.fm/teahour/rss",
+          "verified": true
+        },
+        {
+          "id": "talkgo",
+          "name": "Go 夜聊",
+          "description": "Go 夜聊是一档由几个Go语言爱好者主持的播客节目",
+          "rssUrl": "https://talkgo.fm/index.xml",
+          "verified": true
+        },
+        {
+          "id": "webview",
+          "name": "WEB VIEW",
+          "description": "不囿于 WEB，不止于 VIEW，由王隐和敬礼主持的一档泛科技播客",
+          "rssUrl": "https://webview.tech/feed/podcast/",
+          "verified": true
+        },
+        {
+          "id": "fengyany",
+          "name": "枫言枫语",
+          "description": "听见科技与人文的声音。由开发者和设计师主持的播客节目",
+          "rssUrl": "https://justinyan.me/feed/podcast",
+          "verified": true
+        },
+        {
+          "id": "datawy",
+          "name": "The Data Way",
+          "description": "由SphereEx 公司出品的播客节目",
+          "rssUrl": "https://www.ximalaya.com/album/51321288.xml",
+          "verified": true
+        },
+        {
+          "id": "guiguzaozhidao",
+          "name": "硅谷早知道",
+          "description": "失败、背叛、不被理解，硅谷精神领袖一直都不是完美的存在",
+          "rssUrl": "https://feeds.fireside.fm/guiguzaozhidao/rss",
+          "verified": true
+        },
+        {
+          "id": "sv101",
+          "name": "硅谷101",
+          "description": "分享当下最新鲜的技术、知识与思想的科技播客",
+          "rssUrl": "https://feeds.fireside.fm/sv101/rss",
+          "verified": true
         }
       ]
     },
@@ -202,6 +471,13 @@
           "name": "PAGE SEVEN 胡先笙",
           "description": "涵盖物理、生化、文史等领域的知识分享",
           "verified": false
+        },
+        {
+          "id": "mingrizhi",
+          "name": "明日之路",
+          "description": "关注可持续生活的行动团体播客",
+          "rssUrl": "https://www.ximalaya.com/album/47208927.xml",
+          "verified": true
         }
       ]
     },
@@ -225,6 +501,13 @@
           "description": "聊音乐、电影、文化和生活的播客",
           "appleId": "908838818",
           "verified": false
+        },
+        {
+          "id": "vibration",
+          "name": "Vibration 歪波音室",
+          "description": "音乐太多，耳朵太少",
+          "rssUrl": "https://s2.proxy.wavpub.com/vibration.xml",
+          "verified": true
         }
       ]
     },
@@ -287,6 +570,13 @@
           "description": "和有趣的人聊有趣的事",
           "appleId": "1553771208",
           "verified": false
+        },
+        {
+          "id": "fchongbai",
+          "name": "FC 红白传说",
+          "description": "任天堂游戏机回忆录",
+          "rssUrl": "https://www.ximalaya.com/album/53004244.xml",
+          "verified": true
         }
       ]
     },
@@ -310,6 +600,34 @@
           "rssUrl": "https://podcast.weareones.com/feed/audio.xml",
           "website": "https://podcast.weareones.com",
           "appleId": "1195487241",
+          "verified": true
+        },
+        {
+          "id": "fullofmind",
+          "name": "Full of Mind",
+          "description": "心理学与跨界的1v1茶话会",
+          "rssUrl": "https://feeds.fireside.fm/fullofmind/rss",
+          "verified": true
+        },
+        {
+          "id": "cuiruo",
+          "name": "脆弱世界",
+          "description": "看见紧迫的社会问题，也看见解决它们的希望",
+          "rssUrl": "https://vulnerableworld.typlog.io/feed/audio.xml",
+          "verified": true
+        },
+        {
+          "id": "quanzhilv",
+          "name": "全职业绿洲",
+          "description": "最有趣的职业故事，最热血的前辈分享",
+          "rssUrl": "https://feed.xyzfm.space/38qmt4tuh4jh",
+          "verified": true
+        },
+        {
+          "id": "706space",
+          "name": "706线上沙龙",
+          "description": "不逃避，探索生活的更多可能性",
+          "rssUrl": "https://s1.proxy.wavpub.com/706space.xml",
           "verified": true
         }
       ]
@@ -342,6 +660,13 @@
           "rssUrl": "https://uxcoffee.typlog.io/feed/audio.xml",
           "website": "http://www.uxcoffee.com",
           "appleId": "1253143751",
+          "verified": true
+        },
+        {
+          "id": "xiashuo",
+          "name": "瞎说设计",
+          "description": "设计相关的播客节目",
+          "rssUrl": "https://feeds.soundon.fm/podcasts/0aa385de-e5e8-4125-bcc4-64130c11d5a2.xml",
           "verified": true
         }
       ]
@@ -537,6 +862,34 @@
           "rssUrl": "http://hardimage.pro/feed/audio.xml",
           "website": "http://hardimage.pro",
           "verified": true
+        },
+        {
+          "id": "zhubolai",
+          "name": "主播来了",
+          "description": "主播采访类播客。邀请各播客主播上节目，聊聊他们播客背后的故事",
+          "rssUrl": "https://www.ximalaya.com/album/54654006.xml",
+          "verified": true
+        },
+        {
+          "id": "changshi",
+          "name": "常识报刊亭",
+          "description": "媒体观察和内容评论",
+          "rssUrl": "https://www.ximalaya.com/album/57308238.xml",
+          "verified": true
+        },
+        {
+          "id": "xiancheng",
+          "name": "县城内外",
+          "description": "关注县城生活和社会观察",
+          "rssUrl": "https://www.ximalaya.com/album/55356446.xml",
+          "verified": true
+        },
+        {
+          "id": "wentida",
+          "name": "问题不大NoBigDeal",
+          "description": "社会议题讨论播客",
+          "rssUrl": "https://www.ximalaya.com/album/49570973.xml",
+          "verified": true
         }
       ]
     },
@@ -572,6 +925,20 @@
           "description": "历史与旅行相关的播客",
           "rssUrl": "https://feeds.fireside.fm/lushu/rss",
           "website": "https://lushu88.com",
+          "verified": true
+        },
+        {
+          "id": "lxrcd",
+          "name": "旅行熱炒店",
+          "description": "世界地理人文探索頻道。認真深入介紹各國地理人文的旅行節目",
+          "rssUrl": "https://ltsoj.com/podcast.xml",
+          "verified": true
+        },
+        {
+          "id": "dewansi",
+          "name": "德万斯提 One Diversity",
+          "description": "英国留学生的原创播客节目。提供多文化多视角的双语播客内容",
+          "rssUrl": "https://www.ximalaya.com/album/50899061.xml",
           "verified": true
         }
       ]
