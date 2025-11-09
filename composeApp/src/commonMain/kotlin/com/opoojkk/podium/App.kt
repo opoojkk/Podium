@@ -93,7 +93,9 @@ fun PodiumApp(
     val categoriesLoading = remember { mutableStateOf(false) }
     val recommendedPodcastRepository = remember { RecommendedPodcastRepository() }
 
-    // Load categories on app start
+    val recommendedPodcasts = remember { mutableStateOf<List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>>(emptyList()) }
+
+    // Load categories and recommended podcasts on app start
     LaunchedEffect(Unit) {
         categoriesLoading.value = true
         val result = recommendedPodcastRepository.getAllCategories()
@@ -105,8 +107,7 @@ fun PodiumApp(
         // Load recommended podcasts for home screen
         val recommendedResult = recommendedPodcastRepository.getRandomRecommendedPodcasts(10)
         recommendedResult.onSuccess { podcasts ->
-            // We'll pass this to HomeScreen via controller later
-            // For now, just log it
+            recommendedPodcasts.value = podcasts
             println("📻 Loaded ${podcasts.size} recommended podcasts")
         }
     }
@@ -595,7 +596,7 @@ private fun DesktopLayout(
                         else -> {
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
-                                    state = homeState,
+                                    state = homeState.copy(recommendedPodcasts = recommendedPodcasts.value),
                                     onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
                                     onClearSearch = controller::clearHomeSearch,
@@ -614,6 +615,14 @@ private fun DesktopLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
+                                    onRecommendedPodcastClick = { podcast ->
+                                        podcast.rssUrl?.let { rssUrl ->
+                                            controller.subscribe(rssUrl)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("已订阅《${podcast.name}》")
+                                            }
+                                        }
+                                    },
                                 )
 
                                 PodiumDestination.Subscriptions -> SubscriptionsScreen(
@@ -930,7 +939,7 @@ private fun MobileLayout(
                         ) {
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
-                                    state = homeState,
+                                    state = homeState.copy(recommendedPodcasts = recommendedPodcasts.value),
                                     onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
                                     onClearSearch = controller::clearHomeSearch,
@@ -949,6 +958,14 @@ private fun MobileLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
+                                    onRecommendedPodcastClick = { podcast ->
+                                        podcast.rssUrl?.let { rssUrl ->
+                                            controller.subscribe(rssUrl)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("已订阅《${podcast.name}》")
+                                            }
+                                        }
+                                    },
                                 )
 
                                 PodiumDestination.Subscriptions -> SubscriptionsScreen(

@@ -1,5 +1,6 @@
 package com.opoojkk.podium.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,11 +18,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -33,8 +37,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.Episode
+import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
 import com.opoojkk.podium.presentation.HomeUiState
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRow
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRowSkeleton
@@ -53,6 +59,7 @@ fun HomeScreen(
     onViewMoreRecentUpdates: () -> Unit = {},
     onRefresh: () -> Unit = {},
     isRefreshing: Boolean = false,
+    onRecommendedPodcastClick: (RecommendedPodcast) -> Unit = {},
 ) {
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -145,21 +152,22 @@ fun HomeScreen(
                     }
                 }
 
-                // 推荐部分
-                if (state.recommendedEpisodes.isNotEmpty()) {
+                // 推荐部分 - 显示来自 JSON 的精选播客
+                if (state.recommendedPodcasts.isNotEmpty()) {
                     item {
                         SectionHeader(
                             title = "推荐",
-                            description = "为你精选的优质节目",
+                            description = "为你精选的优质播客",
                             onViewMore = null,
                             modifier = Modifier.padding(horizontal = 16.dp),
                         )
                     }
 
-                    items(state.recommendedEpisodes.take(5), key = { it.episode.id }) { item ->
-                        PodcastEpisodeCard(
-                            episodeWithPodcast = item,
-                            onPlayClick = { onPlayEpisode(item.episode) },
+                    items(state.recommendedPodcasts.take(5), key = { it.first.id }) { (podcast, categoryName) ->
+                        RecommendedPodcastCard(
+                            podcast = podcast,
+                            categoryName = categoryName,
+                            onClick = { onRecommendedPodcastClick(podcast) },
                             modifier = Modifier.padding(horizontal = 16.dp),
                         )
                     }
@@ -305,4 +313,87 @@ private fun HomeSearchBar(
         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
     )
+}
+
+@Composable
+private fun RecommendedPodcastCard(
+    podcast: RecommendedPodcast,
+    categoryName: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = podcast.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                if (podcast.verified) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Text(
+                            text = "已验证",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = podcast.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Text(
+                        text = categoryName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+
+                podcast.host?.let { host ->
+                    Text(
+                        text = "主播: $host",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
 }
