@@ -1,5 +1,6 @@
 package com.opoojkk.podium.ui.categories
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,9 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
 
@@ -157,15 +161,6 @@ fun CategoryDetailScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                Text(
-                    text = category.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
             items(category.podcasts, key = { it.id }) { podcast ->
                 PodcastItemCard(
                     podcast = podcast,
@@ -186,55 +181,85 @@ private fun PodcastItemCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            // 播客封面
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                val artworkUrl = podcast.artworkUrl
+                val initials = podcast.name
+                    .trim()
+                    .split(" ", limit = 2)
+                    .mapNotNull { it.firstOrNull()?.uppercase() }
+                    .joinToString(separator = "")
+                    .takeIf { it.isNotBlank() }
+                    ?: "播客"
+
+                if (!artworkUrl.isNullOrBlank()) {
+                    SubcomposeAsyncImage(
+                        model = artworkUrl,
+                        contentDescription = podcast.name,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        },
+                        error = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    )
+                } else {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+
+            // 播客信息
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(80.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     text = podcast.name,
                     style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                if (podcast.verified) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                    ) {
-                        Text(
-                            text = "已验证",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
 
-            Text(
-                text = podcast.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            podcast.host?.let { host ->
                 Text(
-                    text = "主播: $host",
-                    style = MaterialTheme.typography.labelSmall,
+                    text = podcast.description,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

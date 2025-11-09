@@ -86,6 +86,8 @@ fun PodiumApp(
     val showViewMore = remember { mutableStateOf<ViewMoreType?>(null) }
     val selectedPodcast = remember { mutableStateOf<com.opoojkk.podium.data.model.Podcast?>(null) }
     val selectedCategory = remember { mutableStateOf<PodcastCategory?>(null) }
+    val selectedRecommendedPodcast = remember { mutableStateOf<com.opoojkk.podium.data.model.recommended.RecommendedPodcast?>(null) }
+    val showRecommendedPodcastDetail = remember { mutableStateOf(false) }
     val showCacheManagement = remember { mutableStateOf(false) }
 
     // Categories state
@@ -568,8 +570,37 @@ private fun DesktopLayout(
                                 category = category,
                                 onBack = { selectedCategory.value = null },
                                 onPodcastClick = { podcast ->
-                                    // TODO: Handle podcast click (maybe subscribe or view)
-                                    println("📻 Podcast clicked: ${podcast.name}")
+                                    selectedRecommendedPodcast.value = podcast
+                                    showRecommendedPodcastDetail.value = true
+                                }
+                            )
+                        }
+                        showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
+                            // 显示推荐播客详情页
+                            val podcast = selectedRecommendedPodcast.value!!
+                            com.opoojkk.podium.ui.podcast.RecommendedPodcastDetailScreen(
+                                podcast = podcast,
+                                onBack = {
+                                    showRecommendedPodcastDetail.value = false
+                                    selectedRecommendedPodcast.value = null
+                                },
+                                onSubscribe = { rssUrl ->
+                                    controller.subscribe(rssUrl)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("已订阅《${podcast.name}》")
+                                    }
+                                },
+                                onPlayEpisode = { episode ->
+                                    // TODO: Handle playing episode from recommended podcast
+                                    println("📻 Play episode: ${episode.title}")
+                                },
+                                loadPodcastFeed = { feedUrl ->
+                                    kotlin.runCatching {
+                                        com.opoojkk.podium.data.rss.PodcastFeedService(
+                                            httpClient = environment.httpClient,
+                                            parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
+                                        ).fetch(feedUrl)
+                                    }
                                 }
                             )
                         }
@@ -626,12 +657,8 @@ private fun DesktopLayout(
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
                                     onRecommendedPodcastClick = { podcast ->
-                                        podcast.rssUrl?.let { rssUrl ->
-                                            controller.subscribe(rssUrl)
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("已订阅《${podcast.name}》")
-                                            }
-                                        }
+                                        selectedRecommendedPodcast.value = podcast
+                                        showRecommendedPodcastDetail.value = true
                                     },
                                 )
 
@@ -902,8 +929,37 @@ private fun MobileLayout(
                             category = category,
                             onBack = { selectedCategory.value = null },
                             onPodcastClick = { podcast ->
-                                // TODO: Handle podcast click (maybe subscribe or view)
-                                println("📻 Podcast clicked: ${podcast.name}")
+                                selectedRecommendedPodcast.value = podcast
+                                showRecommendedPodcastDetail.value = true
+                            }
+                        )
+                    }
+                    showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
+                        // 显示推荐播客详情页
+                        val podcast = selectedRecommendedPodcast.value!!
+                        com.opoojkk.podium.ui.podcast.RecommendedPodcastDetailScreen(
+                            podcast = podcast,
+                            onBack = {
+                                showRecommendedPodcastDetail.value = false
+                                selectedRecommendedPodcast.value = null
+                            },
+                            onSubscribe = { rssUrl ->
+                                controller.subscribe(rssUrl)
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已订阅《${podcast.name}》")
+                                }
+                            },
+                            onPlayEpisode = { episode ->
+                                // TODO: Handle playing episode from recommended podcast
+                                println("📻 Play episode: ${episode.title}")
+                            },
+                            loadPodcastFeed = { feedUrl ->
+                                kotlin.runCatching {
+                                    com.opoojkk.podium.data.rss.PodcastFeedService(
+                                        httpClient = environment.httpClient,
+                                        parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
+                                    ).fetch(feedUrl)
+                                }
                             }
                         )
                     }
@@ -970,12 +1026,8 @@ private fun MobileLayout(
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
                                     onRecommendedPodcastClick = { podcast ->
-                                        podcast.rssUrl?.let { rssUrl ->
-                                            controller.subscribe(rssUrl)
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("已订阅《${podcast.name}》")
-                                            }
-                                        }
+                                        selectedRecommendedPodcast.value = podcast
+                                        showRecommendedPodcastDetail.value = true
                                     },
                                 )
 
