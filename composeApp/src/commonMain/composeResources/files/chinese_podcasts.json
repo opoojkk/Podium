@@ -1,7 +1,7 @@
 {
-  "version": "6.0",
+  "version": "7.0",
   "lastUpdated": "2025-11-09",
-  "description": "精选热门中文播客RSS订阅源 - 包含150+优质播客节目",
+  "description": "精选热门中文播客RSS订阅源 - 包含150+优质播客节目，新增12个热门英文播客",
   "categories": [
     {
       "id": "culture_interview",
@@ -1242,6 +1242,109 @@
           "name": "德万斯提 One Diversity",
           "description": "英国留学生的原创播客节目。提供多文化多视角的双语播客内容",
           "rssUrl": "https://www.ximalaya.com/album/50899061.xml",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "id": "english_podcasts",
+      "name": "English Podcasts",
+      "description": "Popular English-language podcasts covering news, technology, culture and more",
+      "podcasts": [
+        {
+          "id": "dissenter",
+          "name": "The Dissenter",
+          "description": "Philosophy and science interviews",
+          "host": "Ricardo Lopes",
+          "rssUrl": "https://anchor.fm/s/822ba20/podcast/rss",
+          "verified": true
+        },
+        {
+          "id": "99invisible",
+          "name": "99% Invisible",
+          "description": "Design is everywhere in our lives. Award winning producer Roman Mars explores the process and power of design",
+          "host": "Roman Mars",
+          "rssUrl": "https://feeds.99percentinvisible.org/99percentinvisible",
+          "verified": true
+        },
+        {
+          "id": "vince",
+          "name": "VINCE",
+          "description": "Sharp political commentary and DC insider perspective from Vince Coglianese",
+          "host": "Cumulus Podcast Network | VINCE",
+          "rssUrl": "https://feeds.megaphone.fm/WWO3519750118",
+          "verified": true
+        },
+        {
+          "id": "waitwait",
+          "name": "Wait Wait... Don't Tell Me!",
+          "description": "NPR's weekly news quiz show",
+          "host": "NPR",
+          "rssUrl": "https://feeds.npr.org/344098539/podcast.xml",
+          "verified": true
+        },
+        {
+          "id": "planetmoney",
+          "name": "Planet Money",
+          "description": "The economy explained. Wanna see a trick? Give us any topic and we can tie it back to the economy",
+          "host": "NPR",
+          "rssUrl": "https://feeds.npr.org/510289/podcast.xml",
+          "verified": true
+        },
+        {
+          "id": "tedradiohour",
+          "name": "TED Radio Hour",
+          "description": "TED speakers share ideas on science, philosophy, life, and technology",
+          "host": "NPR",
+          "rssUrl": "https://feeds.npr.org/510298/podcast.xml",
+          "verified": true
+        },
+        {
+          "id": "codeswitch",
+          "name": "Code Switch",
+          "description": "Conversations about race and identity from NPR",
+          "host": "NPR",
+          "rssUrl": "https://feeds.npr.org/510312/podcast.xml",
+          "verified": true
+        },
+        {
+          "id": "upfirst",
+          "name": "Up First from NPR",
+          "description": "NPR's morning news briefing in 10 minutes. The three biggest stories of the day",
+          "host": "NPR",
+          "rssUrl": "https://feeds.npr.org/510318/podcast.xml",
+          "verified": true
+        },
+        {
+          "id": "thedaily",
+          "name": "The Daily",
+          "description": "This is what the news should sound like. The biggest stories told by the best journalists in the world. Hosted by Michael Barbaro",
+          "host": "The New York Times",
+          "rssUrl": "https://feeds.simplecast.com/54nAGcIl",
+          "verified": true
+        },
+        {
+          "id": "crimejunkie",
+          "name": "Crime Junkie",
+          "description": "Every Monday, join Ashley Flowers as she unravels all the details of infamous and underreported true crime cases",
+          "host": "audiochuck",
+          "rssUrl": "https://feeds.simplecast.com/qm_9xx0g",
+          "verified": true
+        },
+        {
+          "id": "econtalk",
+          "name": "EconTalk",
+          "description": "Economics brought to life, through thoughtful conversations about money, markets, and more",
+          "host": "Russ Roberts",
+          "rssUrl": "https://feeds.simplecast.com/wgl4xEgL",
+          "verified": true
+        },
+        {
+          "id": "tedtalks",
+          "name": "TED Talks Daily",
+          "description": "TED is a nonprofit devoted to ideas worth spreading - on technology, entertainment, design and more",
+          "host": "TED",
+          "rssUrl": "https://www.ted.com/feeds/talks.rss",
           "verified": true
         }
       ]
