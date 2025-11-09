@@ -3,19 +3,25 @@ package com.opoojkk.podium.data.repository
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.model.recommended.PodcastCollection
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
+import com.opoojkk.podium.data.rss.PodcastFeedService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import podium.composeapp.generated.resources.Res
 
-class RecommendedPodcastRepository {
+class RecommendedPodcastRepository(
+    private val feedService: PodcastFeedService,
+) {
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
     }
 
     private var cachedCollection: PodcastCollection? = null
+    private val artworkCache = mutableMapOf<String, String?>()
 
     suspend fun loadPodcastCollection(): Result<PodcastCollection> = withContext(Dispatchers.IO) {
         try {
@@ -52,7 +58,21 @@ class RecommendedPodcastRepository {
                     .shuffled()
                     .take(count)
 
-                Result.success(randomPodcasts)
+                // 从RSS订阅链接中并行加载封面图片
+                val podcastsWithArtwork = randomPodcasts.map { (podcast, categoryName) ->
+                    async {
+                        val artworkUrl = artworkCache.getOrPut(podcast.id) {
+                            podcast.rssUrl?.let { rssUrl ->
+                                runCatching {
+                                    feedService.fetch(rssUrl).artworkUrl
+                                }.getOrNull()
+                            }
+                        }
+                        podcast.copy(artworkUrl = artworkUrl) to categoryName
+                    }
+                }.awaitAll()
+
+                Result.success(podcastsWithArtwork)
             } catch (e: Exception) {
                 Result.failure(e)
             }

@@ -91,7 +91,14 @@ fun PodiumApp(
     // Categories state
     val categoriesState = remember { mutableStateOf<List<PodcastCategory>>(emptyList()) }
     val categoriesLoading = remember { mutableStateOf(false) }
-    val recommendedPodcastRepository = remember { RecommendedPodcastRepository() }
+    val recommendedPodcastRepository = remember {
+        RecommendedPodcastRepository(
+            feedService = com.opoojkk.podium.data.rss.PodcastFeedService(
+                httpClient = environment.httpClient,
+                parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
+            )
+        )
+    }
 
     val recommendedPodcasts = remember { mutableStateOf<List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>>(emptyList()) }
 
