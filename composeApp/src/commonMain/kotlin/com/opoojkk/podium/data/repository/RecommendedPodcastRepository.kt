@@ -9,6 +9,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 import podium.composeapp.generated.resources.Res
 
@@ -59,18 +60,20 @@ class RecommendedPodcastRepository(
                     .take(count)
 
                 // 从RSS订阅链接中并行加载封面图片
-                val podcastsWithArtwork = randomPodcasts.map { (podcast, categoryName) ->
-                    async {
-                        val artworkUrl = artworkCache.getOrPut(podcast.id) {
-                            podcast.rssUrl?.let { rssUrl ->
-                                runCatching {
-                                    feedService.fetch(rssUrl).artworkUrl
-                                }.getOrNull()
+                val podcastsWithArtwork = coroutineScope {
+                    randomPodcasts.map { (podcast, categoryName) ->
+                        async {
+                            val artworkUrl = artworkCache.getOrPut(podcast.id) {
+                                podcast.rssUrl?.let { rssUrl ->
+                                    runCatching {
+                                        feedService.fetch(rssUrl).artworkUrl
+                                    }.getOrNull()
+                                }
                             }
+                            podcast.copy(artworkUrl = artworkUrl) to categoryName
                         }
-                        podcast.copy(artworkUrl = artworkUrl) to categoryName
-                    }
-                }.awaitAll()
+                    }.awaitAll()
+                }
 
                 Result.success(podcastsWithArtwork)
             } catch (e: Exception) {
@@ -105,26 +108,28 @@ class RecommendedPodcastRepository(
      */
     suspend fun loadPodcastsWithArtwork(podcasts: List<RecommendedPodcast>): List<RecommendedPodcast> =
         withContext(Dispatchers.IO) {
-            podcasts.map { podcast ->
-                async {
-                    if (!podcast.rssUrl.isNullOrBlank()) {
-                        val artworkUrl = artworkCache.getOrPut(podcast.id) {
-                            podcast.rssUrl?.let { rssUrl ->
-                                runCatching {
-                                    println("Repository: Fetching RSS for ${podcast.name} from $rssUrl")
-                                    feedService.fetch(rssUrl).artworkUrl
-                                }.onSuccess { url ->
-                                    println("Repository: Got artwork for ${podcast.name}: $url")
-                                }.onFailure { e ->
-                                    println("Repository: Failed to fetch RSS for ${podcast.name}: ${e.message}")
-                                }.getOrNull()
+            coroutineScope {
+                podcasts.map { podcast ->
+                    async {
+                        if (!podcast.rssUrl.isNullOrBlank()) {
+                            val artworkUrl = artworkCache.getOrPut(podcast.id) {
+                                podcast.rssUrl?.let { rssUrl ->
+                                    runCatching {
+                                        println("Repository: Fetching RSS for ${podcast.name} from $rssUrl")
+                                        feedService.fetch(rssUrl).artworkUrl
+                                    }.onSuccess { url ->
+                                        println("Repository: Got artwork for ${podcast.name}: $url")
+                                    }.onFailure { e ->
+                                        println("Repository: Failed to fetch RSS for ${podcast.name}: ${e.message}")
+                                    }.getOrNull()
+                                }
                             }
+                            podcast.copy(artworkUrl = artworkUrl)
+                        } else {
+                            podcast
                         }
-                        podcast.copy(artworkUrl = artworkUrl)
-                    } else {
-                        podcast
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
+            }
         }
 }
