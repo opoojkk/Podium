@@ -759,7 +759,7 @@ private fun DesktopLayout(
 
             // 底部播放控制器 - 播放详情展开时隐藏，带动画
             androidx.compose.animation.AnimatedVisibility(
-                visible = !showPlayerDetail.value,
+                visible = !showPlayerDetail.value && selectedCategory.value == null && !showRecommendedPodcastDetail.value,
                 enter = androidx.compose.animation.fadeIn(
                     animationSpec = androidx.compose.animation.core.tween(
                         durationMillis = 250,
@@ -862,7 +862,7 @@ private fun MobileLayout(
             bottomBar = {
                 // 底部栏带动画显示/隐藏
                 androidx.compose.animation.AnimatedVisibility(
-                    visible = !showPlayerDetail.value && !showPlaylist.value && showViewMore.value == null && !showCacheManagement.value,
+                    visible = !showPlayerDetail.value && !showPlaylist.value && showViewMore.value == null && !showCacheManagement.value && selectedCategory.value == null && !showRecommendedPodcastDetail.value,
                     enter = androidx.compose.animation.fadeIn(
                         animationSpec = androidx.compose.animation.core.tween(
                             durationMillis = 250,
