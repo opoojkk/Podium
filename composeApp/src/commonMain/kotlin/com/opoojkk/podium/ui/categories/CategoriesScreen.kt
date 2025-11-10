@@ -39,11 +39,9 @@ fun CategoriesScreen(
             CircularProgressIndicator()
         }
     } else {
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(160.dp),
+        LazyColumn(
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(categories, key = { it.id }) { category ->
@@ -64,67 +62,45 @@ private fun CategoryCard(
 ) {
     Card(
         modifier = modifier
-            .width(160.dp)
+            .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 分类封面（使用首字母）
-            Box(
-                modifier = Modifier
-                    .size(136.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                val initials = category.name
-                    .trim()
-                    .split(" ", limit = 2)
-                    .mapNotNull { it.firstOrNull()?.uppercase() }
-                    .joinToString(separator = "")
-                    .takeIf { it.isNotBlank() }
-                    ?: "分类"
-
                 Text(
-                    text = initials,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    text = category.name,
+                    style = MaterialTheme.typography.titleMedium,
                 )
-            }
-
-            // 分类名称
-            Text(
-                text = category.name,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            // 播客数量标签
-            Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-            ) {
+                Text(
+                    text = category.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     text = "${category.podcasts.size} 个播客",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
-
-            // 分类描述
-            Text(
-                text = category.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "查看",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -154,11 +130,13 @@ fun CategoryDetailScreen(
             )
         }
     ) { paddingValues ->
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(160.dp),
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues),
             contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(category.podcasts, key = { it.id }) { podcast ->
@@ -179,23 +157,21 @@ private fun PodcastItemCard(
 ) {
     Card(
         modifier = modifier
-            .fillMaxWidth()
+            .width(160.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // 播客封面
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(136.dp)
                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -219,14 +195,14 @@ private fun PodcastItemCard(
                         loading = {
                             Text(
                                 text = initials,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.headlineLarge,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         },
                         error = {
                             Text(
                                 text = initials,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.headlineLarge,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
@@ -234,34 +210,28 @@ private fun PodcastItemCard(
                 } else {
                     Text(
                         text = initials,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }
 
-            // 播客信息
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(80.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = podcast.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            // 播客名称
+            Text(
+                text = podcast.name,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
 
-                Text(
-                    text = podcast.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            // 播客描述
+            Text(
+                text = podcast.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
