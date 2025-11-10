@@ -914,8 +914,6 @@ private fun MobileLayout(
                                     }
                                 },
                                 onBarClick = { showPlayerDetail.value = true },
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
                             )
 
                             NavigationBar {
