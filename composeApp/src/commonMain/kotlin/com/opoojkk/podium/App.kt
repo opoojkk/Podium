@@ -614,21 +614,23 @@ private fun DesktopLayout(
                                 },
                                 loadPodcastArtwork = { podcasts ->
                                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                        podcasts.map { podcast ->
-                                            kotlinx.coroutines.async {
-                                                if (!podcast.rssUrl.isNullOrBlank()) {
-                                                    val artworkUrl = kotlin.runCatching {
-                                                        com.opoojkk.podium.data.rss.PodcastFeedService(
-                                                            httpClient = environment.httpClient,
-                                                            parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
-                                                        ).fetch(podcast.rssUrl).artworkUrl
-                                                    }.getOrNull()
-                                                    podcast.copy(artworkUrl = artworkUrl)
-                                                } else {
-                                                    podcast
+                                        kotlinx.coroutines.coroutineScope {
+                                            podcasts.map { podcast ->
+                                                kotlinx.coroutines.async {
+                                                    if (!podcast.rssUrl.isNullOrBlank()) {
+                                                        val artworkUrl = kotlin.runCatching {
+                                                            com.opoojkk.podium.data.rss.PodcastFeedService(
+                                                                httpClient = environment.httpClient,
+                                                                parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
+                                                            ).fetch(podcast.rssUrl).artworkUrl
+                                                        }.getOrNull()
+                                                        podcast.copy(artworkUrl = artworkUrl)
+                                                    } else {
+                                                        podcast
+                                                    }
                                                 }
-                                            }
-                                        }.awaitAll()
+                                            }.awaitAll()
+                                        }
                                     }
                                 }
                             )
@@ -996,21 +998,23 @@ private fun MobileLayout(
                             },
                             loadPodcastArtwork = { podcasts ->
                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    podcasts.map { podcast ->
-                                        kotlinx.coroutines.async {
-                                            if (!podcast.rssUrl.isNullOrBlank()) {
-                                                val artworkUrl = kotlin.runCatching {
-                                                    com.opoojkk.podium.data.rss.PodcastFeedService(
-                                                        httpClient = environment.httpClient,
-                                                        parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
-                                                    ).fetch(podcast.rssUrl).artworkUrl
-                                                }.getOrNull()
-                                                podcast.copy(artworkUrl = artworkUrl)
-                                            } else {
-                                                podcast
+                                    kotlinx.coroutines.coroutineScope {
+                                        podcasts.map { podcast ->
+                                            kotlinx.coroutines.async {
+                                                if (!podcast.rssUrl.isNullOrBlank()) {
+                                                    val artworkUrl = kotlin.runCatching {
+                                                        com.opoojkk.podium.data.rss.PodcastFeedService(
+                                                            httpClient = environment.httpClient,
+                                                            parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
+                                                        ).fetch(podcast.rssUrl).artworkUrl
+                                                    }.getOrNull()
+                                                    podcast.copy(artworkUrl = artworkUrl)
+                                                } else {
+                                                    podcast
+                                                }
                                             }
-                                        }
-                                    }.awaitAll()
+                                        }.awaitAll()
+                                    }
                                 }
                             }
                         )
