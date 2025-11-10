@@ -112,8 +112,18 @@ fun CategoryDetailScreen(
     category: PodcastCategory,
     onBack: () -> Unit,
     onPodcastClick: (RecommendedPodcast) -> Unit,
+    loadPodcastArtwork: suspend (List<RecommendedPodcast>) -> List<RecommendedPodcast>,
     modifier: Modifier = Modifier,
 ) {
+    var podcastsWithArtwork by remember { mutableStateOf(category.podcasts) }
+    var isLoadingArtwork by remember { mutableStateOf(true) }
+
+    LaunchedEffect(category.id) {
+        isLoadingArtwork = true
+        podcastsWithArtwork = loadPodcastArtwork(category.podcasts)
+        isLoadingArtwork = false
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -139,7 +149,7 @@ fun CategoryDetailScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(category.podcasts, key = { it.id }) { podcast ->
+            items(podcastsWithArtwork, key = { it.id }) { podcast ->
                 PodcastItemCard(
                     podcast = podcast,
                     onClick = { onPodcastClick(podcast) }
