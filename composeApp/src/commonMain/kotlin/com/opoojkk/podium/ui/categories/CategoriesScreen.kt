@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
 
