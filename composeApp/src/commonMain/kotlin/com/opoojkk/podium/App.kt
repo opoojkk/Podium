@@ -36,6 +36,11 @@ import com.opoojkk.podium.data.repository.RecommendedPodcastRepository
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 // 查看更多页面类型
 enum class ViewMoreType {
@@ -613,10 +618,10 @@ private fun DesktopLayout(
                                     showRecommendedPodcastDetail.value = true
                                 },
                                 loadPodcastArtwork = { podcasts ->
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                        kotlinx.coroutines.coroutineScope {
+                                    withContext(Dispatchers.IO) {
+                                        coroutineScope {
                                             podcasts.map { podcast ->
-                                                kotlinx.coroutines.async {
+                                                async {
                                                     if (!podcast.rssUrl.isNullOrBlank()) {
                                                         val artworkUrl = kotlin.runCatching {
                                                             com.opoojkk.podium.data.rss.PodcastFeedService(
@@ -997,10 +1002,10 @@ private fun MobileLayout(
                                 showRecommendedPodcastDetail.value = true
                             },
                             loadPodcastArtwork = { podcasts ->
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    kotlinx.coroutines.coroutineScope {
+                                withContext(Dispatchers.IO) {
+                                    coroutineScope {
                                         podcasts.map { podcast ->
-                                            kotlinx.coroutines.async {
+                                            async {
                                                 if (!podcast.rssUrl.isNullOrBlank()) {
                                                     val artworkUrl = kotlin.runCatching {
                                                         com.opoojkk.podium.data.rss.PodcastFeedService(
