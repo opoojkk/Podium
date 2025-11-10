@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +25,11 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+enum class EpisodeSortOrder {
+    NEWEST_FIRST,  // 时间从晚到早（默认，最新的在前）
+    OLDEST_FIRST   // 时间从早到晚（最老的在前）
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecommendedPodcastDetailScreen(
@@ -36,6 +42,7 @@ fun RecommendedPodcastDetailScreen(
 ) {
     var feedState by remember { mutableStateOf<FeedState>(FeedState.Loading) }
     var isSubscribed by remember { mutableStateOf(false) }
+    var sortOrder by remember { mutableStateOf(EpisodeSortOrder.NEWEST_FIRST) }
 
     LaunchedEffect(podcast.rssUrl) {
         if (!podcast.rssUrl.isNullOrBlank()) {
@@ -92,14 +99,56 @@ fun RecommendedPodcastDetailScreen(
                     }
                 }
                 is FeedState.Success -> {
+                    // 单集列表标题和排序按钮
                     item {
-                        Text(
-                            text = "单集列表",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "单集列表",
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+
+                            // 排序按钮
+                            FilterChip(
+                                selected = false,
+                                onClick = {
+                                    sortOrder = when (sortOrder) {
+                                        EpisodeSortOrder.NEWEST_FIRST -> EpisodeSortOrder.OLDEST_FIRST
+                                        EpisodeSortOrder.OLDEST_FIRST -> EpisodeSortOrder.NEWEST_FIRST
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        text = when (sortOrder) {
+                                            EpisodeSortOrder.NEWEST_FIRST -> "时间从晚到早"
+                                            EpisodeSortOrder.OLDEST_FIRST -> "时间从早到晚"
+                                        },
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                                        contentDescription = "排序",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            )
+                        }
                     }
-                    items(state.feed.episodes, key = { it.id }) { episode ->
+
+                    // 根据排序顺序显示单集列表
+                    val sortedEpisodes = when (sortOrder) {
+                        EpisodeSortOrder.NEWEST_FIRST -> state.feed.episodes.sortedByDescending { it.publishDate }
+                        EpisodeSortOrder.OLDEST_FIRST -> state.feed.episodes.sortedBy { it.publishDate }
+                    }
+
+                    items(sortedEpisodes, key = { it.id }) { episode ->
                         EpisodeListItem(
                             episode = episode,
                             onClick = { onPlayEpisode(episode) }
