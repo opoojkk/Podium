@@ -103,7 +103,7 @@ fun DesktopPlaybackBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -119,7 +119,7 @@ fun DesktopPlaybackBar(
                     Surface(
                         modifier = Modifier.size(64.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.medium
+                        shape = MaterialTheme.shapes.small
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
