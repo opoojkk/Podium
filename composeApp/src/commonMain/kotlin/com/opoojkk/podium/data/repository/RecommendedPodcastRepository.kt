@@ -99,4 +99,32 @@ class RecommendedPodcastRepository(
                 Result.failure(e)
             }
         }
+
+    /**
+     * Load artwork from RSS feeds for a list of podcasts
+     */
+    suspend fun loadPodcastsWithArtwork(podcasts: List<RecommendedPodcast>): List<RecommendedPodcast> =
+        withContext(Dispatchers.IO) {
+            podcasts.map { podcast ->
+                async {
+                    if (!podcast.rssUrl.isNullOrBlank()) {
+                        val artworkUrl = artworkCache.getOrPut(podcast.id) {
+                            podcast.rssUrl?.let { rssUrl ->
+                                runCatching {
+                                    println("Repository: Fetching RSS for ${podcast.name} from $rssUrl")
+                                    feedService.fetch(rssUrl).artworkUrl
+                                }.onSuccess { url ->
+                                    println("Repository: Got artwork for ${podcast.name}: $url")
+                                }.onFailure { e ->
+                                    println("Repository: Failed to fetch RSS for ${podcast.name}: ${e.message}")
+                                }.getOrNull()
+                            }
+                        }
+                        podcast.copy(artworkUrl = artworkUrl)
+                    } else {
+                        podcast
+                    }
+                }
+            }.awaitAll()
+        }
 }

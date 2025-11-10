@@ -618,32 +618,7 @@ private fun DesktopLayout(
                                     showRecommendedPodcastDetail.value = true
                                 },
                                 loadPodcastArtwork = { podcasts ->
-                                    withContext(Dispatchers.IO) {
-                                        coroutineScope {
-                                            println("App: Starting to load artwork for ${podcasts.size} podcasts")
-                                            podcasts.map { podcast ->
-                                                async {
-                                                    if (!podcast.rssUrl.isNullOrBlank()) {
-                                                        println("App: Fetching RSS for ${podcast.name} from ${podcast.rssUrl}")
-                                                        val artworkUrl = kotlin.runCatching {
-                                                            com.opoojkk.podium.data.rss.PodcastFeedService(
-                                                                httpClient = environment.httpClient,
-                                                                parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
-                                                            ).fetch(podcast.rssUrl).artworkUrl
-                                                        }.onSuccess { url ->
-                                                            println("App: Got artwork for ${podcast.name}: $url")
-                                                        }.onFailure { e ->
-                                                            println("App: Failed to fetch RSS for ${podcast.name}: ${e.message}")
-                                                        }.getOrNull()
-                                                        podcast.copy(artworkUrl = artworkUrl)
-                                                    } else {
-                                                        println("App: No RSS URL for ${podcast.name}")
-                                                        podcast
-                                                    }
-                                                }
-                                            }.awaitAll()
-                                        }
-                                    }
+                                    recommendedPodcastRepository.loadPodcastsWithArtwork(podcasts)
                                 }
                             )
                         }
@@ -1009,32 +984,7 @@ private fun MobileLayout(
                                 showRecommendedPodcastDetail.value = true
                             },
                             loadPodcastArtwork = { podcasts ->
-                                withContext(Dispatchers.IO) {
-                                    coroutineScope {
-                                        println("App: Starting to load artwork for ${podcasts.size} podcasts")
-                                        podcasts.map { podcast ->
-                                            async {
-                                                if (!podcast.rssUrl.isNullOrBlank()) {
-                                                    println("App: Fetching RSS for ${podcast.name} from ${podcast.rssUrl}")
-                                                    val artworkUrl = kotlin.runCatching {
-                                                        com.opoojkk.podium.data.rss.PodcastFeedService(
-                                                            httpClient = environment.httpClient,
-                                                            parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
-                                                        ).fetch(podcast.rssUrl).artworkUrl
-                                                    }.onSuccess { url ->
-                                                        println("App: Got artwork for ${podcast.name}: $url")
-                                                    }.onFailure { e ->
-                                                        println("App: Failed to fetch RSS for ${podcast.name}: ${e.message}")
-                                                    }.getOrNull()
-                                                    podcast.copy(artworkUrl = artworkUrl)
-                                                } else {
-                                                    println("App: No RSS URL for ${podcast.name}")
-                                                    podcast
-                                                }
-                                            }
-                                        }.awaitAll()
-                                    }
-                                }
+                                recommendedPodcastRepository.loadPodcastsWithArtwork(podcasts)
                             }
                         )
                     }

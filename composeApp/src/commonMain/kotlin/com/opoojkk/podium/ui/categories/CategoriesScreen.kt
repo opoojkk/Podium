@@ -195,6 +195,7 @@ private fun PodcastItemCard(
                 contentAlignment = Alignment.Center,
             ) {
                 val artworkUrl = podcast.artworkUrl
+                println("PodcastItemCard: ${podcast.name} - artworkUrl: $artworkUrl")
                 val initials = podcast.name
                     .trim()
                     .split(" ", limit = 2)
