@@ -120,7 +120,15 @@ fun CategoryDetailScreen(
 
     LaunchedEffect(category.id) {
         isLoadingArtwork = true
+        println("CategoryDetail: Loading artwork for ${category.podcasts.size} podcasts")
+        category.podcasts.forEach { podcast ->
+            println("CategoryDetail: Podcast ${podcast.name} - RSS: ${podcast.rssUrl}")
+        }
         podcastsWithArtwork = loadPodcastArtwork(category.podcasts)
+        println("CategoryDetail: Loaded artwork")
+        podcastsWithArtwork.forEach { podcast ->
+            println("CategoryDetail: Podcast ${podcast.name} - Artwork: ${podcast.artworkUrl}")
+        }
         isLoadingArtwork = false
     }
 
