@@ -572,18 +572,6 @@ private fun DesktopLayout(
                                 },
                             )
                         }
-                        selectedCategory.value != null -> {
-                            // 显示分类详情页
-                            val category = selectedCategory.value!!
-                            CategoryDetailScreen(
-                                category = category,
-                                onBack = { selectedCategory.value = null },
-                                onPodcastClick = { podcast ->
-                                    selectedRecommendedPodcast.value = podcast
-                                    showRecommendedPodcastDetail.value = true
-                                }
-                            )
-                        }
                         showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
                             // 显示推荐播客详情页
                             val podcastToShow = selectedRecommendedPodcast.value!!
@@ -611,6 +599,18 @@ private fun DesktopLayout(
                                             parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
                                         ).fetch(feedUrl)
                                     }
+                                }
+                            )
+                        }
+                        selectedCategory.value != null -> {
+                            // 显示分类详情页
+                            val category = selectedCategory.value!!
+                            CategoryDetailScreen(
+                                category = category,
+                                onBack = { selectedCategory.value = null },
+                                onPodcastClick = { podcast ->
+                                    selectedRecommendedPodcast.value = podcast
+                                    showRecommendedPodcastDetail.value = true
                                 }
                             )
                         }
@@ -935,18 +935,6 @@ private fun MobileLayout(
                             onClearCache = { /* TODO: 实现清除缓存功能 */ },
                         )
                     }
-                    selectedCategory.value != null -> {
-                        // 显示分类详情页
-                        val category = selectedCategory.value!!
-                        CategoryDetailScreen(
-                            category = category,
-                            onBack = { selectedCategory.value = null },
-                            onPodcastClick = { podcast ->
-                                selectedRecommendedPodcast.value = podcast
-                                showRecommendedPodcastDetail.value = true
-                            }
-                        )
-                    }
                     showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
                         // 显示推荐播客详情页
                         val podcastToShow = selectedRecommendedPodcast.value!!
@@ -974,6 +962,18 @@ private fun MobileLayout(
                                         parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
                                     ).fetch(feedUrl)
                                 }
+                            }
+                        )
+                    }
+                    selectedCategory.value != null -> {
+                        // 显示分类详情页
+                        val category = selectedCategory.value!!
+                        CategoryDetailScreen(
+                            category = category,
+                            onBack = { selectedCategory.value = null },
+                            onPodcastClick = { podcast ->
+                                selectedRecommendedPodcast.value = podcast
+                                showRecommendedPodcastDetail.value = true
                             }
                         )
                     }
