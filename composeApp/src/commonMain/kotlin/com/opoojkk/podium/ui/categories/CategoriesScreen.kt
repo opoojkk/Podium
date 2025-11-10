@@ -131,7 +131,7 @@ fun CategoryDetailScreen(
         }
     ) { paddingValues ->
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(160.dp),
+            columns = GridCells.Fixed(2),
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues),
@@ -157,7 +157,7 @@ private fun PodcastItemCard(
 ) {
     Card(
         modifier = modifier
-            .width(160.dp)
+            .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -171,7 +171,8 @@ private fun PodcastItemCard(
             // 播客封面
             Box(
                 modifier = Modifier
-                    .size(136.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
             ) {
