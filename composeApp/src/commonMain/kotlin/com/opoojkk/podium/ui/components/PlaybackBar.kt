@@ -60,6 +60,11 @@ fun PlaybackBar(
         val durationMs = playbackState.episode.duration ?: playbackState.durationMs
 
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Divider at top to separate from navigation bar
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
             // Progress bar at top
             val progress = if (durationMs != null && durationMs > 0) {
                 (playbackState.positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
