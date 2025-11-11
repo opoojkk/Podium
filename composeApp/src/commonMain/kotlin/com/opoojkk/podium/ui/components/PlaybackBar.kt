@@ -51,10 +51,10 @@ fun PlaybackBar(
             bottomEnd = 0.dp
         ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 3.dp
+            defaultElevation = 2.dp
         )
     ) {
         val durationMs = playbackState.episode.duration ?: playbackState.durationMs
@@ -86,23 +86,19 @@ fun PlaybackBar(
                 // Play/Pause or Buffering indicator
                 if (playbackState.isBuffering) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(40.dp),
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 3.dp
+                        strokeWidth = 2.dp
                     )
                 } else {
-                    FilledIconButton(
+                    FilledTonalIconButton(
                         onClick = onPlayPauseClick,
-                        modifier = Modifier.size(44.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
