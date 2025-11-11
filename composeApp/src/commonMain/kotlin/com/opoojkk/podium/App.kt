@@ -1051,6 +1051,14 @@ private fun MobileLayout(
                                 controller.refreshPodcast(podcast.id, onComplete)
                             },
                             currentPlayingEpisodeId = playbackState.episode?.id,
+                            isPlaying = playbackState.isPlaying,
+                            onPauseResume = {
+                                if (playbackState.isPlaying) {
+                                    controller.pause()
+                                } else {
+                                    controller.resume()
+                                }
+                            },
                         )
                     }
                     showViewMore.value != null -> {
