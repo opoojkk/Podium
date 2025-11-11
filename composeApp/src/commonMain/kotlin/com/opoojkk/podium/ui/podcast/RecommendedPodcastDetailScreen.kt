@@ -4,10 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +42,9 @@ fun RecommendedPodcastDetailScreen(
     onPlayEpisode: (RssEpisode) -> Unit,
     loadPodcastFeed: suspend (String) -> Result<PodcastFeed>,
     modifier: Modifier = Modifier,
+    currentPlayingEpisodeId: String? = null,
+    isPlaying: Boolean = false,
+    onPauseResume: () -> Unit = {},
 ) {
     var feedState by remember { mutableStateOf<FeedState>(FeedState.Loading) }
     var isSubscribed by remember { mutableStateOf(false) }
@@ -149,9 +155,19 @@ fun RecommendedPodcastDetailScreen(
                     }
 
                     items(sortedEpisodes, key = { it.id }) { episode ->
+                        val isCurrentEpisode = episode.id == currentPlayingEpisodeId
                         EpisodeListItem(
                             episode = episode,
-                            onClick = { onPlayEpisode(episode) }
+                            onClick = {
+                                if (isCurrentEpisode) {
+                                    // 如果是当前播放的单集，切换播放/暂停
+                                    onPauseResume()
+                                } else {
+                                    // 如果是其他单集，播放它
+                                    onPlayEpisode(episode)
+                                }
+                            },
+                            isCurrentlyPlaying = isCurrentEpisode && isPlaying,
                         )
                     }
                 }
@@ -284,56 +300,108 @@ private fun EpisodeListItem(
     episode: RssEpisode,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isCurrentlyPlaying: Boolean = false,
 ) {
     Card(
-        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = episode.title,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            Text(
-                text = episode.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            // 播放状态指示器
+            Box(
+                modifier = Modifier.size(28.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = formatDate(episode.publishDate),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (episode.duration != null) {
-                    Text(
-                        text = "·",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = formatDuration(episode.duration),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (isCurrentlyPlaying) {
+                    // 显示播放中的指示器
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "正在播放",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                } else {
+                    // 显示未播放的指示器（空心圆点）
+                    Box(
+                        modifier = Modifier
+                            .size(14.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant, CircleShape)
                     )
                 }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = episode.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                Text(
+                    text = episode.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = formatDate(episode.publishDate),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (episode.duration != null) {
+                        Text(
+                            text = "·",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = formatDuration(episode.duration),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            // 播放/暂停按钮
+            FilledIconButton(
+                onClick = onClick,
+                modifier = Modifier.size(48.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Icon(
+                    imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
