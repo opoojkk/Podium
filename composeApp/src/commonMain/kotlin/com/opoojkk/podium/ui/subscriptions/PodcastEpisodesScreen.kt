@@ -236,7 +236,7 @@ fun PodcastEpisodesScreen(
                         onDownloadClick = { onDownloadEpisode(episodeWithPodcast.episode) },
                         showDownloadButton = true,
                         isCurrentlyPlaying = isCurrentEpisode && isPlaying,
-                        showPlaybackStatus = true,
+                        showPlaybackStatus = false,
                     )
                 }
             }
