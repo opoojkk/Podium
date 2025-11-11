@@ -178,35 +178,35 @@ fun HomeScreen(
                 }
 
                 item {
-                    SectionHeader(
-                        title = "最近更新",
-                        description = "及时了解最新节目",
-                        onViewMore = if (state.recentUpdates.isNotEmpty()) onViewMoreRecentUpdates else null,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionHeader(
+                            title = "最近更新",
+                            description = "及时了解最新节目",
+                            onViewMore = if (state.recentUpdates.isNotEmpty()) onViewMoreRecentUpdates else null,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
 
-                when {
-                    state.isLoading -> {
-                        items(6) {
-                            PodcastEpisodeCardSkeleton(
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                        }
-                    }
-                    state.recentUpdates.isEmpty() -> {
-                        item {
-                            EmptyHint(text = "暂无新节目")
-                        }
-                    }
-                    else -> {
-                        items(state.recentUpdates.take(3), key = { it.episode.id }) { item ->
-                            PodcastEpisodeCard(
-                                episodeWithPodcast = item,
-                                onPlayClick = { onPlayEpisode(item.episode) },
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                compact = true,
-                            )
+                        when {
+                            state.isLoading -> {
+                                repeat(3) {
+                                    PodcastEpisodeCardSkeleton(
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    )
+                                }
+                            }
+                            state.recentUpdates.isEmpty() -> {
+                                EmptyHint(text = "暂无新节目")
+                            }
+                            else -> {
+                                state.recentUpdates.take(3).forEach { item ->
+                                    PodcastEpisodeCard(
+                                        episodeWithPodcast = item,
+                                        onPlayClick = { onPlayEpisode(item.episode) },
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        compact = true,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
