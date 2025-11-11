@@ -45,50 +45,64 @@ fun PlaybackBar(
                 )
             },
         shape = RoundedCornerShape(
-            topStart = 16.dp,
-            topEnd = 16.dp,
+            topStart = 12.dp,
+            topEnd = 12.dp,
             bottomStart = 0.dp,
             bottomEnd = 0.dp
         ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+            defaultElevation = 3.dp
         )
     ) {
         val durationMs = playbackState.episode.duration ?: playbackState.durationMs
-        val timeText = buildString {
-            append(formatTime(playbackState.positionMs))
-            append(" / ")
-            append(durationMs?.let { formatTime(it) } ?: "--:--")
-        }
 
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Progress bar at top
+            val progress = if (durationMs != null && durationMs > 0) {
+                (playbackState.positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+
             // Content row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Play/Pause or Buffering indicator
                 if (playbackState.isBuffering) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(44.dp),
                         color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 3.dp
                     )
                 } else {
-                    FilledTonalIconButton(
+                    FilledIconButton(
                         onClick = onPlayPauseClick,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(44.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         Icon(
                             imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -96,46 +110,40 @@ fun PlaybackBar(
                 // Episode info
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = playbackState.episode.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = playbackState.episode.podcastTitle,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = playbackState.episode.podcastTitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = if (playbackState.isBuffering) "加载中…" else formatTime(playbackState.positionMs),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-
-                // Time info: 当前/总时长
-                val rightText = if (playbackState.isBuffering) "加载中…" else timeText
-                Text(
-                    text = rightText,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-
-            // Progress bar at bottom
-            val progress = if (durationMs != null && durationMs > 0) {
-                (playbackState.positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-            } else {
-                0f // 没有时长信息时显示0进度，而不是加载动画
-            }
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
         }
     }
 }
