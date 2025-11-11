@@ -69,26 +69,26 @@ fun PlaybackBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Play/Pause or Buffering indicator
                 if (playbackState.isBuffering) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(48.dp),
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 2.dp
+                        strokeWidth = 3.dp
                     )
                 } else {
                     FilledTonalIconButton(
                         onClick = onPlayPauseClick,
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (playbackState.isPlaying) "暂停" else "播放",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
@@ -96,17 +96,17 @@ fun PlaybackBar(
                 // Episode info
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
                         text = playbackState.episode.title,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = playbackState.episode.podcastTitle,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -117,7 +117,7 @@ fun PlaybackBar(
                 val rightText = if (playbackState.isBuffering) "加载中…" else timeText
                 Text(
                     text = rightText,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -132,7 +132,7 @@ fun PlaybackBar(
                 progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(3.dp),
+                    .height(4.dp),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
