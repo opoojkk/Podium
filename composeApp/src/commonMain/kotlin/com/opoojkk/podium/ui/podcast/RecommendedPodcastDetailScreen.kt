@@ -315,36 +315,6 @@ private fun EpisodeListItem(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 播放状态指示器
-            Box(
-                modifier = Modifier.size(28.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isCurrentlyPlaying) {
-                    // 显示播放中的指示器
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "正在播放",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                } else {
-                    // 显示未播放的指示器（空心圆点）
-                    Box(
-                        modifier = Modifier
-                            .size(14.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                    )
-                }
-            }
-
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)

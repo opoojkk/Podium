@@ -1027,7 +1027,16 @@ private fun MobileLayout(
                                         parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
                                     ).fetch(feedUrl)
                                 }
-                            }
+                            },
+                            currentPlayingEpisodeId = playbackState.episode?.id,
+                            isPlaying = playbackState.isPlaying,
+                            onPauseResume = {
+                                if (playbackState.isPlaying) {
+                                    controller.pause()
+                                } else {
+                                    controller.resume()
+                                }
+                            },
                         )
                     }
                     selectedCategory.value != null -> {
