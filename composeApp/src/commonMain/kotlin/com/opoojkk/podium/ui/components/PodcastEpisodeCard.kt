@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -32,62 +33,65 @@ fun PodcastEpisodeCard(
     showDownloadButton: Boolean = downloadStatus != null,
     compact: Boolean = false,
     isCurrentlyPlaying: Boolean = false,
+    showPlaybackStatus: Boolean = false,
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        shape = RoundedCornerShape(if (compact) 16.dp else 20.dp),
+        shape = RoundedCornerShape(if (compact) 12.dp else 20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(
             modifier = Modifier
-                .padding(if (compact) 12.dp else 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
+                .padding(if (compact) 8.dp else 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 播放状态指示器
-            Box(
-                modifier = Modifier.size(if (compact) 24.dp else 28.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isCurrentlyPlaying) {
-                    // 显示播放中的指示器
-                    Box(
-                        modifier = Modifier
-                            .size(if (compact) 24.dp else 28.dp)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "正在播放",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(if (compact) 16.dp else 20.dp)
+            // 播放状态指示器 - 只在 showPlaybackStatus 为 true 时显示
+            if (showPlaybackStatus) {
+                Box(
+                    modifier = Modifier.size(if (compact) 24.dp else 28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isCurrentlyPlaying) {
+                        // 显示播放中的指示器
+                        Box(
+                            modifier = Modifier
+                                .size(if (compact) 24.dp else 28.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "正在播放",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(if (compact) 16.dp else 20.dp)
+                            )
+                        }
+                    } else {
+                        // 显示未播放的指示器（空心圆点）
+                        Box(
+                            modifier = Modifier
+                                .size(if (compact) 12.dp else 14.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant, CircleShape)
                         )
                     }
-                } else {
-                    // 显示未播放的指示器（空心圆点）
-                    Box(
-                        modifier = Modifier
-                            .size(if (compact) 12.dp else 14.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                    )
                 }
             }
 
             ArtworkPlaceholder(
                 artworkUrl = episodeWithPodcast.podcast.artworkUrl,
                 title = episodeWithPodcast.podcast.title,
-                modifier = Modifier.size(if (compact) 60.dp else 80.dp),
+                modifier = Modifier.size(if (compact) 48.dp else 80.dp),
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 6.dp),
             ) {
                 Text(
                     text = episodeWithPodcast.episode.title,
-                    style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                    style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium,
                     maxLines = if (compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -107,26 +111,35 @@ fun PodcastEpisodeCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            }
+
+            // 播放/暂停按钮 - 使用图标按钮
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilledIconButton(
+                    onClick = onPlayClick,
+                    modifier = Modifier.size(if (compact) 36.dp else 48.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
-                    Button(
-                        onClick = onPlayClick,
-                        contentPadding = if (compact) PaddingValues(horizontal = 12.dp, vertical = 6.dp) else ButtonDefaults.ContentPadding
-                    ) {
-                        Text("播放", style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge)
-                    }
-                    // 只在订阅页面显示下载按钮
-                    if (showDownloadButton) {
-                        DownloadButton(
-                            downloadStatus = downloadStatus,
-                            onDownloadClick = onDownloadClick,
-                            iconOnly = true
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(if (compact) 20.dp else 24.dp)
+                    )
+                }
+                // 只在订阅页面显示下载按钮
+                if (showDownloadButton) {
+                    DownloadButton(
+                        downloadStatus = downloadStatus,
+                        onDownloadClick = onDownloadClick,
+                        iconOnly = true
+                    )
                 }
             }
         }
