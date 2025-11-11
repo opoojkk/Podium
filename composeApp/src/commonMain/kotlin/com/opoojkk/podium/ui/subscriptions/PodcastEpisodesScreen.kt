@@ -63,6 +63,7 @@ fun PodcastEpisodesScreen(
     downloads: Map<String, DownloadStatus> = emptyMap(),
     onDownloadEpisode: (Episode) -> Unit = {},
     onRefresh: ((Int) -> Unit) -> Unit = {},
+    currentPlayingEpisodeId: String? = null,
 ) {
     var sortOrder by remember { mutableStateOf(SortOrder.DESCENDING) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -223,6 +224,7 @@ fun PodcastEpisodesScreen(
                         downloadStatus = downloads[episodeWithPodcast.episode.id],
                         onDownloadClick = { onDownloadEpisode(episodeWithPodcast.episode) },
                         showDownloadButton = true,
+                        isCurrentlyPlaying = episodeWithPodcast.episode.id == currentPlayingEpisodeId,
                     )
                 }
             }

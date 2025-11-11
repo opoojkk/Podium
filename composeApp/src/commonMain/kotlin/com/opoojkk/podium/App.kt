@@ -596,9 +596,21 @@ private fun DesktopLayout(
                                         snackbarHostState.showSnackbar("已订阅《${podcastName}》")
                                     }
                                 },
-                                onPlayEpisode = { episode ->
-                                    // TODO: Handle playing episode from recommended podcast
-                                    println("📻 Play episode: ${episode.title}")
+                                onPlayEpisode = { rssEpisode ->
+                                    // Convert RssEpisode to Episode for playback
+                                    val episode = Episode(
+                                        id = rssEpisode.id,
+                                        podcastId = podcastToShow.id,
+                                        podcastTitle = podcastToShow.name,
+                                        title = rssEpisode.title,
+                                        description = rssEpisode.description,
+                                        audioUrl = rssEpisode.audioUrl,
+                                        publishDate = rssEpisode.publishDate,
+                                        duration = rssEpisode.duration,
+                                        imageUrl = rssEpisode.imageUrl,
+                                        chapters = rssEpisode.chapters,
+                                    )
+                                    onPlayEpisode(episode)
                                 },
                                 loadPodcastFeed = { feedUrl ->
                                     kotlin.runCatching {
@@ -639,6 +651,7 @@ private fun DesktopLayout(
                                 onRefresh = { onComplete ->
                                     controller.refreshPodcast(podcast.id, onComplete)
                                 },
+                                currentPlayingEpisodeId = playbackState.episode?.id,
                             )
                         }
                         showViewMore.value != null -> {
@@ -965,9 +978,21 @@ private fun MobileLayout(
                                     snackbarHostState.showSnackbar("已订阅《${podcastName}》")
                                 }
                             },
-                            onPlayEpisode = { episode ->
-                                // TODO: Handle playing episode from recommended podcast
-                                println("📻 Play episode: ${episode.title}")
+                            onPlayEpisode = { rssEpisode ->
+                                // Convert RssEpisode to Episode for playback
+                                val episode = Episode(
+                                    id = rssEpisode.id,
+                                    podcastId = podcastToShow.id,
+                                    podcastTitle = podcastToShow.name,
+                                    title = rssEpisode.title,
+                                    description = rssEpisode.description,
+                                    audioUrl = rssEpisode.audioUrl,
+                                    publishDate = rssEpisode.publishDate,
+                                    duration = rssEpisode.duration,
+                                    imageUrl = rssEpisode.imageUrl,
+                                    chapters = rssEpisode.chapters,
+                                )
+                                onPlayEpisode(episode)
                             },
                             loadPodcastFeed = { feedUrl ->
                                 kotlin.runCatching {
@@ -1008,6 +1033,7 @@ private fun MobileLayout(
                             onRefresh = { onComplete ->
                                 controller.refreshPodcast(podcast.id, onComplete)
                             },
+                            currentPlayingEpisodeId = playbackState.episode?.id,
                         )
                     }
                     showViewMore.value != null -> {

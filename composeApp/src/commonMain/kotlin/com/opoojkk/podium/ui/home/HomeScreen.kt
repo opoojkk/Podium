@@ -200,11 +200,12 @@ fun HomeScreen(
                         }
                     }
                     else -> {
-                        items(state.recentUpdates, key = { it.episode.id }) { item ->
+                        items(state.recentUpdates.take(3), key = { it.episode.id }) { item ->
                             PodcastEpisodeCard(
                                 episodeWithPodcast = item,
                                 onPlayClick = { onPlayEpisode(item.episode) },
                                 modifier = Modifier.padding(horizontal = 16.dp),
+                                compact = true,
                             )
                         }
                     }
