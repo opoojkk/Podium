@@ -67,6 +67,9 @@ fun HomeScreen(
     onRefresh: () -> Unit = {},
     isRefreshing: Boolean = false,
     onRecommendedPodcastClick: (RecommendedPodcast) -> Unit = {},
+    currentPlayingEpisodeId: String? = null,
+    isPlaying: Boolean = false,
+    onPauseResume: () -> Unit = {},
 ) {
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -199,11 +202,21 @@ fun HomeScreen(
                             }
                             else -> {
                                 state.recentUpdates.take(3).forEach { item ->
+                                    val isCurrentEpisode = item.episode.id == currentPlayingEpisodeId
                                     PodcastEpisodeCard(
                                         episodeWithPodcast = item,
-                                        onPlayClick = { onPlayEpisode(item.episode) },
+                                        onPlayClick = {
+                                            if (isCurrentEpisode) {
+                                                // 如果是当前播放的单集，切换播放/暂停
+                                                onPauseResume()
+                                            } else {
+                                                // 如果是其他单集，播放它
+                                                onPlayEpisode(item.episode)
+                                            }
+                                        },
                                         modifier = Modifier.padding(horizontal = 16.dp),
                                         compact = true,
+                                        isCurrentlyPlaying = isCurrentEpisode && isPlaying,
                                     )
                                 }
                             }

@@ -652,6 +652,14 @@ private fun DesktopLayout(
                                     controller.refreshPodcast(podcast.id, onComplete)
                                 },
                                 currentPlayingEpisodeId = playbackState.episode?.id,
+                                isPlaying = playbackState.isPlaying,
+                                onPauseResume = {
+                                    if (playbackState.isPlaying) {
+                                        controller.pause()
+                                    } else {
+                                        controller.resume()
+                                    }
+                                },
                             )
                         }
                         showViewMore.value != null -> {
@@ -693,6 +701,15 @@ private fun DesktopLayout(
                                     onRecommendedPodcastClick = { podcast ->
                                         selectedRecommendedPodcast.value = podcast
                                         showRecommendedPodcastDetail.value = true
+                                    },
+                                    currentPlayingEpisodeId = playbackState.episode?.id,
+                                    isPlaying = playbackState.isPlaying,
+                                    onPauseResume = {
+                                        if (playbackState.isPlaying) {
+                                            controller.pause()
+                                        } else {
+                                            controller.resume()
+                                        }
                                     },
                                 )
 
@@ -1085,6 +1102,15 @@ private fun MobileLayout(
                                     onRecommendedPodcastClick = { podcast ->
                                         selectedRecommendedPodcast.value = podcast
                                         showRecommendedPodcastDetail.value = true
+                                    },
+                                    currentPlayingEpisodeId = playbackState.episode?.id,
+                                    isPlaying = playbackState.isPlaying,
+                                    onPauseResume = {
+                                        if (playbackState.isPlaying) {
+                                            controller.pause()
+                                        } else {
+                                            controller.resume()
+                                        }
                                     },
                                 )
 

@@ -64,6 +64,8 @@ fun PodcastEpisodesScreen(
     onDownloadEpisode: (Episode) -> Unit = {},
     onRefresh: ((Int) -> Unit) -> Unit = {},
     currentPlayingEpisodeId: String? = null,
+    isPlaying: Boolean = false,
+    onPauseResume: () -> Unit = {},
 ) {
     var sortOrder by remember { mutableStateOf(SortOrder.DESCENDING) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -218,13 +220,22 @@ fun PodcastEpisodesScreen(
                     items = sortedEpisodes,
                     key = { it.episode.id }
                 ) { episodeWithPodcast ->
+                    val isCurrentEpisode = episodeWithPodcast.episode.id == currentPlayingEpisodeId
                     PodcastEpisodeCard(
                         episodeWithPodcast = episodeWithPodcast,
-                        onPlayClick = { onPlayEpisode(episodeWithPodcast.episode) },
+                        onPlayClick = {
+                            if (isCurrentEpisode) {
+                                // 如果是当前播放的单集，切换播放/暂停
+                                onPauseResume()
+                            } else {
+                                // 如果是其他单集，播放它
+                                onPlayEpisode(episodeWithPodcast.episode)
+                            }
+                        },
                         downloadStatus = downloads[episodeWithPodcast.episode.id],
                         onDownloadClick = { onDownloadEpisode(episodeWithPodcast.episode) },
                         showDownloadButton = true,
-                        isCurrentlyPlaying = episodeWithPodcast.episode.id == currentPlayingEpisodeId,
+                        isCurrentlyPlaying = isCurrentEpisode && isPlaying,
                         showPlaybackStatus = true,
                     )
                 }
