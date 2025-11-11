@@ -51,10 +51,10 @@ fun PlaybackBar(
             bottomEnd = 0.dp
         ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+            defaultElevation = 0.dp
         )
     ) {
         val durationMs = playbackState.episode.duration ?: playbackState.durationMs
