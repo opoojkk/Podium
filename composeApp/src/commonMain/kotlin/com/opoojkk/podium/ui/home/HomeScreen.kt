@@ -69,7 +69,9 @@ fun HomeScreen(
     onRecommendedPodcastClick: (RecommendedPodcast) -> Unit = {},
     currentPlayingEpisodeId: String? = null,
     isPlaying: Boolean = false,
+    isBuffering: Boolean = false,
     onPauseResume: () -> Unit = {},
+    onAddToPlaylist: (String) -> Unit = {},
 ) {
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -128,10 +130,22 @@ fun HomeScreen(
                     }
                     else -> {
                         items(state.searchResults, key = { it.episode.id }) { item ->
+                            val isCurrentEpisode = item.episode.id == currentPlayingEpisodeId
                             PodcastEpisodeCard(
                                 episodeWithPodcast = item,
-                                onPlayClick = { onPlayEpisode(item.episode) },
+                                onPlayClick = {
+                                    if (isCurrentEpisode) {
+                                        // 如果是当前播放的单集，切换播放/暂停
+                                        onPauseResume()
+                                    } else {
+                                        // 如果是其他单集，播放它
+                                        onPlayEpisode(item.episode)
+                                    }
+                                },
+                                onAddToPlaylist = { onAddToPlaylist(item.episode.id) },
                                 modifier = Modifier.padding(horizontal = 16.dp),
+                                isCurrentlyPlaying = isCurrentEpisode && isPlaying,
+                                isBuffering = isCurrentEpisode && isBuffering,
                             )
                         }
                     }
@@ -155,7 +169,19 @@ fun HomeScreen(
                             else -> {
                                 HorizontalEpisodeRow(
                                     episodes = state.recentPlayed,
-                                    onPlayClick = { onPlayEpisode(it.episode) },
+                                    onPlayClick = { episodeWithPodcast ->
+                                        val isCurrentEpisode = episodeWithPodcast.episode.id == currentPlayingEpisodeId
+                                        if (isCurrentEpisode) {
+                                            // 如果是当前播放的单集，切换播放/暂停
+                                            onPauseResume()
+                                        } else {
+                                            // 如果是其他单集，播放它
+                                            onPlayEpisode(episodeWithPodcast.episode)
+                                        }
+                                    },
+                                    currentPlayingEpisodeId = currentPlayingEpisodeId,
+                                    isPlaying = isPlaying,
+                                    isBuffering = isBuffering,
                                 )
                             }
                         }
@@ -214,9 +240,11 @@ fun HomeScreen(
                                                 onPlayEpisode(item.episode)
                                             }
                                         },
+                                        onAddToPlaylist = { onAddToPlaylist(item.episode.id) },
                                         modifier = Modifier.padding(horizontal = 16.dp),
                                         compact = true,
                                         isCurrentlyPlaying = isCurrentEpisode && isPlaying,
+                                        isBuffering = isCurrentEpisode && isBuffering,
                                     )
                                 }
                             }

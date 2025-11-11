@@ -35,6 +35,11 @@ fun ViewMoreScreen(
     onPlayEpisode: (Episode) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    currentPlayingEpisodeId: String? = null,
+    isPlaying: Boolean = false,
+    isBuffering: Boolean = false,
+    onPauseResume: () -> Unit = {},
+    onAddToPlaylist: (String) -> Unit = {},
 ) {
     // 处理系统返回按钮
     BackHandler(onBack = onBack)
@@ -78,9 +83,21 @@ fun ViewMoreScreen(
                 }
             } else {
                 items(episodes, key = { it.episode.id }) { episodeWithPodcast ->
+                    val isCurrentEpisode = episodeWithPodcast.episode.id == currentPlayingEpisodeId
                     PodcastEpisodeCard(
                         episodeWithPodcast = episodeWithPodcast,
-                        onPlayClick = { onPlayEpisode(episodeWithPodcast.episode) },
+                        onPlayClick = {
+                            if (isCurrentEpisode) {
+                                // 如果是当前播放的单集，切换播放/暂停
+                                onPauseResume()
+                            } else {
+                                // 如果是其他单集，播放它
+                                onPlayEpisode(episodeWithPodcast.episode)
+                            }
+                        },
+                        onAddToPlaylist = { onAddToPlaylist(episodeWithPodcast.episode.id) },
+                        isCurrentlyPlaying = isCurrentEpisode && isPlaying,
+                        isBuffering = isCurrentEpisode && isBuffering,
                     )
                 }
             }

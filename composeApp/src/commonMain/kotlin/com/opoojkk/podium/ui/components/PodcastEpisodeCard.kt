@@ -6,10 +6,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,11 +37,16 @@ fun PodcastEpisodeCard(
     onClick: (() -> Unit)? = null,
     downloadStatus: DownloadStatus? = null,
     onDownloadClick: () -> Unit = {},
+    onAddToPlaylist: () -> Unit = {},
     showDownloadButton: Boolean = downloadStatus != null,
+    showMoreButton: Boolean = true,
+    showDescription: Boolean = true,
     compact: Boolean = false,
     isCurrentlyPlaying: Boolean = false,
+    isBuffering: Boolean = false,
     showPlaybackStatus: Boolean = false,
 ) {
+    var showMoreMenu by remember { mutableStateOf(false) }
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -92,7 +104,7 @@ fun PodcastEpisodeCard(
                 Text(
                     text = episodeWithPodcast.episode.title,
                     style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                    maxLines = if (compact) 2 else 2,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
@@ -102,6 +114,17 @@ fun PodcastEpisodeCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // 显示描述
+                if (showDescription && !compact && episodeWithPodcast.episode.description.isNotBlank()) {
+                    Text(
+                        text = episodeWithPodcast.episode.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                // 显示更新时间
                 if (!compact) {
                     Text(
                         text = episodeWithPodcast.episode.publishDate
@@ -114,10 +137,10 @@ fun PodcastEpisodeCard(
                 }
             }
 
-            // 播放/暂停按钮 - 使用图标按钮
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // 播放/暂停按钮和更多按钮
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 FilledIconButton(
                     onClick = onPlayClick,
@@ -126,20 +149,86 @@ fun PodcastEpisodeCard(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 ) {
-                    Icon(
-                        imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(if (compact) 22.dp else 24.dp)
-                    )
+                    if (isBuffering) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(if (compact) 22.dp else 24.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(if (compact) 22.dp else 24.dp)
+                        )
+                    }
                 }
-                // 只在订阅页面显示下载按钮
-                if (showDownloadButton) {
-                    DownloadButton(
-                        downloadStatus = downloadStatus,
-                        onDownloadClick = onDownloadClick,
-                        iconOnly = true
-                    )
+
+                // 更多按钮
+                if (showMoreButton && !compact) {
+                    Box {
+                        IconButton(
+                            onClick = { showMoreMenu = true },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "更多选项",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // 更多菜单
+                        DropdownMenu(
+                            expanded = showMoreMenu,
+                            onDismissRequest = { showMoreMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("加入播放列表") },
+                                onClick = {
+                                    onAddToPlaylist()
+                                    showMoreMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.PlaylistAdd,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+
+                            if (showDownloadButton) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            when (downloadStatus) {
+                                                is DownloadStatus.Completed -> "已下载"
+                                                is DownloadStatus.InProgress -> "下载中..."
+                                                is DownloadStatus.Failed -> "重新下载"
+                                                else -> "下载"
+                                            }
+                                        )
+                                    },
+                                    onClick = {
+                                        if (downloadStatus !is DownloadStatus.Completed &&
+                                            downloadStatus !is DownloadStatus.InProgress) {
+                                            onDownloadClick()
+                                        }
+                                        showMoreMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Download,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    enabled = downloadStatus !is DownloadStatus.Completed &&
+                                             downloadStatus !is DownloadStatus.InProgress
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

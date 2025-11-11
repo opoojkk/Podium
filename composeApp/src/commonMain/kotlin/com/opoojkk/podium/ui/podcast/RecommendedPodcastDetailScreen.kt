@@ -9,8 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,6 +47,7 @@ fun RecommendedPodcastDetailScreen(
     modifier: Modifier = Modifier,
     currentPlayingEpisodeId: String? = null,
     isPlaying: Boolean = false,
+    isBuffering: Boolean = false,
     onPauseResume: () -> Unit = {},
 ) {
     var feedState by remember { mutableStateOf<FeedState>(FeedState.Loading) }
@@ -168,6 +172,9 @@ fun RecommendedPodcastDetailScreen(
                                 }
                             },
                             isCurrentlyPlaying = isCurrentEpisode && isPlaying,
+                            isBuffering = isCurrentEpisode && isBuffering,
+                            artworkUrl = state.feed.artworkUrl ?: podcast.artworkUrl,
+                            podcastTitle = state.feed.title,
                         )
                     }
                 }
@@ -301,9 +308,15 @@ private fun EpisodeListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isCurrentlyPlaying: Boolean = false,
+    isBuffering: Boolean = false,
+    artworkUrl: String? = null,
+    podcastTitle: String = "",
 ) {
+    var showMoreMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -315,16 +328,72 @@ private fun EpisodeListItem(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 播客封面
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                val initials = podcastTitle
+                    .trim()
+                    .split(" ", limit = 2)
+                    .mapNotNull { it.firstOrNull()?.uppercase() }
+                    .joinToString(separator = "")
+                    .takeIf { it.isNotBlank() }
+                    ?: "播客"
+
+                if (!artworkUrl.isNullOrBlank()) {
+                    SubcomposeAsyncImage(
+                        model = artworkUrl,
+                        contentDescription = podcastTitle,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        },
+                        error = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    )
+                } else {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
                     text = episode.title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+
+                if (podcastTitle.isNotBlank()) {
+                    Text(
+                        text = podcastTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
 
                 Text(
                     text = episode.description,
@@ -358,20 +427,81 @@ private fun EpisodeListItem(
                 }
             }
 
-            // 播放/暂停按钮
-            FilledIconButton(
-                onClick = onClick,
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+            // 播放/暂停按钮和更多按钮
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
-                )
+                FilledIconButton(
+                    onClick = onClick,
+                    modifier = Modifier.size(48.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    if (isBuffering) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                // 更多按钮
+                Box {
+                    IconButton(
+                        onClick = { showMoreMenu = true },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "更多选项",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // 更多菜单
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("加入播放列表") },
+                            onClick = {
+                                // TODO: 实现加入播放列表功能
+                                showMoreMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.PlaylistAdd,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("下载") },
+                            onClick = {
+                                // TODO: 实现下载功能
+                                showMoreMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                    }
+                }
             }
         }
     }

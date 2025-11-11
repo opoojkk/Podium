@@ -622,6 +622,7 @@ private fun DesktopLayout(
                                 },
                                 currentPlayingEpisodeId = playbackState.episode?.id,
                                 isPlaying = playbackState.isPlaying,
+                                isBuffering = playbackState.isBuffering,
                                 onPauseResume = {
                                     if (playbackState.isPlaying) {
                                         controller.pause()
@@ -662,12 +663,16 @@ private fun DesktopLayout(
                                 },
                                 currentPlayingEpisodeId = playbackState.episode?.id,
                                 isPlaying = playbackState.isPlaying,
+                                isBuffering = playbackState.isBuffering,
                                 onPauseResume = {
                                     if (playbackState.isPlaying) {
                                         controller.pause()
                                     } else {
                                         controller.resume()
                                     }
+                                },
+                                onAddToPlaylist = { episodeId ->
+                                    controller.addToPlaylist(episodeId)
                                 },
                             )
                         }
@@ -683,6 +688,19 @@ private fun DesktopLayout(
                                 episodes = episodes,
                                 onPlayEpisode = onPlayEpisode,
                                 onBack = { showViewMore.value = null },
+                                currentPlayingEpisodeId = playbackState.episode?.id,
+                                isPlaying = playbackState.isPlaying,
+                                isBuffering = playbackState.isBuffering,
+                                onPauseResume = {
+                                    if (playbackState.isPlaying) {
+                                        controller.pause()
+                                    } else {
+                                        controller.resume()
+                                    }
+                                },
+                                onAddToPlaylist = { episodeId ->
+                                    controller.addToPlaylist(episodeId)
+                                },
                             )
                         }
                         else -> {
@@ -713,12 +731,16 @@ private fun DesktopLayout(
                                     },
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
+                                isBuffering = playbackState.isBuffering,
                                     onPauseResume = {
                                         if (playbackState.isPlaying) {
                                             controller.pause()
                                         } else {
                                             controller.resume()
                                         }
+                                    },
+                                    onAddToPlaylist = { episodeId ->
+                                        controller.addToPlaylist(episodeId)
                                     },
                                 )
 
@@ -1030,6 +1052,7 @@ private fun MobileLayout(
                             },
                             currentPlayingEpisodeId = playbackState.episode?.id,
                             isPlaying = playbackState.isPlaying,
+                                isBuffering = playbackState.isBuffering,
                             onPauseResume = {
                                 if (playbackState.isPlaying) {
                                     controller.pause()
@@ -1070,6 +1093,7 @@ private fun MobileLayout(
                             },
                             currentPlayingEpisodeId = playbackState.episode?.id,
                             isPlaying = playbackState.isPlaying,
+                                isBuffering = playbackState.isBuffering,
                             onPauseResume = {
                                 if (playbackState.isPlaying) {
                                     controller.pause()
@@ -1091,6 +1115,19 @@ private fun MobileLayout(
                             episodes = episodes,
                             onPlayEpisode = onPlayEpisode,
                             onBack = { showViewMore.value = null },
+                            currentPlayingEpisodeId = playbackState.episode?.id,
+                            isPlaying = playbackState.isPlaying,
+                                isBuffering = playbackState.isBuffering,
+                            onPauseResume = {
+                                if (playbackState.isPlaying) {
+                                    controller.pause()
+                                } else {
+                                    controller.resume()
+                                }
+                            },
+                            onAddToPlaylist = { episodeId ->
+                                controller.addToPlaylist(episodeId)
+                            },
                         )
                     }
 
@@ -1131,12 +1168,16 @@ private fun MobileLayout(
                                     },
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
+                                isBuffering = playbackState.isBuffering,
                                     onPauseResume = {
                                         if (playbackState.isPlaying) {
                                             controller.pause()
                                         } else {
                                             controller.resume()
                                         }
+                                    },
+                                    onAddToPlaylist = { episodeId ->
+                                        controller.addToPlaylist(episodeId)
                                     },
                                 )
 

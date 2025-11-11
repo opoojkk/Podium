@@ -15,9 +15,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +44,9 @@ fun HorizontalEpisodeRow(
     episodes: List<EpisodeWithPodcast>,
     onPlayClick: (EpisodeWithPodcast) -> Unit,
     modifier: Modifier = Modifier,
+    currentPlayingEpisodeId: String? = null,
+    isPlaying: Boolean = false,
+    isBuffering: Boolean = false,
 ) {
     LazyRow(
         modifier = modifier,
@@ -49,9 +54,12 @@ fun HorizontalEpisodeRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
         items(episodes, key = { it.episode.id }) { episodeWithPodcast ->
+            val isCurrentEpisode = episodeWithPodcast.episode.id == currentPlayingEpisodeId
             HorizontalEpisodeCard(
                 episodeWithPodcast = episodeWithPodcast,
                 onPlayClick = { onPlayClick(episodeWithPodcast) },
+                isCurrentlyPlaying = isCurrentEpisode && isPlaying,
+                isBuffering = isCurrentEpisode && isBuffering,
             )
         }
     }
@@ -62,6 +70,8 @@ private fun HorizontalEpisodeCard(
     episodeWithPodcast: EpisodeWithPodcast,
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isCurrentlyPlaying: Boolean = false,
+    isBuffering: Boolean = false,
 ) {
     Card(
         modifier = modifier
@@ -134,12 +144,20 @@ private fun HorizontalEpisodeCard(
                             RoundedCornerShape(18.dp)
                         ),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "播放",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp),
-                    )
+                    if (isBuffering) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
             }
 
