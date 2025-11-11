@@ -916,6 +916,10 @@ private fun MobileLayout(
                                 onBarClick = { showPlayerDetail.value = true },
                             )
 
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+
                             NavigationBar {
                                 PodiumDestination.entries.forEach { destination ->
                                     val selected = destination == appState.currentDestination
