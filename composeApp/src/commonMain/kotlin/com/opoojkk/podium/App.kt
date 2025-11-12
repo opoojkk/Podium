@@ -389,8 +389,8 @@ fun PodiumApp(
         }
 
         if (isDesktop) {
-            // 桌面平台：使用Spotify风格布局（侧边导航 + 底部播放控制器）
-            DesktopLayout(
+            // 桌面平台：使用与移动平台相同的布局风格
+            MobileLayout(
                 appState = appState,
                 controller = controller,
                 showPlayerDetail = showPlayerDetail,
@@ -409,6 +409,9 @@ fun PodiumApp(
                 profileState = profileState,
                 playlistState = playlistState,
                 playbackState = playbackState,
+                sleepTimerState = sleepTimerState,
+                showSleepTimerDialog = showSleepTimerDialog,
+                showSpeedDialog = showSpeedDialog,
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
                 downloads = downloads,
