@@ -541,16 +541,21 @@ private fun DesktopLayout(
         color = MaterialTheme.colorScheme.background
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Row(modifier = Modifier.weight(1f)) {
-                // 左侧导航栏 - 始终显示
-                DesktopNavigationRail(
-                    currentDestination = appState.currentDestination,
-                    onNavigate = { appState.navigateTo(it) },
-                    isExpanded = isNavigationExpanded,
-                    onToggleExpand = { isNavigationExpanded = !isNavigationExpanded }
-                )
+        Row(modifier = Modifier.fillMaxSize()) {
+            // 左侧导航栏 - 始终显示
+            DesktopNavigationRail(
+                currentDestination = appState.currentDestination,
+                onNavigate = { appState.navigateTo(it) },
+                isExpanded = isNavigationExpanded,
+                onToggleExpand = { isNavigationExpanded = !isNavigationExpanded }
+            )
 
+            // 主内容区域 - 包含内容和底部播放栏
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+            ) {
                 // 主内容区域 - 播放列表从右侧滑入
                 Box(
                     modifier = Modifier
@@ -853,47 +858,29 @@ private fun DesktopLayout(
                         )
                     }
                 }
-            }
 
-            // 底部播放控制器 - 播放详情展开时隐藏，带动画
-            androidx.compose.animation.AnimatedVisibility(
-                visible = !showPlayerDetail.value && selectedCategory.value == null && !showRecommendedPodcastDetail.value,
-                enter = androidx.compose.animation.fadeIn(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 250,
-                        easing = androidx.compose.animation.core.LinearOutSlowInEasing
+                // 底部播放控制器 - 播放详情展开时隐藏，简化动画
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = !showPlayerDetail.value && selectedCategory.value == null && !showRecommendedPodcastDetail.value,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(durationMillis = 150)
+                    ),
+                    exit = androidx.compose.animation.fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(durationMillis = 150)
                     )
-                ) + androidx.compose.animation.slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 300,
-                        easing = androidx.compose.animation.core.LinearOutSlowInEasing
+                ) {
+                    PlaybackBar(
+                        playbackState = playbackState,
+                        onPlayPauseClick = {
+                            if (playbackState.isPlaying) {
+                                controller.pause()
+                            } else {
+                                controller.resume()
+                            }
+                        },
+                        onBarClick = { showPlayerDetail.value = true }
                     )
-                ),
-                exit = androidx.compose.animation.fadeOut(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 200,
-                        easing = androidx.compose.animation.core.FastOutLinearInEasing
-                    )
-                ) + androidx.compose.animation.slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 250,
-                        easing = androidx.compose.animation.core.FastOutLinearInEasing
-                    )
-                )
-            ) {
-                PlaybackBar(
-                    playbackState = playbackState,
-                    onPlayPauseClick = {
-                        if (playbackState.isPlaying) {
-                            controller.pause()
-                        } else {
-                            controller.resume()
-                        }
-                    },
-                    onBarClick = { showPlayerDetail.value = true }
-                )
+                }
             }
         }
 

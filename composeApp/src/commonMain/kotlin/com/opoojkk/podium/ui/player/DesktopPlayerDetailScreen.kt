@@ -250,8 +250,18 @@ fun DesktopPlayerDetailScreen(
                     modifier = Modifier
                         .weight(0.6f)
                         .fillMaxHeight()
-                        .verticalScroll(scrollState),
-                    verticalArrangement = Arrangement.Top
+                        .then(
+                            if (episode.description.isNotBlank() || episode.chapters.isNotEmpty()) {
+                                Modifier.verticalScroll(scrollState)
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    verticalArrangement = if (episode.description.isNotBlank() || episode.chapters.isNotEmpty()) {
+                        Arrangement.Top
+                    } else {
+                        Arrangement.Center
+                    }
                 ) {
                     // 剧集标题
                     Text(
@@ -271,10 +281,10 @@ fun DesktopPlayerDetailScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
-
                     // 剧集描述
                     if (episode.description.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(32.dp))
+
                         Text(
                             text = "剧集简介",
                             style = MaterialTheme.typography.titleLarge,
