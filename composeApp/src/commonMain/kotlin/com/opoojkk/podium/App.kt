@@ -596,6 +596,15 @@ private fun DesktopLayout(
                                         snackbarHostState.showSnackbar("已订阅《${podcastName}》")
                                     }
                                 },
+                                onUnsubscribe = { rssUrl ->
+                                    controller.unsubscribeByFeedUrl(rssUrl)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("已取消订阅《${podcastName}》")
+                                    }
+                                },
+                                checkIfSubscribed = { rssUrl ->
+                                    controller.checkIfSubscribed(rssUrl)
+                                },
                                 onPlayEpisode = { rssEpisode ->
                                     // Convert RssEpisode to Episode for playback
                                     val episode = Episode(
@@ -673,6 +682,13 @@ private fun DesktopLayout(
                                 },
                                 onAddToPlaylist = { episodeId ->
                                     controller.addToPlaylist(episodeId)
+                                },
+                                onUnsubscribe = {
+                                    controller.deleteSubscription(podcast.id)
+                                    selectedPodcast.value = null
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("已取消订阅《${podcast.title}》")
+                                    }
                                 },
                             )
                         }
@@ -1026,6 +1042,15 @@ private fun MobileLayout(
                                     snackbarHostState.showSnackbar("已订阅《${podcastName}》")
                                 }
                             },
+                            onUnsubscribe = { rssUrl ->
+                                controller.unsubscribeByFeedUrl(rssUrl)
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已取消订阅《${podcastName}》")
+                                }
+                            },
+                            checkIfSubscribed = { rssUrl ->
+                                controller.checkIfSubscribed(rssUrl)
+                            },
                             onPlayEpisode = { rssEpisode ->
                                 // Convert RssEpisode to Episode for playback
                                 val episode = Episode(
@@ -1099,6 +1124,16 @@ private fun MobileLayout(
                                     controller.pause()
                                 } else {
                                     controller.resume()
+                                }
+                            },
+                            onAddToPlaylist = { episodeId ->
+                                controller.addToPlaylist(episodeId)
+                            },
+                            onUnsubscribe = {
+                                controller.deleteSubscription(podcast.id)
+                                selectedPodcast.value = null
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已取消订阅《${podcast.title}》")
                                 }
                             },
                         )

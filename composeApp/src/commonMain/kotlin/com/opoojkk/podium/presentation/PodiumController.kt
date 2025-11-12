@@ -490,6 +490,19 @@ class PodiumController(
         }
     }
 
+    suspend fun checkIfSubscribed(feedUrl: String): Boolean {
+        return repository.getPodcastByFeedUrl(feedUrl) != null
+    }
+
+    fun unsubscribeByFeedUrl(feedUrl: String) {
+        scope.launch {
+            val podcast = repository.getPodcastByFeedUrl(feedUrl)
+            if (podcast != null) {
+                deleteSubscription(podcast.id)
+            }
+        }
+    }
+
     private suspend fun episodeDetailsForDownload(episodeId: String): EpisodeWithPodcast? {
         val cached = downloadEpisodeCacheMutex.withLock {
             downloadEpisodeCache[episodeId]

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +28,7 @@ import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
 import com.opoojkk.podium.data.rss.PodcastFeed
 import com.opoojkk.podium.data.rss.RssEpisode
 import com.opoojkk.podium.ui.components.PodcastEpisodeCardSkeleton
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -49,14 +51,21 @@ fun RecommendedPodcastDetailScreen(
     isPlaying: Boolean = false,
     isBuffering: Boolean = false,
     onPauseResume: () -> Unit = {},
+    checkIfSubscribed: suspend (String) -> Boolean = { false },
+    onUnsubscribe: (String) -> Unit = {},
 ) {
     var feedState by remember { mutableStateOf<FeedState>(FeedState.Loading) }
     var isSubscribed by remember { mutableStateOf(false) }
     var sortOrder by remember { mutableStateOf(EpisodeSortOrder.NEWEST_FIRST) }
+    var currentPage by remember { mutableStateOf(1) }
+    val itemsPerPage = 20
+    var isRefreshing by remember { mutableStateOf(false) }
 
-    LaunchedEffect(podcast.rssUrl) {
+    val loadFeed: suspend () -> Unit = {
         if (!podcast.rssUrl.isNullOrBlank()) {
-            feedState = FeedState.Loading
+            // 检查是否已订阅
+            isSubscribed = checkIfSubscribed(podcast.rssUrl)
+
             val result = loadPodcastFeed(podcast.rssUrl)
             feedState = result.fold(
                 onSuccess = { FeedState.Success(it) },
@@ -65,6 +74,11 @@ fun RecommendedPodcastDetailScreen(
         } else {
             feedState = FeedState.Error("无效的RSS链接")
         }
+    }
+
+    LaunchedEffect(podcast.rssUrl) {
+        feedState = FeedState.Loading
+        loadFeed()
     }
 
     Scaffold(
@@ -79,13 +93,24 @@ fun RecommendedPodcastDetailScreen(
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                kotlinx.coroutines.MainScope().launch {
+                    isRefreshing = true
+                    loadFeed()
+                    isRefreshing = false
+                }
+            },
+            modifier = Modifier.fillMaxSize()
         ) {
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // 播客信息头部
             item {
                 PodcastHeader(
@@ -94,8 +119,13 @@ fun RecommendedPodcastDetailScreen(
                     isSubscribed = isSubscribed,
                     onSubscribeClick = {
                         podcast.rssUrl?.let { rssUrl ->
-                            onSubscribe(rssUrl)
-                            isSubscribed = true
+                            if (isSubscribed) {
+                                onUnsubscribe(rssUrl)
+                                isSubscribed = false
+                            } else {
+                                onSubscribe(rssUrl)
+                                isSubscribed = true
+                            }
                         }
                     }
                 )
@@ -152,13 +182,17 @@ fun RecommendedPodcastDetailScreen(
                         }
                     }
 
-                    // 根据排序顺序显示单集列表
+                    // 根据排序顺序显示单集列表，并应用分页
                     val sortedEpisodes = when (sortOrder) {
                         EpisodeSortOrder.NEWEST_FIRST -> state.feed.episodes.sortedByDescending { it.publishDate }
                         EpisodeSortOrder.OLDEST_FIRST -> state.feed.episodes.sortedBy { it.publishDate }
                     }
 
-                    items(sortedEpisodes, key = { it.id }) { episode ->
+                    val totalItems = sortedEpisodes.size
+                    val displayedEpisodes = sortedEpisodes.take(currentPage * itemsPerPage)
+                    val hasMore = displayedEpisodes.size < totalItems
+
+                    items(displayedEpisodes, key = { it.id }) { episode ->
                         val isCurrentEpisode = episode.id == currentPlayingEpisodeId
                         EpisodeListItem(
                             episode = episode,
@@ -177,6 +211,24 @@ fun RecommendedPodcastDetailScreen(
                             podcastTitle = state.feed.title,
                         )
                     }
+
+                    // 加载更多按钮
+                    if (hasMore) {
+                        item {
+                            Button(
+                                onClick = { currentPage++ },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Text("加载更多 (${displayedEpisodes.size}/$totalItems)")
+                            }
+                        }
+                    }
                 }
                 is FeedState.Error -> {
                     item {
@@ -189,6 +241,7 @@ fun RecommendedPodcastDetailScreen(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -275,10 +328,18 @@ private fun PodcastHeader(
 
                 Button(
                     onClick = onSubscribeClick,
-                    enabled = !isSubscribed && !podcast.rssUrl.isNullOrBlank(),
-                    modifier = Modifier.fillMaxWidth()
+                    enabled = !podcast.rssUrl.isNullOrBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = if (isSubscribed) {
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        ButtonDefaults.buttonColors()
+                    }
                 ) {
-                    Text(if (isSubscribed) "已订阅" else "订阅")
+                    Text(if (isSubscribed) "取消订阅" else "订阅")
                 }
             }
         }

@@ -27,6 +27,8 @@ class PodcastRepository(
 
     fun observeSubscriptions(): Flow<List<Podcast>> = dao.observePodcasts()
 
+    suspend fun getPodcastByFeedUrl(feedUrl: String): Podcast? = dao.getPodcastByFeedUrl(feedUrl)
+
     fun observeRecentUpdates(): Flow<List<EpisodeWithPodcast>> = dao.observeRecentEpisodes(20)
 
     fun observeRecentListening(): Flow<List<EpisodeWithPodcast>> = dao.observeRecentListening(10)
