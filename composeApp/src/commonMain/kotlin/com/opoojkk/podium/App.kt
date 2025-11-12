@@ -532,8 +532,8 @@ private fun DesktopLayout(
     snackbarHostState: SnackbarHostState,
 ) {
     val scope = rememberCoroutineScope()
-    // 侧边栏展开状态
-    var isNavigationExpanded by remember { mutableStateOf(true) }
+    // 侧边栏展开状态 - 默认收起
+    var isNavigationExpanded by remember { mutableStateOf(false) }
 
     // Material3 风格的背景
     Surface(
@@ -569,8 +569,8 @@ private fun DesktopLayout(
                             )
                         }
                         showPlayerDetail.value && playbackState.episode != null -> {
-                            // 桌面端使用与移动端一致的播放详情页样式
-                            PlayerDetailScreen(
+                            // 桌面端使用横向布局的播放详情页
+                            DesktopPlayerDetailScreen(
                                 playbackState = playbackState,
                                 onBack = { showPlayerDetail.value = false },
                                 onPlayPause = {
@@ -583,10 +583,6 @@ private fun DesktopLayout(
                                     showPlayerDetail.value = false
                                     showPlaylistFromPlayerDetail.value = true
                                     showPlaylist.value = true
-                                },
-                                downloadStatus = playbackState.episode?.let { downloads[it.id] },
-                                onDownloadClick = {
-                                    playbackState.episode?.let { controller.enqueueDownload(it) }
                                 },
                                 playbackSpeed = playbackState.playbackSpeed,
                                 onSpeedChange = { showSpeedDialog.value = true },
