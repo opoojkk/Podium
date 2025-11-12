@@ -1,5 +1,6 @@
 package com.opoojkk.podium.ui.player
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -125,28 +126,27 @@ fun DesktopPlayerDetailScreen(
                 }
             }
 
-            // 主内容区域 - 横向布局，使用固定padding确保布局稳定
+            // 主内容区域 - 横向布局：左侧封面+进度+控制，右侧名称+描述
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) // 使用weight而不是fillMaxSize，更稳定
-                    .padding(horizontal = 80.dp, vertical = 48.dp),
-                horizontalArrangement = Arrangement.spacedBy(64.dp),
-                verticalAlignment = Alignment.Top
+                    .weight(1f)
+                    .padding(horizontal = 48.dp, vertical = 32.dp),
+                horizontalArrangement = Arrangement.spacedBy(48.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 左侧：专辑封面和基本信息
+                // 左侧：专辑封面、进度条和播放控制
                 Column(
                     modifier = Modifier
-                        .weight(0.35f)
+                        .weight(0.4f)
                         .fillMaxHeight(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Top
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
                     // 专辑封面
                     Surface(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxWidth(0.9f)
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(16.dp)),
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -156,171 +156,214 @@ fun DesktopPlayerDetailScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Podcasts,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(120.dp)
+                            if (!episode.imageUrl.isNullOrBlank()) {
+                                coil3.compose.AsyncImage(
+                                    model = episode.imageUrl,
+                                    contentDescription = episode.title,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Podcasts,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(100.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // 进度条区域
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (durationMs != null && durationMs > 0) {
+                            Slider(
+                                value = sliderPosition,
+                                onValueChange = { newValue ->
+                                    isDragging = true
+                                    sliderPosition = newValue
+                                },
+                                onValueChangeFinished = {
+                                    val targetPosition = sliderPosition.toLong()
+                                    seekTarget = targetPosition
+                                    onSeekTo(targetPosition)
+                                    isDragging = false
+                                },
+                                valueRange = 0f..durationMs.toFloat(),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
+                        } else {
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        }
+
+                        // 时间显示
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = formatTime(sliderPosition.toLong()),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = durationMs?.let { formatTime(it) } ?: "--:--",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // 剧集标题 - 固定高度避免跳动
-                    Text(
-                        text = episode.title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(72.dp) // 固定2行文字的高度
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // 播客名称 - 固定高度避免跳动
-                    Text(
-                        text = episode.podcastTitle,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(28.dp) // 固定1行文字的高度
+                    // 播放控制按钮
+                    PlaybackDetailControls(
+                        isPlaying = playbackState.isPlaying,
+                        onPlayPause = onPlayPause,
+                        onSeekBack = onSeekBack,
+                        onSeekForward = onSeekForward,
+                        modifier = Modifier.fillMaxWidth(),
+                        isBuffering = playbackState.isBuffering,
+                        sizing = PlaybackControlDefaults.Default,
+                        playbackSpeed = playbackSpeed,
+                        onSpeedChange = onSpeedChange,
+                        sleepTimerMinutes = sleepTimerMinutes,
+                        onSleepTimerClick = onSleepTimerClick,
                     )
                 }
 
-                // 右侧：播放控制和信息
+                // 右侧：剧集名称和描述
                 Column(
                     modifier = Modifier
-                        .weight(0.65f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.Top
-                ) {
-                    Spacer(modifier = Modifier.height(24.dp)) // 与左侧对称的顶部间距
-                    
-                    // 剧集描述（可选）- 使用固定高度避免布局跳动
-                    if (episode.description.isNotBlank()) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f), // 使用weight填充剩余空间
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(20.dp)
-                                    .verticalScroll(scrollState) // 使用外部的scrollState
-                            ) {
-                                Text(
-                                    text = "剧集简介",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-                                Text(
-                                    text = episode.description,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.5
-                                )
-                            }
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // 播放控制区域
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        // 进度条 - 固定高度避免跳动
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(70.dp), // 稍微减小高度
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            if (durationMs != null && durationMs > 0) {
-                                Slider(
-                                    value = sliderPosition,
-                                    onValueChange = { newValue ->
-                                        isDragging = true
-                                        sliderPosition = newValue
-                                    },
-                                    onValueChangeFinished = {
-                                        val targetPosition = sliderPosition.toLong()
-                                        seekTarget = targetPosition
-                                        onSeekTo(targetPosition)
-                                        isDragging = false
-                                    },
-                                    valueRange = 0f..durationMs.toFloat(),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = MaterialTheme.colorScheme.primary,
-                                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                )
+                        .weight(0.6f)
+                        .fillMaxHeight()
+                        .then(
+                            if (episode.description.isNotBlank() || episode.chapters.isNotEmpty()) {
+                                Modifier.verticalScroll(scrollState)
                             } else {
-                                LinearProgressIndicator(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
+                                Modifier
                             }
+                        ),
+                    verticalArrangement = if (episode.description.isNotBlank() || episode.chapters.isNotEmpty()) {
+                        Arrangement.Top
+                    } else {
+                        Arrangement.Center
+                    }
+                ) {
+                    // 剧集标题
+                    Text(
+                        text = episode.title,
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                            // 时间显示 - 固定宽度避免跳动
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(20.dp), // 固定高度
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = formatTime(sliderPosition.toLong()),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.width(60.dp) // 固定宽度
-                                )
-                                Text(
-                                    text = durationMs?.let { formatTime(it) } ?: "--:--",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.width(60.dp) // 固定宽度
-                                )
-                            }
-                        }
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                        // 播放控制按钮（包含睡眠定时和倍速）
-                        PlaybackDetailControls(
-                            isPlaying = playbackState.isPlaying,
-                            onPlayPause = onPlayPause,
-                            onSeekBack = onSeekBack,
-                            onSeekForward = onSeekForward,
-                            modifier = Modifier.fillMaxWidth(),
-                            isBuffering = playbackState.isBuffering,
-                            sizing = PlaybackControlDefaults.Compact,
-                            playbackSpeed = playbackSpeed,
-                            onSpeedChange = onSpeedChange,
-                            sleepTimerMinutes = sleepTimerMinutes,
-                            onSleepTimerClick = onSleepTimerClick,
+                    // 播客名称
+                    Text(
+                        text = episode.podcastTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // 剧集描述
+                    if (episode.description.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        Text(
+                            text = "剧集简介",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 12.dp)
                         )
+                        com.opoojkk.podium.ui.components.TimestampText(
+                            text = episode.description,
+                            onTimestampClick = { timestampMs ->
+                                onSeekTo(timestampMs)
+                            },
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.6
+                            )
+                        )
+                    }
+
+                    // 章节列表（如果有）
+                    if (episode.chapters.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        Text(
+                            text = "章节",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        episode.chapters.forEach { chapter ->
+                            ChapterItem(
+                                chapter = chapter,
+                                onClick = { onSeekTo(chapter.startTimeMs) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ChapterItem(
+    chapter: com.opoojkk.podium.data.model.Chapter,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 章节时间
+        Text(
+            text = formatTime(chapter.startTimeMs),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.widthIn(min = 60.dp)
+        )
+
+        // 章节标题
+        Text(
+            text = chapter.title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+
+        // 播放图标
+        Icon(
+            imageVector = Icons.Default.PlayArrow,
+            contentDescription = "播放章节",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 

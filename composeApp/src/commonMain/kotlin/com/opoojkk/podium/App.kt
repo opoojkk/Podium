@@ -389,7 +389,7 @@ fun PodiumApp(
         }
 
         if (isDesktop) {
-            // 桌面平台：使用Spotify风格布局（侧边导航 + 底部播放控制器）
+            // 桌面平台：使用左侧导航栏布局，保持与移动平台一致的样式风格
             DesktopLayout(
                 appState = appState,
                 controller = controller,
@@ -409,6 +409,9 @@ fun PodiumApp(
                 profileState = profileState,
                 playlistState = playlistState,
                 playbackState = playbackState,
+                sleepTimerState = sleepTimerState,
+                showSleepTimerDialog = showSleepTimerDialog,
+                showSpeedDialog = showSpeedDialog,
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
                 downloads = downloads,
@@ -511,6 +514,9 @@ private fun DesktopLayout(
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
     playlistState: com.opoojkk.podium.presentation.PlaylistUiState,
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
+    sleepTimerState: com.opoojkk.podium.data.model.SleepTimerState,
+    showSleepTimerDialog: MutableState<Boolean>,
+    showSpeedDialog: MutableState<Boolean>,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
@@ -526,8 +532,8 @@ private fun DesktopLayout(
     snackbarHostState: SnackbarHostState,
 ) {
     val scope = rememberCoroutineScope()
-    // 侧边栏展开状态
-    var isNavigationExpanded by remember { mutableStateOf(true) }
+    // 侧边栏展开状态 - 默认收起
+    var isNavigationExpanded by remember { mutableStateOf(false) }
 
     // Material3 风格的背景
     Surface(
@@ -535,16 +541,21 @@ private fun DesktopLayout(
         color = MaterialTheme.colorScheme.background
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Row(modifier = Modifier.weight(1f)) {
-                // 左侧导航栏 - 始终显示
-                DesktopNavigationRail(
-                    currentDestination = appState.currentDestination,
-                    onNavigate = { appState.navigateTo(it) },
-                    isExpanded = isNavigationExpanded,
-                    onToggleExpand = { isNavigationExpanded = !isNavigationExpanded }
-                )
+        Row(modifier = Modifier.fillMaxSize()) {
+            // 左侧导航栏 - 始终显示
+            DesktopNavigationRail(
+                currentDestination = appState.currentDestination,
+                onNavigate = { appState.navigateTo(it) },
+                isExpanded = isNavigationExpanded,
+                onToggleExpand = { isNavigationExpanded = !isNavigationExpanded }
+            )
 
+            // 主内容区域 - 包含内容和底部播放栏
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+            ) {
                 // 主内容区域 - 播放列表从右侧滑入
                 Box(
                     modifier = Modifier
@@ -563,7 +574,7 @@ private fun DesktopLayout(
                             )
                         }
                         showPlayerDetail.value && playbackState.episode != null -> {
-                            // 桌面端使用横向布局的详情页
+                            // 桌面端使用横向布局的播放详情页
                             DesktopPlayerDetailScreen(
                                 playbackState = playbackState,
                                 onBack = { showPlayerDetail.value = false },
@@ -578,6 +589,10 @@ private fun DesktopLayout(
                                     showPlaylistFromPlayerDetail.value = true
                                     showPlaylist.value = true
                                 },
+                                playbackSpeed = playbackState.playbackSpeed,
+                                onSpeedChange = { showSpeedDialog.value = true },
+                                sleepTimerMinutes = if (sleepTimerState.isActive) sleepTimerState.remainingMinutes else null,
+                                onSleepTimerClick = { showSleepTimerDialog.value = true },
                             )
                         }
                         showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
@@ -843,50 +858,29 @@ private fun DesktopLayout(
                         )
                     }
                 }
-            }
 
-            // 底部播放控制器 - 播放详情展开时隐藏，带动画
-            androidx.compose.animation.AnimatedVisibility(
-                visible = !showPlayerDetail.value && selectedCategory.value == null && !showRecommendedPodcastDetail.value,
-                enter = androidx.compose.animation.fadeIn(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 250,
-                        easing = androidx.compose.animation.core.LinearOutSlowInEasing
+                // 底部播放控制器 - 播放详情展开时隐藏，简化动画
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = !showPlayerDetail.value && selectedCategory.value == null && !showRecommendedPodcastDetail.value,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(durationMillis = 150)
+                    ),
+                    exit = androidx.compose.animation.fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(durationMillis = 150)
                     )
-                ) + androidx.compose.animation.slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 300,
-                        easing = androidx.compose.animation.core.LinearOutSlowInEasing
+                ) {
+                    PlaybackBar(
+                        playbackState = playbackState,
+                        onPlayPauseClick = {
+                            if (playbackState.isPlaying) {
+                                controller.pause()
+                            } else {
+                                controller.resume()
+                            }
+                        },
+                        onBarClick = { showPlayerDetail.value = true }
                     )
-                ),
-                exit = androidx.compose.animation.fadeOut(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 200,
-                        easing = androidx.compose.animation.core.FastOutLinearInEasing
-                    )
-                ) + androidx.compose.animation.slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 250,
-                        easing = androidx.compose.animation.core.FastOutLinearInEasing
-                    )
-                )
-            ) {
-                DesktopPlaybackBar(
-                    playbackState = playbackState,
-                    onPlayPauseClick = {
-                        if (playbackState.isPlaying) {
-                            controller.pause()
-                        } else {
-                            controller.resume()
-                        }
-                    },
-                    onSeekBack = { controller.seekBy(-15_000) },
-                    onSeekForward = { controller.seekBy(30_000) },
-                    onSeekTo = { controller.seekTo(it) },
-                    onBarClick = { showPlayerDetail.value = true }
-                )
+                }
             }
         }
 
