@@ -210,13 +210,11 @@ class SubscriptionImporter {
         private val numericEntityRegex = Regex("&#(x?[0-9A-Fa-f]+);")
 
         private val subscriptionsArrayRegex = Regex(
-            """"subscriptions"\s*:\s*\[(.*?)\]""",
-            setOf(RegexOption.DOT_MATCHES_ALL)
+            """"subscriptions"\s*:\s*\[([\s\S]*?)\]"""
         )
 
         private val jsonObjectRegex = Regex(
-            """\{[^}]+\}""",
-            setOf(RegexOption.DOT_MATCHES_ALL)
+            """\{[^}]+\}"""
         )
     }
 }
