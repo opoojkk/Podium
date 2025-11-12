@@ -389,8 +389,8 @@ fun PodiumApp(
         }
 
         if (isDesktop) {
-            // 桌面平台：使用与移动平台相同的布局风格
-            MobileLayout(
+            // 桌面平台：使用左侧导航栏布局，保持与移动平台一致的样式风格
+            DesktopLayout(
                 appState = appState,
                 controller = controller,
                 showPlayerDetail = showPlayerDetail,
@@ -514,6 +514,9 @@ private fun DesktopLayout(
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
     playlistState: com.opoojkk.podium.presentation.PlaylistUiState,
     playbackState: com.opoojkk.podium.data.model.PlaybackState,
+    sleepTimerState: com.opoojkk.podium.data.model.SleepTimerState,
+    showSleepTimerDialog: MutableState<Boolean>,
+    showSpeedDialog: MutableState<Boolean>,
     allRecentListening: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     allRecentUpdates: List<com.opoojkk.podium.data.model.EpisodeWithPodcast>,
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
@@ -566,8 +569,8 @@ private fun DesktopLayout(
                             )
                         }
                         showPlayerDetail.value && playbackState.episode != null -> {
-                            // 桌面端使用横向布局的详情页
-                            DesktopPlayerDetailScreen(
+                            // 桌面端使用与移动端一致的播放详情页样式
+                            PlayerDetailScreen(
                                 playbackState = playbackState,
                                 onBack = { showPlayerDetail.value = false },
                                 onPlayPause = {
@@ -581,6 +584,14 @@ private fun DesktopLayout(
                                     showPlaylistFromPlayerDetail.value = true
                                     showPlaylist.value = true
                                 },
+                                downloadStatus = playbackState.episode?.let { downloads[it.id] },
+                                onDownloadClick = {
+                                    playbackState.episode?.let { controller.enqueueDownload(it) }
+                                },
+                                playbackSpeed = playbackState.playbackSpeed,
+                                onSpeedChange = { showSpeedDialog.value = true },
+                                sleepTimerMinutes = if (sleepTimerState.isActive) sleepTimerState.remainingMinutes else null,
+                                onSleepTimerClick = { showSleepTimerDialog.value = true },
                             )
                         }
                         showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
@@ -876,7 +887,7 @@ private fun DesktopLayout(
                     )
                 )
             ) {
-                DesktopPlaybackBar(
+                PlaybackBar(
                     playbackState = playbackState,
                     onPlayPauseClick = {
                         if (playbackState.isPlaying) {
@@ -885,9 +896,6 @@ private fun DesktopLayout(
                             controller.resume()
                         }
                     },
-                    onSeekBack = { controller.seekBy(-15_000) },
-                    onSeekForward = { controller.seekBy(30_000) },
-                    onSeekTo = { controller.seekTo(it) },
                     onBarClick = { showPlayerDetail.value = true }
                 )
             }
