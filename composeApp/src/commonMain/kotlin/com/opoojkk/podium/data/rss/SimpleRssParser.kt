@@ -1,12 +1,10 @@
 package com.opoojkk.podium.data.rss
 
 import com.opoojkk.podium.data.model.Chapter
+import com.opoojkk.podium.data.util.TimeUtils
+import com.opoojkk.podium.data.util.XmlUtils
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toInstant
-import kotlin.math.abs
 
 /**
  * A lightweight RSS parser that extracts the information required for the UI while remaining
@@ -67,7 +65,7 @@ class SimpleRssParser : RssParser {
             val audioUrl = extractAudioUrl(itemBlock) ?: ""
             if (audioUrl.isBlank()) return@mapNotNull null
 
-            val publishDate = parseDate(
+            val publishDate = TimeUtils.parseDate(
                 firstNonBlank(
                     extractTag(itemBlock, "pubDate"),
                     extractTag(itemBlock, "published"),
@@ -77,7 +75,7 @@ class SimpleRssParser : RssParser {
                 ),
             )
 
-            val duration = parseDuration(
+            val duration = TimeUtils.parseDuration(
                 firstNonBlank(
                     extractTag(itemBlock, "itunes:duration"),
                     extractTag(itemBlock, "duration"),
@@ -133,7 +131,7 @@ class SimpleRssParser : RssParser {
         )
         val raw = pattern.find(block)?.groupValues?.get(1) ?: return null
         val cdata = cdataRegex.find(raw)?.groupValues?.get(1) ?: raw
-        val decoded = decodeXmlEntities(cdata)
+        val decoded = XmlUtils.decodeEntities(cdata)
         return decoded.trim().takeIf { it.isNotEmpty() }
     }
 
@@ -145,7 +143,7 @@ class SimpleRssParser : RssParser {
             setOf(RegexOption.IGNORE_CASE)
         )
         val raw = pattern.find(block)?.groupValues?.get(1) ?: return null
-        return decodeXmlEntities(raw).trim().takeIf { it.isNotEmpty() }
+        return XmlUtils.decodeEntities(raw).trim().takeIf { it.isNotEmpty() }
     }
 
     private fun extractImage(block: String): String? =
@@ -201,118 +199,6 @@ class SimpleRssParser : RssParser {
         return audioExtensions.any { urlWithoutParams.endsWith(it) }
     }
 
-    private fun parseDate(raw: String?): Instant =
-        parseDateOrNull(raw) ?: Clock.System.now()
-
-    private fun parseDateOrNull(raw: String?): Instant? {
-        if (raw.isNullOrBlank()) return null
-        val trimmed = raw.trim()
-
-        return runCatching { Instant.parse(trimmed) }
-            .getOrElse {
-                parseRfc2822Date(trimmed)
-                    ?: parseUnixTimestamp(trimmed)
-            }
-    }
-
-    private fun parseUnixTimestamp(value: String): Instant? {
-        val digits = value.toLongOrNull() ?: return null
-        return when {
-            value.length >= 13 -> Instant.fromEpochMilliseconds(digits)
-            value.length >= 10 -> Instant.fromEpochSeconds(digits)
-            else -> null
-        }
-    }
-
-    private fun parseRfc2822Date(dateString: String): Instant? {
-        // RFC 2822 format: "Wed, 27 Aug 2025 09:44:16 GMT"
-        // or: "27 Aug 2025 09:44:16 GMT" (without day of week)
-
-        return runCatching {
-            // Remove leading day of week if present (e.g., "Wed, ")
-            val cleaned = dateString.replace(Regex("^\\w+,\\s*"), "").trim()
-
-            // Split by whitespace
-            val parts = cleaned.split(Regex("\\s+"))
-            if (parts.size < 5) return null
-
-            // Parse: "27 Aug 2025 09:44:16 GMT" or "27 Aug 2025 09:44:16 +0800"
-            val day = parts[0].toIntOrNull() ?: return null
-            val monthName = parts[1]
-            val year = parts[2].toIntOrNull() ?: return null
-
-            // Parse time "09:44:16"
-            val timeParts = parts[3].split(":")
-            if (timeParts.size != 3) return null
-            val hour = timeParts[0].toIntOrNull() ?: return null
-            val minute = timeParts[1].toIntOrNull() ?: return null
-            val second = timeParts[2].toIntOrNull() ?: return null
-
-            // Parse timezone (optional, defaults to UTC)
-            val timezone = if (parts.size > 4) parts[4] else "UTC"
-
-            // Get month number
-            val month = monthMap[monthName] ?: return null
-
-            // Create LocalDateTime
-            val localDateTime = LocalDateTime(year, month, day, hour, minute, second)
-
-            // Parse timezone
-            val timeZone = parseTimezoneToken(timezone)
-
-            // Convert to Instant
-            localDateTime.toInstant(timeZone)
-        }.getOrNull()
-    }
-
-    private fun parseTimezoneToken(token: String?): TimeZone {
-        if (token.isNullOrBlank()) return TimeZone.UTC
-        val trimmed = token.trim()
-        return when {
-            trimmed.equals("UT", ignoreCase = true) ||
-                    trimmed.equals("UTC", ignoreCase = true) ||
-                    trimmed.equals("GMT", ignoreCase = true) -> TimeZone.UTC
-
-            trimmed.matches(offsetRegex) -> {
-                val sign = if (trimmed.startsWith("-")) -1 else 1
-                val hours = trimmed.substring(1, 3).toIntOrNull() ?: 0
-                val minutes = trimmed.substring(3, 5).toIntOrNull() ?: 0
-                val totalMinutes = sign * (hours * 60 + minutes)
-                val offsetHours = totalMinutes / 60
-                val offsetMinutes = abs(totalMinutes % 60)
-                val prefix = if (offsetHours >= 0) "+" else "-"
-                val zoneId = "UTC$prefix${abs(offsetHours).toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')}"
-                runCatching { TimeZone.of(zoneId) }.getOrDefault(TimeZone.UTC)
-            }
-
-            else -> runCatching { TimeZone.of(trimmed) }.getOrDefault(TimeZone.UTC)
-        }
-    }
-
-    private fun parseDuration(raw: String?): Long? {
-        if (raw.isNullOrBlank()) return null
-        val trimmed = raw.trim()
-
-        val isoMatch = isoDurationRegex.matchEntire(trimmed)
-        if (isoMatch != null) {
-            val hours = isoMatch.groupValues[2].toLongOrNull() ?: 0
-            val minutes = isoMatch.groupValues[3].toLongOrNull() ?: 0
-            val seconds = isoMatch.groupValues[4].toLongOrNull() ?: 0
-            return ((hours * 3600) + (minutes * 60) + seconds) * 1000
-        }
-
-        val parts = trimmed.split(":")
-        return try {
-            when (parts.size) {
-                3 -> (parts[0].toLong() * 3600 + parts[1].toLong() * 60 + parts[2].toLong()) * 1000
-                2 -> (parts[0].toLong() * 60 + parts[1].toLong()) * 1000
-                else -> trimmed.toLong() * 1000
-            }
-        } catch (_: NumberFormatException) {
-            null
-        }
-    }
-
     private fun generateEpisodeId(feedUrl: String, guid: String): String {
         val trimmed = guid.trim()
         if (trimmed.startsWith("http", ignoreCase = true)) {
@@ -327,7 +213,7 @@ class SimpleRssParser : RssParser {
 
     private fun sanitizeRichText(raw: String): String {
         if (raw.isBlank()) return ""
-        var text = decodeXmlEntities(raw)
+        var text = XmlUtils.decodeEntities(raw)
         text = scriptRegex.replace(text, " ")
         text = styleRegex.replace(text, " ")
         text = breakTagRegex.replace(text, "\n")
@@ -340,22 +226,6 @@ class SimpleRssParser : RssParser {
             .map { line -> line.trim() }
             .filter { it.isNotEmpty() }
             .joinToString("\n")
-    }
-
-    private fun decodeXmlEntities(raw: String): String {
-        if (!raw.contains('&')) return raw
-        val namedDecoded = namedEntities.entries.fold(raw) { acc, (entity, value) ->
-            acc.replace(entity, value)
-        }
-        return numericEntityRegex.replace(namedDecoded) { match ->
-            val value = match.groupValues[1]
-            val codePoint = if (value.startsWith("x", ignoreCase = true)) {
-                value.substring(1).toIntOrNull(16)
-            } else {
-                value.toIntOrNull()
-            } ?: return@replace ""
-            Char(codePoint).toString()
-        }
     }
 
     private fun firstNonBlank(vararg values: String?): String? =
@@ -434,7 +304,7 @@ class SimpleRssParser : RssParser {
                 return@mapNotNull null
             }
 
-            val startTimeMs = parsePodloveTimeToMillis(startTimeStr)
+            val startTimeMs = TimeUtils.parsePodloveTimeToMillis(startTimeStr)
             if (startTimeMs == null) {
                 println("⚠️ RSS Parser: Failed to parse time: $startTimeStr")
                 return@mapNotNull null
@@ -459,35 +329,6 @@ class SimpleRssParser : RssParser {
                 imageUrl = imageUrl,
                 url = url,
             )
-        }
-    }
-
-    /**
-     * Parse Podlove time format (HH:MM:SS.mmm) to milliseconds
-     * Examples: "00:00:00.000", "00:03:00.500", "01:15:30.250"
-     */
-    private fun parsePodloveTimeToMillis(timeStr: String): Long? {
-        val parts = timeStr.split(":")
-        if (parts.size != 3) return null
-
-        return try {
-            val hours = parts[0].toLongOrNull() ?: 0
-            val minutes = parts[1].toLongOrNull() ?: 0
-
-            // Handle seconds with optional milliseconds
-            val secondsParts = parts[2].split(".")
-            val seconds = secondsParts[0].toLongOrNull() ?: 0
-            val millis = if (secondsParts.size > 1) {
-                // Pad or truncate to 3 digits
-                val millisStr = secondsParts[1].take(3).padEnd(3, '0')
-                millisStr.toLongOrNull() ?: 0
-            } else {
-                0
-            }
-
-            (hours * 3600 + minutes * 60 + seconds) * 1000 + millis
-        } catch (e: Exception) {
-            null
         }
     }
 
@@ -523,9 +364,6 @@ class SimpleRssParser : RssParser {
             setOf(RegexOption.IGNORE_CASE)
         )
         private val inlineWhitespaceRegex = Regex("\\s+")
-        private val numericEntityRegex = Regex("&#(x?[0-9A-Fa-f]+);")
-        private val offsetRegex = Regex("[+-]\\d{4}")
-        private val isoDurationRegex = Regex("^P(T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)$", RegexOption.IGNORE_CASE)
         private val enclosureLinkRegex = Regex(
             "<((?:\\w+:)?link)[^>]*\\brel\\s*=\\s*['\"]enclosure['\"][^>]*>",
             setOf(RegexOption.IGNORE_CASE)
@@ -537,27 +375,6 @@ class SimpleRssParser : RssParser {
 
         private val audioExtensions = listOf(
             ".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".flac", ".wav"
-        )
-
-        private val namedEntities = mapOf(
-            "&amp;" to "&",
-            "&lt;" to "<",
-            "&gt;" to ">",
-            "&quot;" to "\"",
-            "&apos;" to "'",
-            "&nbsp;" to " ",
-            "&ndash;" to "–",
-            "&mdash;" to "—",
-            "&hellip;" to "…",
-            "&lsquo;" to "'",
-            "&rsquo;" to "'",
-            "&ldquo;" to "\"",
-            "&rdquo;" to "\"",
-        )
-
-        private val monthMap = mapOf(
-            "Jan" to 1, "Feb" to 2, "Mar" to 3, "Apr" to 4, "May" to 5, "Jun" to 6,
-            "Jul" to 7, "Aug" to 8, "Sep" to 9, "Oct" to 10, "Nov" to 11, "Dec" to 12
         )
     }
 }

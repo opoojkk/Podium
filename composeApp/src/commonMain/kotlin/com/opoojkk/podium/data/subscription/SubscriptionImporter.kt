@@ -1,5 +1,8 @@
 package com.opoojkk.podium.data.subscription
 
+import com.opoojkk.podium.data.util.JsonUtils
+import com.opoojkk.podium.data.util.XmlUtils
+
 /**
  * Service for importing podcast subscriptions from various standard formats.
  * Supports OPML 2.0 and JSON formats.
@@ -136,7 +139,7 @@ class SubscriptionImporter {
 
         for (match in matches) {
             val key = match.groupValues[1].lowercase()
-            val value = decodeXmlEntities(match.groupValues[3])
+            val value = XmlUtils.decodeEntities(match.groupValues[3])
             attributes[key] = value
         }
 
@@ -146,54 +149,7 @@ class SubscriptionImporter {
     private fun extractJsonField(obj: String, fieldName: String): String? {
         val pattern = Regex(""""$fieldName"\s*:\s*"([^"]*)"""")
         val match = pattern.find(obj) ?: return null
-        return unescapeJsonString(match.groupValues[1])
-    }
-
-    private fun unescapeJsonString(value: String): String {
-        return value
-            .replace("\\\"", "\"")
-            .replace("\\\\", "\\")
-            .replace("\\n", "\n")
-            .replace("\\r", "\r")
-            .replace("\\t", "\t")
-            .replace("\\b", "\b")
-    }
-
-    private fun decodeXmlEntities(raw: String): String {
-        val namedDecoded = raw
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&quot;", "\"")
-            .replace("&apos;", "'")
-            .replace("&amp;", "&")
-
-        return numericEntityRegex.replace(namedDecoded) { match ->
-            val value = match.groupValues[1]
-            val codePoint = if (value.startsWith("x") || value.startsWith("X")) {
-                value.substring(1).toIntOrNull(16)
-            } else {
-                value.toIntOrNull()
-            }
-            codePoint?.let { cp -> codePointToString(cp) } ?: match.value
-        }
-    }
-
-    private fun codePointToString(codePoint: Int): String? = when {
-        codePoint < 0 -> null
-        codePoint <= 0xFFFF -> runCatching { codePoint.toChar().toString() }.getOrNull()
-        codePoint <= 0x10FFFF -> {
-            val high = ((codePoint - 0x10000) shr 10) + 0xD800
-            val low = ((codePoint - 0x10000) and 0x3FF) + 0xDC00
-            if (high in 0xD800..0xDBFF && low in 0xDC00..0xDFFF) {
-                buildString(2) {
-                    append(high.toChar())
-                    append(low.toChar())
-                }
-            } else {
-                null
-            }
-        }
-        else -> null
+        return JsonUtils.decodeString(match.groupValues[1])
     }
 
     companion object {
@@ -206,8 +162,6 @@ class SubscriptionImporter {
             """([A-Za-z_:][\\w:.-]*)\s*=\s*(['"])(.*?)\2""",
             setOf(RegexOption.IGNORE_CASE)
         )
-
-        private val numericEntityRegex = Regex("&#(x?[0-9A-Fa-f]+);")
 
         private val subscriptionsArrayRegex = Regex(
             """"subscriptions"\s*:\s*\[([\s\S]*?)\]"""

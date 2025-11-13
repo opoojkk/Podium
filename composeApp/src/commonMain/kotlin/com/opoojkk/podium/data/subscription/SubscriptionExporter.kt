@@ -1,6 +1,8 @@
 package com.opoojkk.podium.data.subscription
 
 import com.opoojkk.podium.data.model.Podcast
+import com.opoojkk.podium.data.util.JsonUtils
+import com.opoojkk.podium.data.util.XmlUtils
 import kotlinx.datetime.Instant
 
 /**
@@ -29,13 +31,13 @@ class SubscriptionExporter {
             appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
             appendLine("""<opml version="2.0">""")
             appendLine("""  <head>""")
-            appendLine("""    <title>${escapeXml(title)}</title>""")
+            appendLine("""    <title>${XmlUtils.encodeEntities(title)}</title>""")
             appendLine("""    <dateCreated>$dateCreated</dateCreated>""")
             if (ownerName != null) {
-                appendLine("""    <ownerName>${escapeXml(ownerName)}</ownerName>""")
+                appendLine("""    <ownerName>${XmlUtils.encodeEntities(ownerName)}</ownerName>""")
             }
             if (ownerEmail != null) {
-                appendLine("""    <ownerEmail>${escapeXml(ownerEmail)}</ownerEmail>""")
+                appendLine("""    <ownerEmail>${XmlUtils.encodeEntities(ownerEmail)}</ownerEmail>""")
             }
             appendLine("""  </head>""")
             appendLine("""  <body>""")
@@ -72,10 +74,10 @@ class SubscriptionExporter {
     }
 
     private fun buildOpmlOutline(podcast: Podcast): String {
-        val title = escapeXml(podcast.title)
-        val feedUrl = escapeXml(podcast.feedUrl)
-        val description = escapeXml(podcast.description)
-        val artworkUrl = podcast.artworkUrl?.let { escapeXml(it) }
+        val title = XmlUtils.encodeEntities(podcast.title)
+        val feedUrl = XmlUtils.encodeEntities(podcast.feedUrl)
+        val description = XmlUtils.encodeEntities(podcast.description)
+        val artworkUrl = podcast.artworkUrl?.let { XmlUtils.encodeEntities(it) }
 
         return buildString {
             append("""    <outline type="rss"""")
@@ -98,20 +100,6 @@ class SubscriptionExporter {
         return instant.toString()
     }
 
-    private fun escapeXml(raw: String): String =
-        buildString(raw.length + 16) {
-            raw.forEach { ch ->
-                when (ch) {
-                    '&' -> append("&amp;")
-                    '<' -> append("&lt;")
-                    '>' -> append("&gt;")
-                    '"' -> append("&quot;")
-                    '\'' -> append("&apos;")
-                    else -> append(ch)
-                }
-            }
-        }
-
     private fun buildJsonString(export: SubscriptionExportJson): String {
         return buildString {
             appendLine("{")
@@ -121,11 +109,11 @@ class SubscriptionExporter {
 
             export.subscriptions.forEachIndexed { index, sub ->
                 appendLine("    {")
-                appendLine("""      "title": ${jsonString(sub.title)},""")
-                appendLine("""      "feedUrl": ${jsonString(sub.feedUrl)},""")
-                appendLine("""      "description": ${jsonString(sub.description)},""")
+                appendLine("""      "title": ${JsonUtils.encodeString(sub.title)},""")
+                appendLine("""      "feedUrl": ${JsonUtils.encodeString(sub.feedUrl)},""")
+                appendLine("""      "description": ${JsonUtils.encodeString(sub.description)},""")
                 if (sub.artworkUrl != null) {
-                    appendLine("""      "artworkUrl": ${jsonString(sub.artworkUrl)},""")
+                    appendLine("""      "artworkUrl": ${JsonUtils.encodeString(sub.artworkUrl)},""")
                 }
                 appendLine("""      "lastUpdated": "${sub.lastUpdated}",""")
                 append("""      "autoDownload": ${sub.autoDownload}""")
@@ -139,28 +127,6 @@ class SubscriptionExporter {
 
             appendLine("  ]")
             append("}")
-        }
-    }
-
-    private fun jsonString(value: String): String {
-        return buildString {
-            append('"')
-            value.forEach { ch ->
-                when (ch) {
-                    '"' -> append("\\\"")
-                    '\\' -> append("\\\\")
-                    '\b' -> append("\\b")
-                    '\n' -> append("\\n")
-                    '\r' -> append("\\r")
-                    '\t' -> append("\\t")
-                    else -> if (ch.code < 32) {
-                        append("\\u${ch.code.toString(16).padStart(4, '0')}")
-                    } else {
-                        append(ch)
-                    }
-                }
-            }
-            append('"')
         }
     }
 
