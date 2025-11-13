@@ -6,7 +6,9 @@
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20-blue.svg)](https://kotlinlang.org)
 [![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-1.9.0-green.svg)](https://www.jetbrains.com/lp/compose-mpp/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPLv3-yellow.svg)](LICENSE)
+
+**中文** | [English](README_EN.md)
 
 </div>
 
@@ -14,371 +16,136 @@
 
 Podium 是一个使用 Kotlin Multiplatform 和 Compose Multiplatform 技术构建的**泛用播客播放器**。它采用单一代码库实现多平台支持，提供了一致且原生的用户体验。
 
-### 🚧 平台开发状态
-
-- ✅ **Android** - 正常使用
-- 🚧 **iOS** - 施工中
-- 🚧 **Desktop (JVM)** - 施工中
+**平台状态**: ✅ Android 正常使用 | 🚧 iOS 开发中 | 🚧 Desktop 开发中
 
 ### ✨ 核心特性
 
 - 🎯 **跨平台架构** - Android、iOS、Desktop (JVM) 三端统一代码库
-- 🎨 **现代化 UI** - 基于 Material 3 设计，桌面端采用 Spotify 风格深色主题
-- 🎵 **完整播放功能** - 播放、暂停、快进快退、进度控制
+- 🎨 **现代化 UI** - Material 3 设计 + Spotify 风格深色主题
+- 🎵 **完整播放功能** - 播放控制、进度管理、倍速播放、睡眠定时器
 - 📡 **RSS 订阅** - 支持标准 RSS/Atom 播客源订阅与解析
-- 💾 **本地存储** - 使用 SQLDelight 实现跨平台数据持久化
-- 📥 **离线下载** - 单集下载与管理，支持自动下载
+- 💾 **本地存储** - SQLDelight 跨平台数据持久化
+- 📥 **离线下载** - 单集下载与管理
 - 🔄 **播放进度同步** - 自动保存和恢复播放进度
-- 🎧 **播放历史** - 记录收听历史，快速继续播放
-- 🖼️ **图片加载** - 高效的网络图片加载与缓存
-
----
 
 ## 🛠 技术栈
 
 ### 核心框架
 - **[Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)** - 跨平台代码共享
 - **[Compose Multiplatform](https://www.jetbrains.com/lp/compose-mpp/)** - 声明式跨平台 UI 框架
-- **[Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-overview.html)** - 异步编程与并发
+- **[Rust](https://www.rust-lang.org/)** - 高性能原生组件（RSS 解析 + 音频播放）
+- **[SQLDelight](https://cashapp.github.io/sqldelight/)** - 跨平台类型安全数据库
+- **[Ktor](https://ktor.io/)** - 跨平台网络框架
+- **[Coil](https://coil-kt.github.io/coil/)** - 图片加载库
 
-### 架构设计
+### 架构模式
 - **MVVM + Repository Pattern** - 清晰的架构分层
-- **Flow & StateFlow** - 响应式数据流
-- **平台期望/实现机制** - 跨平台差异化处理
+- **Kotlin Coroutines + Flow** - 异步编程与响应式数据流
+- **expect/actual 机制** - 跨平台差异化处理
 
-### 平台特定技术
+### 核心组件（Rust 实现）
 
-#### Android
-- **[ExoPlayer](https://developer.android.com/media/media3/exoplayer)** - 高性能媒体播放
-- **Android Media3** - 现代化媒体 API
-- **Jetpack Compose** - 原生 Android UI
+**RSS 解析器 (`rust-rss-parser`)**
+- 高性能 XML/RSS/Atom 解析
+- 零拷贝设计，低内存占用
 
-#### iOS  
-- **AVPlayer** - Apple 原生音频播放框架
-- **SwiftUI** - iOS 应用入口
+**音频播放器 (`rust-audio-player`)**
+- 跨平台音频解码（MP3, AAC, OGG, FLAC 等）
+- 平台优化：Android (OpenSL ES/AAudio) | iOS (AVAudioEngine) | Desktop (cpal)
 
-#### Desktop (JVM)
-- **[JLayer](http://www.javazoom.net/javalayer/javalayer.html)** - 纯 Java MP3 解码
-- **Java Sound API** - WAV 等格式支持
-- **Compose for Desktop** - 桌面 UI 渲染
+### 平台集成
 
----
+- **Android**: Jetpack Compose + Media3 媒体会话
+- **iOS**: SwiftUI + AVFoundation 音频管理
+- **Desktop**: Compose for Desktop + Spotify 风格主题
 
-## 📚 三方库依赖
+## 🚧 近期计划
 
-### 网络 & 数据
-| 库 | 版本 | 用途 |
-|---|---|---|
-| [Ktor Client](https://ktor.io/) | 2.3.12 | HTTP 客户端，RSS 订阅源获取 |
-| [Kotlinx Serialization](https://github.com/Kotlin/kotlinx.serialization) | - | JSON/XML 序列化 |
-| [SQLDelight](https://cashapp.github.io/sqldelight/) | 2.0.2 | 跨平台类型安全 SQL 数据库 |
-| [Kotlinx DateTime](https://github.com/Kotlin/kotlinx-datetime) | 0.6.1 | 跨平台日期时间处理 |
-
-### UI & 图片
-| 库 | 版本 | 用途 |
-|---|---|---|
-| [Compose Material 3](https://developer.android.com/jetpack/compose/designsystems/material3) | - | Material Design 3 组件 |
-| [Coil](https://coil-kt.github.io/coil/) | 3.0.4 | 高性能图片加载库 (支持 Compose Multiplatform) |
-
-### 平台专用
-| 库 | 版本 | 平台 | 用途 |
-|---|---|---|---|
-| Ktor OkHttp | 2.3.12 | Android | HTTP 引擎 |
-| Ktor Darwin | 2.3.12 | iOS | HTTP 引擎 |
-| Ktor CIO | 2.3.12 | JVM | HTTP 引擎 |
-| JLayer | 1.0.1.4 | JVM | MP3 音频解码 |
-| VLCj | 4.8.2 | JVM | (预留) 增强音频支持 |
-
-### 开发工具
-| 库 | 版本 | 用途 |
-|---|---|---|
-| [Compose Hot Reload](https://github.com/JetBrains/compose-hot-reload) | 1.0.0-beta07 | 开发时热重载 |
-
----
-
-## 🎯 功能实现状态
-
-### ✅ 已实现功能
-
-#### 核心播放
-- [x] 多平台音频播放 (Android ExoPlayer / iOS AVPlayer / JVM JLayer)
-- [x] 播放控制 (播放、暂停、停止、继续)
-- [x] 进度控制 (跳转、快进 30 秒、快退 15 秒)
-- [x] 实时播放进度显示
-- [x] 播放状态自动保存 (每 10 秒)
-- [x] 应用重启后恢复播放状态
-- [x] 缓冲状态显示
-- [x] 倍速播放 (0.5x ~ 2.0x 变速播放)
-- [x] 睡眠定时器 (5/10/15/30/45/60 分钟定时停止)
-- [x] 跨平台 BackHandler 支持 (导航返回处理)
-
-#### 订阅管理
-- [x] RSS/Atom 播客源解析
-- [x] 添加/删除订阅
-- [x] 自动刷新订阅源
-- [x] 订阅列表展示
-- [x] 单集列表查看
-- [x] 播客封面展示
-
-#### 数据存储
-- [x] SQLDelight 跨平台数据库
-- [x] 播客信息持久化
-- [x] 单集信息持久化
-- [x] 播放进度持久化
-- [x] 下载状态管理
-
-#### 用户界面
-- [x] 主页 - 最近更新、最近收听
-- [x] 订阅页 - 订阅列表管理
-- [x] 个人页 - 用户配置
-- [x] 播放详情页 (全屏)
-- [x] 底部播放控制栏
-- [x] 桌面端侧边导航栏
-- [x] 桌面端 Spotify 风格 UI
-- [x] 移动端 Material 3 设计
-- [x] 响应式布局适配
-- [x] 骨架屏加载动画 (消除启动闪烁)
-
-#### 其他
-- [x] 图片异步加载与缓存
-- [x] 网络请求日志
-- [x] 错误处理
-- [x] 跨平台依赖注入
-- [x] 媒体通知支持 (Android/iOS/Desktop)
-- [x] 通知栏播放控制 (点击通知打开播放详情)
-- [x] 应用图标适配 (Android Adaptive Icon)
-
-### 🚧 计划实现功能
-
-#### 近期计划
-
-- [ ] **播放队列** - 创建和管理播放列队
-- [ ] **播放列表** - 自定义播放列表
+- [ ] **播放队列与列表** - 队列管理和自定义播放列表
 - [ ] **搜索功能** - 全局搜索播客和单集
 - [ ] **播客发现** - 推荐和热门播客
-- [ ] **播放历史** - 完整历史记录页面
 - [ ] **收藏功能** - 收藏喜欢的单集
-- [ ] **RSS 订阅解析增强** - 更好的 RSS feed 兼容性
-- [ ] **多设备同步** - 云端数据同步 (可选)
-- [ ] **章节支持** - RSS 章节信息解析与跳转
-- [ ] **播客分类** - 自定义分类管理
-- [ ] **导入/导出** - OPML 格式订阅导入导出
+- [ ] **多设备同步** - 云端数据同步（可选）
+- [ ] **章节支持** - RSS 章节解析与跳转
+- [ ] **OPML 导入/导出** - 订阅数据迁移
 - [ ] **主题切换** - 浅色/深色/自动主题
-- [ ] **音频均衡器** - 音效调节 (Android/iOS)
-- [ ] **后台播放优化** - 更好的后台播放体验
+- [ ] **音频均衡器** - 音效调节
 
----
-
-## 🚀 构建与运行
+## 🚀 快速开始
 
 ### 环境要求
 
-- **JDK**: 11 或更高版本
-- **Android Studio**: Ladybug (2024.2.1) 或更高版本
-- **Xcode**: 14.0+ (仅 macOS，用于 iOS 开发)
-- **Kotlin**: 2.2.20
-- **Gradle**: 8.10+ (自动下载)
+- **JDK** 11+
+- **Android Studio** Ladybug (2024.2.1)+
+- **Xcode** 14.0+ (macOS, iOS 开发)
+- **Rust** 1.70+ (自动编译原生组件)
+  - 安装: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+  - iOS 开发: `rustup target add aarch64-apple-ios`
 
-### 构建 Android 应用
+**平台版本要求**:
+- Android: 最低 API 24 (Android 7.0), 目标 API 36 (Android 14)
+- iOS: 最低 iOS 15.0
 
+### 构建与运行
+
+**Android**
 ```bash
-# macOS/Linux
 ./gradlew :composeApp:assembleDebug
-
-# Windows
-.\gradlew.bat :composeApp:assembleDebug
 ```
 
-### 运行 Desktop 应用
-
+**Desktop**
 ```bash
-# macOS/Linux
 ./gradlew :composeApp:run
-
-# Windows
-.\gradlew.bat :composeApp:run
 ```
 
-### 构建 iOS 应用
-
-1. 打开 `iosApp` 目录在 Xcode 中
-2. 选择目标设备或模拟器
-3. 点击运行按钮
-
-或使用命令行 (需要 Xcode Command Line Tools):
-
+**iOS**
 ```bash
+# 在 Xcode 中打开 iosApp 目录，或使用命令行
 cd iosApp
 xcodebuild -scheme iosApp -configuration Debug
 ```
 
----
+> 💡 首次构建时，Gradle 会自动编译 Rust 组件，可能需要几分钟。
 
 ## 📐 架构设计
 
-### 数据流
+Podium 采用分层架构，结合 Kotlin Multiplatform 和 Rust 原生组件：
 
 ```
-┌──────────────┐
-│   UI Layer   │  (Composable Functions)
-└──────┬───────┘
-       │ StateFlow
-┌──────▼───────┐
-│ Presentation │  (Controller / ViewModel)
-└──────┬───────┘
-       │
-┌──────▼───────┐
-│  Repository  │  (Data Source Abstraction)
-└──┬─────────┬─┘
-   │         │
-┌──▼──┐  ┌──▼──┐
-│ RSS │  │ DB  │  (Remote & Local Data)
-└─────┘  └─────┘
+┌─────────────────────────────────────────────────┐
+│            UI Layer (Compose MP)                │
+└────────────────────┬────────────────────────────┘
+                     │ StateFlow / Flow
+┌────────────────────▼────────────────────────────┐
+│      Presentation (ViewModel / Controller)      │
+└────────────────────┬────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────┐
+│         Repository (Data Abstraction)           │
+└──────┬───────────────────┬──────────────────┬───┘
+       │                   │                  │
+   ┌───▼────┐       ┌─────▼──────┐      ┌────▼────┐
+   │  RSS   │       │  Database  │      │ Player  │
+   │ (Rust) │       │(SQLDelight)│      │ (Rust)  │
+   └────────┘       └────────────┘      └─────────┘
 ```
 
-### 跨平台差异化处理
-
-```kotlin
-// 接口定义 (commonMain)
-expect class PlatformContext
-expect fun createPodcastPlayer(context: PlatformContext): PodcastPlayer
-
-// Android 实现 (androidMain)
-actual class PlatformContext(val context: Context)
-actual fun createPodcastPlayer(context: PlatformContext): PodcastPlayer {
-    return AndroidPodcastPlayer(context.context)
-}
-
-// iOS 实现 (iosMain)
-actual class PlatformContext
-actual fun createPodcastPlayer(context: PlatformContext): PodcastPlayer {
-    return IosPodcastPlayer()
-}
-
-// Desktop 实现 (jvmMain)
-actual class PlatformContext
-actual fun createPodcastPlayer(context: PlatformContext): PodcastPlayer {
-    return DesktopPodcastPlayer()
-}
-```
-
----
-
-## 🎨 UI 设计
-
-### 移动端 (Android/iOS)
-- **设计语言**: Material Design 3
-- **主题**: 动态取色 (Material You)
-- **导航**: 底部导航栏
-- **布局**: 自适应屏幕尺寸
-
-### 桌面端 (Desktop)
-- **设计语言**: Spotify 风格
-- **配色方案**:
-  - 主背景: `#181818` (深灰)
-  - 侧边栏: `#000000` (纯黑)
-  - 卡片背景: `#282828` (中等灰)
-  - 强调色: `#1DB954` (Spotify 绿)
-- **导航**: 左侧侧边导航栏
-- **布局**: 三栏布局 (导航 + 内容 + 播放控制)
-
-详细 UI 设计请参考 [UI_LAYOUT_GUIDE.md](./UI_LAYOUT_GUIDE.md)
-
----
-
-## 🧪 测试
-
-```bash
-# 运行所有测试
-./gradlew test
-
-# Android 单元测试
-./gradlew :composeApp:testDebugUnitTest
-
-# iOS 测试
-cd iosApp
-xcodebuild test -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 15'
-```
-
----
-
-## 📦 打包发布
-
-### Android APK
-
-```bash
-./gradlew :composeApp:assembleRelease
-# 输出: composeApp/build/outputs/apk/release/
-```
-
-### Desktop 应用
-
-```bash
-# macOS DMG
-./gradlew :composeApp:packageDmg
-
-# Windows MSI
-./gradlew :composeApp:packageMsi
-
-# Linux DEB
-./gradlew :composeApp:packageDeb
-```
-
-### iOS IPA
-
-在 Xcode 中:
-1. Product → Archive
-2. Distribute App → 选择发布方式
-
----
-
-## 🤝 贡献指南
-
-欢迎贡献代码、报告问题或提出新功能建议！
-
-### 贡献流程
-
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
-
-### 代码规范
-
-- 遵循 Kotlin 官方编码规范
-- 使用有意义的变量和函数命名
-- 为公共 API 添加 KDoc 注释
-- 确保所有测试通过
-
----
+**Rust 组件通过 JNI/FFI 桥接**：Android/Desktop 使用 JNI，iOS 使用 FFI，为 Kotlin/Swift 提供统一接口。
 
 ## 📄 许可证
 
-本项目采用 GPLv3 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
-
----
+本项目采用 **GPLv3** 许可证 - 查看 [LICENSE](LICENSE) 了解详情
 
 ## 🙏 致谢
 
-- [JetBrains](https://www.jetbrains.com/) - Kotlin 和 Compose Multiplatform
-- [Cash App](https://cashapp.github.io/sqldelight/) - SQLDelight
-- [Ktor](https://ktor.io/) - 网络框架
-- [Coil](https://coil-kt.github.io/coil/) - 图片加载
-
----
-
-## 📧 联系方式
-
-- 项目地址: [GitHub](https://github.com/opoojkk/podium)
-- 问题反馈: [Issues](https://github.com/opoojkk/podium/issues)
-
----
+感谢开源社区和以下项目：[JetBrains](https://www.jetbrains.com/) (Kotlin & Compose MP) · [Rust](https://www.rust-lang.org/) · [SQLDelight](https://cashapp.github.io/sqldelight/) · [Ktor](https://ktor.io/) · [Coil](https://coil-kt.github.io/coil/) · [cpal](https://github.com/RustAudio/cpal)
 
 <div align="center">
 
 **⭐ 如果这个项目对你有帮助，请给个 Star！ ⭐**
 
 Made with ❤️ using Kotlin Multiplatform
+
+[GitHub](https://github.com/opoojkk/podium) · [Issues](https://github.com/opoojkk/podium/issues)
 
 </div>
