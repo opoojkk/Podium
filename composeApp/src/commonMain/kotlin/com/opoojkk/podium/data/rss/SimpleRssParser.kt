@@ -103,7 +103,7 @@ class SimpleRssParser : RssParser {
             )
         }.toList()
 
-        val feedUpdated = parseDateOrNull(
+        val feedUpdated = TimeUtils.parseDateOrNull(
             firstNonBlank(
                 extractTag(channelBlock, "lastBuildDate"),
                 extractTag(channelBlock, "pubDate"),
