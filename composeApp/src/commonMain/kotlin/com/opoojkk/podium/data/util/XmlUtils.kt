@@ -1,8 +1,8 @@
 package com.opoojkk.podium.data.util
 
 /**
- * XML 实体编码和解码工具类
- * 用于统一处理 XML 特殊字符的转义和反转义
+ * XML entity encoding and decoding utilities.
+ * Provides unified handling of XML special character escaping and unescaping.
  */
 object XmlUtils {
 
@@ -17,21 +17,21 @@ object XmlUtils {
     private val numericEntityRegex = Regex("&#(x?[0-9a-fA-F]+);")
 
     /**
-     * 将 XML 编码的字符串解码为原始字符串
-     * 支持命名实体（如 &lt;）和数字实体（如 &#38; 或 &#x26;）
+     * Decode XML-encoded string to raw string.
+     * Supports both named entities (e.g., &lt;) and numeric entities (e.g., &#38; or &#x26;).
      *
-     * @param raw 需要解码的字符串
-     * @return 解码后的字符串
+     * @param raw String to decode
+     * @return Decoded string
      */
     fun decodeEntities(raw: String): String {
         if (!raw.contains('&')) return raw
 
-        // 先处理命名实体
+        // Process named entities first
         val namedDecoded = namedEntities.entries.fold(raw) { acc, (entity, value) ->
             acc.replace(entity, value)
         }
 
-        // 再处理数字实体
+        // Then process numeric entities
         return numericEntityRegex.replace(namedDecoded) { match ->
             val value = match.groupValues[1]
             val codePoint = if (value.startsWith("x", ignoreCase = true)) {
@@ -45,11 +45,11 @@ object XmlUtils {
     }
 
     /**
-     * 将原始字符串编码为 XML 安全的字符串
-     * 转义特殊字符：& < > " '
+     * Encode raw string to XML-safe string.
+     * Escapes special characters: & < > " '
      *
-     * @param raw 需要编码的字符串
-     * @return 编码后的字符串
+     * @param raw String to encode
+     * @return Encoded string
      */
     fun encodeEntities(raw: String): String =
         buildString(raw.length + 16) {
@@ -66,11 +66,11 @@ object XmlUtils {
         }
 
     /**
-     * 将 Unicode 码点转换为字符串
-     * 支持基本多文种平面（BMP）和补充平面字符
+     * Convert Unicode code point to string.
+     * Supports both Basic Multilingual Plane (BMP) and supplementary plane characters.
      *
-     * @param codePoint Unicode 码点
-     * @return 对应的字符串，如果码点无效则返回 null
+     * @param codePoint Unicode code point
+     * @return Corresponding string, or null if code point is invalid
      */
     private fun codePointToString(codePoint: Int): String? = when {
         codePoint < 0 -> null
@@ -78,7 +78,7 @@ object XmlUtils {
             codePoint.toChar().toString()
         }.getOrNull()
         codePoint <= 0x10FFFF -> {
-            // 处理补充平面字符（使用代理对）
+            // Handle supplementary plane characters (using surrogate pairs)
             val high = ((codePoint - 0x10000) shr 10) + 0xD800
             val low = ((codePoint - 0x10000) and 0x3FF) + 0xDC00
             if (high in 0xD800..0xDBFF && low in 0xDC00..0xDFFF) {

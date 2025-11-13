@@ -1,17 +1,17 @@
 package com.opoojkk.podium.data.util
 
 /**
- * JSON 字符串转义和反转义工具类
- * 用于手动处理 JSON 字符串的编码和解码
+ * JSON string escaping and unescaping utilities.
+ * Provides manual handling of JSON string encoding and decoding.
  */
 object JsonUtils {
 
     /**
-     * 将字符串编码为 JSON 格式的字符串字面量（包含引号）
-     * 处理特殊字符的转义
+     * Encode string to JSON format string literal (including quotes).
+     * Handles special character escaping.
      *
-     * @param value 需要编码的字符串
-     * @return JSON 格式的字符串（带引号）
+     * @param value String to encode
+     * @return JSON-formatted string (with quotes)
      */
     fun encodeString(value: String): String {
         return buildString {
@@ -25,7 +25,7 @@ object JsonUtils {
                     '\r' -> append("\\r")
                     '\t' -> append("\\t")
                     else -> if (ch.code < 32) {
-                        // 控制字符编码为 \uXXXX 格式
+                        // Encode control characters as \uXXXX format
                         append("\\u${ch.code.toString(16).padStart(4, '0')}")
                     } else {
                         append(ch)
@@ -37,11 +37,11 @@ object JsonUtils {
     }
 
     /**
-     * 解码 JSON 字符串中的转义序列
-     * 注意：此方法不处理引号，假定输入已去除外层引号
+     * Decode escape sequences in JSON string.
+     * Note: This method does not handle quotes, assumes input has outer quotes removed.
      *
-     * @param value 需要解码的字符串
-     * @return 解码后的字符串
+     * @param value String to decode
+     * @return Decoded string
      */
     fun decodeString(value: String): String {
         return value
@@ -54,11 +54,11 @@ object JsonUtils {
     }
 
     /**
-     * 转义字符串用于 JSON 值（不包含外层引号）
-     * 与 encodeString 的区别是不添加引号
+     * Escape string for JSON value (without outer quotes).
+     * Difference from encodeString is that it does not add quotes.
      *
-     * @param value 需要转义的字符串
-     * @return 转义后的字符串（不带引号）
+     * @param value String to escape
+     * @return Escaped string (without quotes)
      */
     fun escapeString(value: String): String {
         return buildString {

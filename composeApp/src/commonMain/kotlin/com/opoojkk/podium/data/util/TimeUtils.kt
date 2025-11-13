@@ -4,8 +4,8 @@ import kotlinx.datetime.*
 import kotlin.math.abs
 
 /**
- * 时间解析和格式化工具类
- * 支持多种时间格式的解析，包括 RFC 2822、Unix 时间戳、ISO 8601 等
+ * Time parsing and formatting utilities.
+ * Supports parsing of various time formats including RFC 2822, Unix timestamps, ISO 8601, etc.
  */
 object TimeUtils {
 
@@ -18,23 +18,23 @@ object TimeUtils {
     private val isoDurationRegex = Regex("^P(T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)$", RegexOption.IGNORE_CASE)
 
     /**
-     * 解析日期字符串，失败时返回当前时间
+     * Parse date string, returning current time on failure.
      *
-     * @param raw 日期字符串
-     * @return 解析后的 Instant，失败时返回当前时间
+     * @param raw Date string
+     * @return Parsed Instant, or current time on failure
      */
     fun parseDate(raw: String?): Instant =
         parseDateOrNull(raw) ?: Clock.System.now()
 
     /**
-     * 尝试解析日期字符串，支持多种格式
-     * 支持的格式：
-     * 1. ISO 8601 格式
-     * 2. RFC 2822 格式
-     * 3. Unix 时间戳（秒或毫秒）
+     * Attempt to parse date string, supporting multiple formats.
+     * Supported formats:
+     * 1. ISO 8601 format
+     * 2. RFC 2822 format
+     * 3. Unix timestamp (seconds or milliseconds)
      *
-     * @param raw 日期字符串
-     * @return 解析后的 Instant，失败时返回 null
+     * @param raw Date string
+     * @return Parsed Instant, or null on failure
      */
     fun parseDateOrNull(raw: String?): Instant? {
         if (raw.isNullOrBlank()) return null
@@ -48,10 +48,10 @@ object TimeUtils {
     }
 
     /**
-     * 解析 Unix 时间戳（支持秒和毫秒）
+     * Parse Unix timestamp (supports seconds and milliseconds).
      *
-     * @param value 时间戳字符串
-     * @return 解析后的 Instant，失败时返回 null
+     * @param value Timestamp string
+     * @return Parsed Instant, or null on failure
      */
     fun parseUnixTimestamp(value: String): Instant? {
         val digits = value.toLongOrNull() ?: return null
@@ -63,56 +63,56 @@ object TimeUtils {
     }
 
     /**
-     * 解析 RFC 2822 格式的日期
-     * 例如："Wed, 27 Aug 2025 09:44:16 GMT"
-     * 或："27 Aug 2025 09:44:16 GMT"（不带星期）
+     * Parse RFC 2822 format date.
+     * Examples: "Wed, 27 Aug 2025 09:44:16 GMT"
+     * or: "27 Aug 2025 09:44:16 GMT" (without day of week)
      *
-     * @param dateString 日期字符串
-     * @return 解析后的 Instant，失败时返回 null
+     * @param dateString Date string
+     * @return Parsed Instant, or null on failure
      */
     fun parseRfc2822Date(dateString: String): Instant? {
         return runCatching {
-            // 移除开头的星期（如 "Wed, "）
+            // Remove leading day of week (e.g., "Wed, ")
             val cleaned = dateString.replace(Regex("^\\w+,\\s*"), "").trim()
 
-            // 按空格分割
+            // Split by whitespace
             val parts = cleaned.split(Regex("\\s+"))
             if (parts.size < 5) return null
 
-            // 解析："27 Aug 2025 09:44:16 GMT" 或 "27 Aug 2025 09:44:16 +0800"
+            // Parse: "27 Aug 2025 09:44:16 GMT" or "27 Aug 2025 09:44:16 +0800"
             val day = parts[0].toIntOrNull() ?: return null
             val monthName = parts[1]
             val year = parts[2].toIntOrNull() ?: return null
 
-            // 解析时间 "09:44:16"
+            // Parse time "09:44:16"
             val timeParts = parts[3].split(":")
             if (timeParts.size != 3) return null
             val hour = timeParts[0].toIntOrNull() ?: return null
             val minute = timeParts[1].toIntOrNull() ?: return null
             val second = timeParts[2].toIntOrNull() ?: return null
 
-            // 解析时区（可选，默认为 UTC）
+            // Parse timezone (optional, defaults to UTC)
             val timezone = if (parts.size > 4) parts[4] else "UTC"
 
-            // 获取月份数字
+            // Get month number
             val month = monthMap[monthName] ?: return null
 
-            // 创建 LocalDateTime
+            // Create LocalDateTime
             val localDateTime = LocalDateTime(year, month, day, hour, minute, second)
 
-            // 解析时区
+            // Parse timezone
             val timeZone = parseTimezoneToken(timezone)
 
-            // 转换为 Instant
+            // Convert to Instant
             localDateTime.toInstant(timeZone)
         }.getOrNull()
     }
 
     /**
-     * 解析时区标记
+     * Parse timezone token.
      *
-     * @param token 时区字符串（如 "GMT"、"+0800" 等）
-     * @return TimeZone 对象
+     * @param token Timezone string (e.g., "GMT", "+0800", etc.)
+     * @return TimeZone object
      */
     fun parseTimezoneToken(token: String?): TimeZone {
         if (token.isNullOrBlank()) return TimeZone.UTC
@@ -139,21 +139,21 @@ object TimeUtils {
     }
 
     /**
-     * 解析持续时间字符串
-     * 支持的格式：
-     * 1. ISO 8601 持续时间格式（如 "PT1H30M45S"）
-     * 2. 时分秒格式（如 "1:30:45"）
-     * 3. 分秒格式（如 "30:45"）
-     * 4. 纯秒数（如 "1845"）
+     * Parse duration string.
+     * Supported formats:
+     * 1. ISO 8601 duration format (e.g., "PT1H30M45S")
+     * 2. Hours:minutes:seconds format (e.g., "1:30:45")
+     * 3. Minutes:seconds format (e.g., "30:45")
+     * 4. Pure seconds (e.g., "1845")
      *
-     * @param raw 持续时间字符串
-     * @return 持续时间（毫秒），失败时返回 null
+     * @param raw Duration string
+     * @return Duration in milliseconds, or null on failure
      */
     fun parseDuration(raw: String?): Long? {
         if (raw.isNullOrBlank()) return null
         val trimmed = raw.trim()
 
-        // 尝试解析 ISO 8601 格式
+        // Try parsing ISO 8601 format
         val isoMatch = isoDurationRegex.matchEntire(trimmed)
         if (isoMatch != null) {
             val hours = isoMatch.groupValues[2].toLongOrNull() ?: 0
@@ -162,7 +162,7 @@ object TimeUtils {
             return ((hours * 3600) + (minutes * 60) + seconds) * 1000
         }
 
-        // 尝试解析 HH:MM:SS 或 MM:SS 或纯秒数格式
+        // Try parsing HH:MM:SS or MM:SS or pure seconds format
         val parts = trimmed.split(":")
         return try {
             when (parts.size) {
@@ -176,11 +176,11 @@ object TimeUtils {
     }
 
     /**
-     * 解析 Podlove 时间格式为毫秒
-     * 支持格式："HH:MM:SS.mmm" 或 "MM:SS.mmm" 或 "SS.mmm"
+     * Parse Podlove time format to milliseconds.
+     * Supported formats: "HH:MM:SS.mmm" or "MM:SS.mmm" or "SS.mmm"
      *
-     * @param timeString Podlove 格式的时间字符串
-     * @return 时间（毫秒），失败时返回 null
+     * @param timeString Podlove format time string
+     * @return Time in milliseconds, or null on failure
      */
     fun parsePodloveTimeToMillis(timeString: String): Long? {
         if (timeString.isBlank()) return null
@@ -232,10 +232,10 @@ object TimeUtils {
     }
 
     /**
-     * 格式化毫秒为可读的时长字符串
+     * Format milliseconds to readable duration string.
      *
-     * @param milliseconds 毫秒数
-     * @return 格式化的时长字符串（如 "1:30:45"）
+     * @param milliseconds Milliseconds
+     * @return Formatted duration string (e.g., "1:30:45")
      */
     fun formatDuration(milliseconds: Long): String {
         val totalSeconds = milliseconds / 1000
