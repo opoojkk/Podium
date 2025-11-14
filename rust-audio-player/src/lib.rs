@@ -15,11 +15,13 @@ pub mod player;
 pub mod decoder;
 pub mod error;
 pub mod callback;
+pub mod metadata;
 
 // Re-exports
 pub use player::{AudioPlayer, PlayerState, PlaybackStatus};
 pub use error::{AudioError, Result};
 pub use callback::{PlayerCallback, CallbackEvent};
+pub use metadata::{AudioMetadata, AudioTags, FormatInfo, QualityParams, CoverArt, Chapter};
 
 // JNI bindings for Android
 #[cfg(target_os = "android")]

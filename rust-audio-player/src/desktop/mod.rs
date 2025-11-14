@@ -491,6 +491,10 @@ impl AudioPlayer for DesktopAudioPlayer {
         log::info!("Audio player released");
         Ok(())
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Drop for DesktopAudioPlayer {

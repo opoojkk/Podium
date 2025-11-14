@@ -542,6 +542,18 @@ impl AudioPlayer for AndroidAudioPlayer {
         log::info!("Audio player released");
         Ok(())
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl AndroidAudioPlayer {
+    /// Get reference to the decoder (for metadata access)
+    /// This is Android-specific and not part of the AudioPlayer trait
+    pub fn get_decoder(&self) -> Option<parking_lot::MutexGuard<Option<AudioDecoder>>> {
+        Some(self.decoder.lock())
+    }
 }
 
 impl Drop for AndroidAudioPlayer {

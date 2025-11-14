@@ -98,20 +98,18 @@ impl AudioPlayer for IOSAudioPlayer {
         Ok(())
     }
 
-    fn get_position(&self) -> u64 {
-        0 // Stub
-    }
-
-    fn get_duration(&self) -> u64 {
-        0 // Stub
-    }
-
     fn get_state(&self) -> PlayerState {
         self.state_container.get_state()
     }
 
     fn get_status(&self) -> PlaybackStatus {
-        self.state_container.get_status()
+        PlaybackStatus {
+            position_ms: 0,
+            duration_ms: 0,
+            volume: *self.volume.lock(),
+            playback_rate: *self.playback_rate.lock(),
+            buffering: false,
+        }
     }
 
     fn set_callback(&mut self, _callback: Option<Arc<dyn PlayerCallback>>) {
@@ -122,6 +120,10 @@ impl AudioPlayer for IOSAudioPlayer {
         log::info!("Releasing iOS audio player");
         self.state_container.set_state(PlayerState::Idle);
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

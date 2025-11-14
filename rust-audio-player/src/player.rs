@@ -92,6 +92,9 @@ pub trait AudioPlayer: Send + Sync {
 
     /// Release all resources
     fn release(&mut self) -> Result<()>;
+
+    /// Downcast to concrete type (for accessing platform-specific features)
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 /// Thread-safe player state container

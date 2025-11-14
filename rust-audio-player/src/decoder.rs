@@ -2,12 +2,13 @@
 // Handles various audio formats (MP3, AAC, FLAC, WAV, etc.)
 
 use crate::error::{AudioError, Result};
+use crate::metadata::{AudioMetadata, AudioTags, Chapter, CoverArt, FormatInfo, QualityParams};
 use symphonia::core::audio::{AudioBufferRef, Signal};
 use symphonia::core::codecs::{Decoder, DecoderOptions};
 use symphonia::core::errors::Error as SymphoniaError;
 use symphonia::core::formats::{FormatOptions, FormatReader, SeekMode, SeekTo};
 use symphonia::core::io::{MediaSourceStream, MediaSource};
-use symphonia::core::meta::MetadataOptions;
+use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value, Visual};
 use symphonia::core::probe::Hint;
 use std::fs::File;
 use std::io::Cursor;
@@ -28,6 +29,8 @@ pub struct AudioDecoder {
     decoder: Box<dyn Decoder>,
     track_id: u32,
     pub format: AudioFormat,
+    pub metadata: AudioMetadata,
+    cover_art: Option<CoverArt>,
 }
 
 impl AudioDecoder {
@@ -59,11 +62,11 @@ impl AudioDecoder {
         let media_source_stream = MediaSourceStream::new(media_source, Default::default());
 
         // Probe the media source
-        let probe_result = symphonia::default::get_probe()
+        let mut probe_result = symphonia::default::get_probe()
             .format(&hint, media_source_stream, &FormatOptions::default(), &MetadataOptions::default())
             .map_err(|e| AudioError::LoadError(format!("Failed to probe media: {}", e)))?;
 
-        let format_reader = probe_result.format;
+        let mut format_reader = probe_result.format;
 
         // Get the default track
         let track = format_reader
@@ -71,14 +74,14 @@ impl AudioDecoder {
             .ok_or_else(|| AudioError::LoadError("No default track found".to_string()))?;
 
         let track_id = track.id;
+        let codec_params = track.codec_params.clone();
 
         // Create decoder for the track
         let decoder = symphonia::default::get_codecs()
-            .make(&track.codec_params, &DecoderOptions::default())
+            .make(&codec_params, &DecoderOptions::default())
             .map_err(|e| AudioError::DecodingError(format!("Failed to create decoder: {}", e)))?;
 
         // Extract audio format information
-        let codec_params = &track.codec_params;
         let sample_rate = codec_params.sample_rate
             .ok_or_else(|| AudioError::UnsupportedFormat("Sample rate not specified".to_string()))?;
         let channels = codec_params.channels
@@ -99,14 +102,143 @@ impl AudioDecoder {
             duration_ms,
         };
 
+        // Extract comprehensive metadata
+        let metadata = Self::extract_metadata(
+            &mut format_reader,
+            &mut probe_result.metadata,
+            &codec_params,
+            sample_rate,
+            channels,
+            duration_ms,
+        );
+
+        // Extract cover art if available
+        let cover_art = Self::extract_cover_art(&mut probe_result.metadata);
+
         log::info!("Loaded audio: {}Hz, {} channels, {} ms",
                    format.sample_rate, format.channels, format.duration_ms);
+
+        // Print detailed metadata information
+        log::info!("=== Audio Metadata ===");
+        log::info!("Format: codec={}, duration={}ms, sample_rate={}Hz, channels={}",
+                   metadata.format_info.codec,
+                   metadata.format_info.duration_ms,
+                   metadata.format_info.sample_rate,
+                   metadata.format_info.channels);
+
+        if let Some(bitrate) = metadata.format_info.bitrate_bps {
+            log::info!("Bitrate: {} kbps", bitrate / 1000);
+        }
+
+        if let Some(frames) = metadata.format_info.total_frames {
+            log::info!("Total frames: {}", frames);
+        }
+
+        // Quality parameters
+        if let Some(bit_depth) = metadata.quality.bit_depth {
+            log::info!("Bit depth: {} bit", bit_depth);
+        }
+
+        if metadata.quality.is_vbr {
+            log::info!("VBR: true");
+            if let Some(instant_bitrate) = metadata.quality.instantaneous_bitrate_bps {
+                log::info!("Instantaneous bitrate: {} kbps", instant_bitrate / 1000);
+            }
+        }
+
+        if let Some(quality) = metadata.quality.compression_quality {
+            log::info!("Compression quality: {}", quality);
+        }
+
+        // Tags
+        if metadata.tags.title.is_some() || metadata.tags.artist.is_some() || metadata.tags.album.is_some() {
+            log::info!("=== Tags ===");
+            if let Some(ref title) = metadata.tags.title {
+                log::info!("Title: {}", title);
+            }
+            if let Some(ref artist) = metadata.tags.artist {
+                log::info!("Artist: {}", artist);
+            }
+            if let Some(ref album) = metadata.tags.album {
+                log::info!("Album: {}", album);
+            }
+            if let Some(ref album_artist) = metadata.tags.album_artist {
+                log::info!("Album Artist: {}", album_artist);
+            }
+            if let Some(track_num) = metadata.tags.track_number {
+                if let Some(track_total) = metadata.tags.track_total {
+                    log::info!("Track: {}/{}", track_num, track_total);
+                } else {
+                    log::info!("Track: {}", track_num);
+                }
+            }
+            if let Some(disc_num) = metadata.tags.disc_number {
+                if let Some(disc_total) = metadata.tags.disc_total {
+                    log::info!("Disc: {}/{}", disc_num, disc_total);
+                } else {
+                    log::info!("Disc: {}", disc_num);
+                }
+            }
+            if let Some(ref date) = metadata.tags.date {
+                log::info!("Date: {}", date);
+            }
+            if let Some(ref genre) = metadata.tags.genre {
+                log::info!("Genre: {}", genre);
+            }
+            if let Some(ref composer) = metadata.tags.composer {
+                log::info!("Composer: {}", composer);
+            }
+            if let Some(ref comment) = metadata.tags.comment {
+                log::info!("Comment: {}", comment);
+            }
+            if let Some(ref copyright) = metadata.tags.copyright {
+                log::info!("Copyright: {}", copyright);
+            }
+            if let Some(ref encoder) = metadata.tags.encoder {
+                log::info!("Encoder: {}", encoder);
+            }
+            if let Some(ref publisher) = metadata.tags.publisher {
+                log::info!("Publisher: {}", publisher);
+            }
+            if let Some(ref isrc) = metadata.tags.isrc {
+                log::info!("ISRC: {}", isrc);
+            }
+            if let Some(ref language) = metadata.tags.language {
+                log::info!("Language: {}", language);
+            }
+            if let Some(ref lyrics) = metadata.tags.lyrics {
+                log::info!("Lyrics: {} characters", lyrics.len());
+            }
+
+            if !metadata.tags.custom_tags.is_empty() {
+                log::info!("Custom tags: {} entries", metadata.tags.custom_tags.len());
+                for (key, value) in &metadata.tags.custom_tags {
+                    log::debug!("  {}: {}", key, value);
+                }
+            }
+        }
+
+        // Cover art
+        if cover_art.is_some() {
+            let art = cover_art.as_ref().unwrap();
+            log::info!("=== Cover Art ===");
+            log::info!("MIME type: {}", art.mime_type);
+            log::info!("Size: {} bytes", art.data.len());
+            if let Some(ref desc) = art.description {
+                log::info!("Description: {}", desc);
+            }
+            log::info!("Picture type: {}", art.picture_type);
+        }
+
+        log::info!("==================");
 
         Ok(Self {
             format_reader,
             decoder,
             track_id,
             format,
+            metadata,
+            cover_art,
         })
     }
 
@@ -262,6 +394,210 @@ impl AudioDecoder {
             }
         }
         hint
+    }
+
+    /// Extract comprehensive metadata from the audio file
+    fn extract_metadata(
+        format_reader: &mut Box<dyn FormatReader>,
+        probe_metadata: &mut symphonia::core::probe::ProbedMetadata,
+        codec_params: &symphonia::core::codecs::CodecParameters,
+        sample_rate: u32,
+        channels: u16,
+        duration_ms: u64,
+    ) -> AudioMetadata {
+        let mut metadata = AudioMetadata::new();
+
+        // Set format information
+        metadata.format_info = FormatInfo {
+            duration_ms,
+            sample_rate,
+            channels,
+            codec: codec_params
+                .codec
+                .to_string()
+                .to_uppercase(),
+            bitrate_bps: None, // Symphonia 0.5 doesn't expose bitrate directly in CodecParameters
+            total_frames: codec_params.n_frames,
+        };
+
+        // Set quality parameters
+        metadata.quality = QualityParams {
+            bit_depth: codec_params.bits_per_sample.map(|b| b as u16),
+            is_vbr: false, // VBR detection not available in current Symphonia version
+            compression_quality: None,
+            instantaneous_bitrate_bps: None,
+        };
+
+        // Extract tags from probe metadata
+        if let Some(meta_ref) = probe_metadata.get() {
+            if let Some(current) = meta_ref.current() {
+                metadata.tags = Self::extract_tags(current.tags());
+            }
+        }
+
+        // Also try to get metadata from format reader
+        if let Some(metadata_rev) = format_reader.metadata().current() {
+            let format_tags = Self::extract_tags(metadata_rev.tags());
+            // Merge tags (format_tags take precedence if present)
+            Self::merge_tags(&mut metadata.tags, format_tags);
+        }
+
+        // Extract chapters if available
+        metadata.chapters = Self::extract_chapters(format_reader);
+
+        metadata
+    }
+
+    /// Extract tags from Symphonia tag collection
+    fn extract_tags(tags: &[symphonia::core::meta::Tag]) -> AudioTags {
+        let mut audio_tags = AudioTags::new();
+
+        for tag in tags {
+            let value_str = match &tag.value {
+                Value::String(s) => s.clone(),
+                Value::Binary(_) => continue, // Skip binary values for text tags
+                Value::SignedInt(i) => i.to_string(),
+                Value::UnsignedInt(u) => u.to_string(),
+                Value::Float(f) => f.to_string(),
+                Value::Boolean(b) => b.to_string(),
+                Value::Flag => "true".to_string(),
+            };
+
+            // Map standard tag keys
+            if let Some(std_key) = &tag.std_key {
+                match std_key {
+                    StandardTagKey::TrackTitle => audio_tags.title = Some(value_str),
+                    StandardTagKey::Artist => audio_tags.artist = Some(value_str),
+                    StandardTagKey::Album => audio_tags.album = Some(value_str),
+                    StandardTagKey::AlbumArtist => audio_tags.album_artist = Some(value_str),
+                    StandardTagKey::Genre => audio_tags.genre = Some(value_str),
+                    StandardTagKey::Date => audio_tags.date = Some(value_str),
+                    StandardTagKey::Composer => audio_tags.composer = Some(value_str),
+                    StandardTagKey::Comment => audio_tags.comment = Some(value_str),
+                    StandardTagKey::Lyrics => audio_tags.lyrics = Some(value_str),
+                    StandardTagKey::Copyright => audio_tags.copyright = Some(value_str),
+                    StandardTagKey::Encoder => audio_tags.encoder = Some(value_str),
+                    StandardTagKey::Label => audio_tags.publisher = Some(value_str),
+                    StandardTagKey::IdentIsrc => audio_tags.isrc = Some(value_str),
+                    StandardTagKey::Language => audio_tags.language = Some(value_str),
+                    StandardTagKey::TrackNumber => {
+                        if let Ok(num) = value_str.parse::<u32>() {
+                            audio_tags.track_number = Some(num);
+                        }
+                    }
+                    StandardTagKey::TrackTotal => {
+                        if let Ok(num) = value_str.parse::<u32>() {
+                            audio_tags.track_total = Some(num);
+                        }
+                    }
+                    StandardTagKey::DiscNumber => {
+                        if let Ok(num) = value_str.parse::<u32>() {
+                            audio_tags.disc_number = Some(num);
+                        }
+                    }
+                    StandardTagKey::DiscTotal => {
+                        if let Ok(num) = value_str.parse::<u32>() {
+                            audio_tags.disc_total = Some(num);
+                        }
+                    }
+                    _ => {
+                        // Store other standard keys as custom tags
+                        audio_tags.custom_tags.insert(tag.key.clone(), value_str);
+                    }
+                }
+            } else {
+                // Non-standard tags go into custom_tags
+                audio_tags.custom_tags.insert(tag.key.clone(), value_str);
+            }
+        }
+
+        audio_tags
+    }
+
+    /// Merge tags, preferring non-None values from source
+    fn merge_tags(dest: &mut AudioTags, source: AudioTags) {
+        if source.title.is_some() { dest.title = source.title; }
+        if source.artist.is_some() { dest.artist = source.artist; }
+        if source.album.is_some() { dest.album = source.album; }
+        if source.album_artist.is_some() { dest.album_artist = source.album_artist; }
+        if source.track_number.is_some() { dest.track_number = source.track_number; }
+        if source.track_total.is_some() { dest.track_total = source.track_total; }
+        if source.disc_number.is_some() { dest.disc_number = source.disc_number; }
+        if source.disc_total.is_some() { dest.disc_total = source.disc_total; }
+        if source.date.is_some() { dest.date = source.date; }
+        if source.genre.is_some() { dest.genre = source.genre; }
+        if source.composer.is_some() { dest.composer = source.composer; }
+        if source.comment.is_some() { dest.comment = source.comment; }
+        if source.lyrics.is_some() { dest.lyrics = source.lyrics; }
+        if source.copyright.is_some() { dest.copyright = source.copyright; }
+        if source.encoder.is_some() { dest.encoder = source.encoder; }
+        if source.publisher.is_some() { dest.publisher = source.publisher; }
+        if source.isrc.is_some() { dest.isrc = source.isrc; }
+        if source.language.is_some() { dest.language = source.language; }
+
+        // Merge custom tags
+        for (key, value) in source.custom_tags {
+            dest.custom_tags.insert(key, value);
+        }
+    }
+
+    /// Extract cover art from metadata
+    fn extract_cover_art(probe_metadata: &mut symphonia::core::probe::ProbedMetadata) -> Option<CoverArt> {
+        let meta_ref = probe_metadata.get()?;
+        let current = meta_ref.current()?;
+
+        // Look for visual (cover art) in metadata
+        for visual in current.visuals() {
+            // Prefer front cover, but accept any cover if that's all we have
+            if let Some(usage) = visual.usage {
+                if usage == symphonia::core::meta::StandardVisualKey::FrontCover
+                    || usage == symphonia::core::meta::StandardVisualKey::OtherIcon
+                {
+                    return Some(Self::visual_to_cover_art(visual));
+                }
+            }
+        }
+
+        // If no front cover found, return the first visual
+        current.visuals().first().map(Self::visual_to_cover_art)
+    }
+
+    /// Convert Symphonia Visual to our CoverArt structure
+    fn visual_to_cover_art(visual: &Visual) -> CoverArt {
+        CoverArt {
+            mime_type: visual.media_type.clone(),
+            data: visual.data.to_vec(), // Convert Box<[u8]> to Vec<u8>
+            description: visual.tags.iter().find_map(|tag| {
+                if tag.std_key == Some(StandardTagKey::Description) {
+                    if let Value::String(s) = &tag.value {
+                        return Some(s.clone());
+                    }
+                }
+                None
+            }),
+            picture_type: visual.usage.map(|u| u as u8).unwrap_or(0),
+        }
+    }
+
+    /// Extract chapter information from the audio file
+    fn extract_chapters(_format_reader: &Box<dyn FormatReader>) -> Vec<Chapter> {
+        let chapters = Vec::new();
+
+        // Symphonia doesn't have a direct chapter API yet
+        // This is a placeholder for future implementation
+        // Would need format-specific parsing for MP3 CHAP, MP4 chapters, etc.
+
+        chapters
+    }
+
+    /// Get reference to cover art
+    pub fn get_cover_art(&self) -> Option<&CoverArt> {
+        self.cover_art.as_ref()
+    }
+
+    /// Take ownership of cover art (useful for transferring to another structure)
+    pub fn take_cover_art(&mut self) -> Option<CoverArt> {
+        self.cover_art.take()
     }
 }
 
