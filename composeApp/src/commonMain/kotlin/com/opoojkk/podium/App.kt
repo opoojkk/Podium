@@ -138,22 +138,45 @@ fun PodiumApp(
         }
 
         // Load XYZRank data
-        xyzRankRepository.getHotEpisodes().onSuccess { episodes ->
-            hotEpisodes.value = episodes.take(10)
-            println("🔥 Loaded ${episodes.size} hot episodes")
-        }
-        xyzRankRepository.getHotPodcasts().onSuccess { podcasts ->
-            hotPodcasts.value = podcasts.take(10)
-            println("🔥 Loaded ${podcasts.size} hot podcasts")
-        }
-        xyzRankRepository.getNewEpisodes().onSuccess { episodes ->
-            newEpisodes.value = episodes.take(10)
-            println("✨ Loaded ${episodes.size} new episodes")
-        }
-        xyzRankRepository.getNewPodcasts().onSuccess { podcasts ->
-            newPodcasts.value = podcasts.take(10)
-            println("✨ Loaded ${podcasts.size} new podcasts")
-        }
+        xyzRankRepository.getHotEpisodes()
+            .onSuccess { episodes ->
+                hotEpisodes.value = episodes.take(10)
+                println("🔥 Loaded ${episodes.size} hot episodes")
+            }
+            .onFailure { error ->
+                println("❌ Failed to load hot episodes: ${error.message}")
+                error.printStackTrace()
+            }
+
+        xyzRankRepository.getHotPodcasts()
+            .onSuccess { podcasts ->
+                hotPodcasts.value = podcasts.take(10)
+                println("🔥 Loaded ${podcasts.size} hot podcasts")
+            }
+            .onFailure { error ->
+                println("❌ Failed to load hot podcasts: ${error.message}")
+                error.printStackTrace()
+            }
+
+        xyzRankRepository.getNewEpisodes()
+            .onSuccess { episodes ->
+                newEpisodes.value = episodes.take(10)
+                println("✨ Loaded ${episodes.size} new episodes")
+            }
+            .onFailure { error ->
+                println("❌ Failed to load new episodes: ${error.message}")
+                error.printStackTrace()
+            }
+
+        xyzRankRepository.getNewPodcasts()
+            .onSuccess { podcasts ->
+                newPodcasts.value = podcasts.take(10)
+                println("✨ Loaded ${podcasts.size} new podcasts")
+            }
+            .onFailure { error ->
+                println("❌ Failed to load new podcasts: ${error.message}")
+                error.printStackTrace()
+            }
     }
     val showImportDialog = remember { mutableStateOf(false) }
     val showExportDialog = remember { mutableStateOf(false) }

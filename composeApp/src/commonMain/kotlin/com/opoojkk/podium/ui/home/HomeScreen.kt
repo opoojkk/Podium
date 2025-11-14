@@ -75,6 +75,9 @@ fun HomeScreen(
     onPauseResume: () -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
 ) {
+    // Debug: Print XYZRank data status
+    println("🏠 HomeScreen - XYZRank data: hotEpisodes=${state.hotEpisodes.size}, hotPodcasts=${state.hotPodcasts.size}, newEpisodes=${state.newEpisodes.size}, newPodcasts=${state.newPodcasts.size}")
+
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
