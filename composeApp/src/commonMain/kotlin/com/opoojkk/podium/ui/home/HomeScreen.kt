@@ -743,7 +743,7 @@ private fun XYZRankPodcastCard(
                 color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
                 Text(
-                    text = podcast.primaryGenreName,
+                    text = podcast.primaryGenreName ?: "未分类",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
