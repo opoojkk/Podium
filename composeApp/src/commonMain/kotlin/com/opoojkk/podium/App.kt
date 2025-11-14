@@ -319,6 +319,74 @@ fun PodiumApp(
         { url -> openUrl(platformContext, url) }
     }
 
+    // Handle XYZRank podcast click - search Apple Podcast and subscribe
+    val handleXYZRankPodcastClick: (Podcast) -> Unit = remember(
+        controller,
+        applePodcastSearchRepository,
+        openUrlInBrowser,
+        snackbarHostState,
+        scope,
+        selectedPodcast
+    ) {
+        { podcast ->
+            if (podcast.id.startsWith("xyzrank_podcast_")) {
+                scope.launch {
+                    try {
+                        snackbarHostState.showSnackbar("正在苹果播客中搜索...")
+
+                        val searchResult = applePodcastSearchRepository.searchPodcast(
+                            query = podcast.title,
+                            limit = 5
+                        )
+
+                        searchResult.onSuccess { searchPodcasts ->
+                            if (searchPodcasts.isNotEmpty()) {
+                                val found = searchPodcasts.first()
+                                val feedUrl = found.feedUrl
+
+                                if (!controller.checkIfSubscribed(feedUrl)) {
+                                    controller.subscribe(feedUrl)
+                                    snackbarHostState.showSnackbar("已找到并订阅《${found.collectionName}》")
+                                } else {
+                                    snackbarHostState.showSnackbar("已订阅此播客")
+                                }
+                            } else {
+                                val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                val webLink = linkMatch?.groupValues?.get(1)
+                                if (webLink != null) {
+                                    snackbarHostState.showSnackbar("未找到匹配的播客，在小宇宙中查看", actionLabel = "打开")
+                                    openUrlInBrowser(webLink)
+                                } else {
+                                    snackbarHostState.showSnackbar("未找到匹配的播客")
+                                }
+                            }
+                        }.onFailure { error ->
+                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                            val webLink = linkMatch?.groupValues?.get(1)
+                            if (webLink != null) {
+                                snackbarHostState.showSnackbar("搜索失败，在小宇宙中查看", actionLabel = "打开")
+                                openUrlInBrowser(webLink)
+                            } else {
+                                snackbarHostState.showSnackbar("搜索失败：${error.message}")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                        val webLink = linkMatch?.groupValues?.get(1)
+                        if (webLink != null) {
+                            snackbarHostState.showSnackbar("发生错误，在小宇宙中查看", actionLabel = "打开")
+                            openUrlInBrowser(webLink)
+                        } else {
+                            snackbarHostState.showSnackbar("发生错误")
+                        }
+                    }
+                }
+            } else {
+                selectedPodcast.value = podcast
+            }
+        }
+    }
+
     var pendingEpisodeId by remember { mutableStateOf<String?>(null) }
     var previousPlaybackState by remember { mutableStateOf(playbackState) }
     var lastHandledCompletionId by remember { mutableStateOf<String?>(null) }
@@ -907,69 +975,7 @@ private fun DesktopLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
-                                    onPodcastClick = { podcast ->
-                                        // Handle podcast click from XYZRank
-                                        if (podcast.id.startsWith("xyzrank_podcast_")) {
-                                            scope.launch {
-                                                try {
-                                                    snackbarHostState.showSnackbar("正在苹果播客中搜索...")
-
-                                                    // Search Apple Podcast for this podcast
-                                                    val searchResult = applePodcastSearchRepository.searchPodcast(
-                                                        query = podcast.title,
-                                                        limit = 5
-                                                    )
-
-                                                    searchResult.onSuccess { searchPodcasts ->
-                                                        if (searchPodcasts.isNotEmpty()) {
-                                                            // Found matching podcast
-                                                            val found = searchPodcasts.first()
-                                                            val feedUrl = found.feedUrl
-
-                                                            // Subscribe to the podcast
-                                                            if (!controller.checkIfSubscribed(feedUrl)) {
-                                                                controller.subscribe(feedUrl)
-                                                                snackbarHostState.showSnackbar("已找到并订阅《${found.collectionName}》")
-                                                            } else {
-                                                                snackbarHostState.showSnackbar("已订阅此播客")
-                                                            }
-                                                        } else {
-                                                            // Not found, fallback to 小宇宙
-                                                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                                            val webLink = linkMatch?.groupValues?.get(1)
-                                                            if (webLink != null) {
-                                                                snackbarHostState.showSnackbar("未找到匹配的播客，在小宇宙中查看", actionLabel = "打开")
-                                                                openUrlInBrowser(webLink)
-                                                            } else {
-                                                                snackbarHostState.showSnackbar("未找到匹配的播客")
-                                                            }
-                                                        }
-                                                    }.onFailure { error ->
-                                                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                                        val webLink = linkMatch?.groupValues?.get(1)
-                                                        if (webLink != null) {
-                                                            snackbarHostState.showSnackbar("搜索失败，在小宇宙中查看", actionLabel = "打开")
-                                                            openUrlInBrowser(webLink)
-                                                        } else {
-                                                            snackbarHostState.showSnackbar("搜索失败：${error.message}")
-                                                        }
-                                                    }
-                                                } catch (e: Exception) {
-                                                    val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                                    val webLink = linkMatch?.groupValues?.get(1)
-                                                    if (webLink != null) {
-                                                        snackbarHostState.showSnackbar("发生错误，在小宇宙中查看", actionLabel = "打开")
-                                                        openUrlInBrowser(webLink)
-                                                    } else {
-                                                        snackbarHostState.showSnackbar("发生错误")
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            // Normal podcast, show podcast details
-                                            selectedPodcast.value = podcast
-                                        }
-                                    },
+                                    onPodcastClick = handleXYZRankPodcastClick,
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
                                 isBuffering = playbackState.isBuffering,
@@ -1409,69 +1415,7 @@ private fun MobileLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
-                                    onPodcastClick = { podcast ->
-                                        // Handle podcast click from XYZRank
-                                        if (podcast.id.startsWith("xyzrank_podcast_")) {
-                                            scope.launch {
-                                                try {
-                                                    snackbarHostState.showSnackbar("正在苹果播客中搜索...")
-
-                                                    // Search Apple Podcast for this podcast
-                                                    val searchResult = applePodcastSearchRepository.searchPodcast(
-                                                        query = podcast.title,
-                                                        limit = 5
-                                                    )
-
-                                                    searchResult.onSuccess { searchPodcasts ->
-                                                        if (searchPodcasts.isNotEmpty()) {
-                                                            // Found matching podcast
-                                                            val found = searchPodcasts.first()
-                                                            val feedUrl = found.feedUrl
-
-                                                            // Subscribe to the podcast
-                                                            if (!controller.checkIfSubscribed(feedUrl)) {
-                                                                controller.subscribe(feedUrl)
-                                                                snackbarHostState.showSnackbar("已找到并订阅《${found.collectionName}》")
-                                                            } else {
-                                                                snackbarHostState.showSnackbar("已订阅此播客")
-                                                            }
-                                                        } else {
-                                                            // Not found, fallback to 小宇宙
-                                                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                                            val webLink = linkMatch?.groupValues?.get(1)
-                                                            if (webLink != null) {
-                                                                snackbarHostState.showSnackbar("未找到匹配的播客，在小宇宙中查看", actionLabel = "打开")
-                                                                openUrlInBrowser(webLink)
-                                                            } else {
-                                                                snackbarHostState.showSnackbar("未找到匹配的播客")
-                                                            }
-                                                        }
-                                                    }.onFailure { error ->
-                                                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                                        val webLink = linkMatch?.groupValues?.get(1)
-                                                        if (webLink != null) {
-                                                            snackbarHostState.showSnackbar("搜索失败，在小宇宙中查看", actionLabel = "打开")
-                                                            openUrlInBrowser(webLink)
-                                                        } else {
-                                                            snackbarHostState.showSnackbar("搜索失败：${error.message}")
-                                                        }
-                                                    }
-                                                } catch (e: Exception) {
-                                                    val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                                    val webLink = linkMatch?.groupValues?.get(1)
-                                                    if (webLink != null) {
-                                                        snackbarHostState.showSnackbar("发生错误，在小宇宙中查看", actionLabel = "打开")
-                                                        openUrlInBrowser(webLink)
-                                                    } else {
-                                                        snackbarHostState.showSnackbar("发生错误")
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            // Normal podcast, show podcast details
-                                            selectedPodcast.value = podcast
-                                        }
-                                    },
+                                    onPodcastClick = handleXYZRankPodcastClick,
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
                                 isBuffering = playbackState.isBuffering,
