@@ -541,7 +541,7 @@ fn json_option_string(opt: &Option<String>) -> String {
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverArt<'local>(
-    mut env: JNIEnv<'local>,
+    env: JNIEnv<'local>,
     _class: JClass,
     player_id: jlong,
 ) -> JByteArray<'local> {

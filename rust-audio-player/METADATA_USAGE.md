@@ -1,120 +1,120 @@
-# 音频元数据提取功能使用指南
+# Audio Metadata Extraction Guide
 
-## 功能概述
+## Feature Overview
 
-rust-audio-player 现已支持完整的音频元数据提取功能，包括：
+The rust-audio-player now supports comprehensive audio metadata extraction, including:
 
-### 基础元数据
-- ✅ **时长** (duration_ms) - 精确到毫秒
-- ✅ **采样率** (sample_rate) - 如 44100Hz, 48000Hz
-- ✅ **声道数** (channels) - 单声道/立体声/多声道
-- ✅ **比特率** (bitrate_bps) - 平均码率
-- ✅ **编码格式** (codec) - MP3, AAC, Opus, Vorbis, FLAC 等
+### Basic Metadata
+- ✅ **Duration** (duration_ms) - Precise to milliseconds
+- ✅ **Sample Rate** (sample_rate) - e.g., 44100Hz, 48000Hz
+- ✅ **Channels** (channels) - Mono/Stereo/Multi-channel
+- ✅ **Bitrate** (bitrate_bps) - Average bitrate
+- ✅ **Codec** (codec) - MP3, AAC, Opus, Vorbis, FLAC, etc.
 
-### 音频质量参数
-- ✅ **位深度** (bit_depth) - 如 16, 24, 32 位
-- ✅ **VBR检测** (is_vbr) - 是否为可变比特率
-- ✅ **瞬时比特率** (instantaneous_bitrate_bps) - VBR文件的瞬时码率
+### Audio Quality Parameters
+- ✅ **Bit Depth** (bit_depth) - e.g., 16, 24, 32 bits
+- ✅ **VBR Detection** (is_vbr) - Variable bitrate detection
+- ✅ **Instantaneous Bitrate** (instantaneous_bitrate_bps) - Instantaneous bitrate for VBR files
 
-### ID3/元数据标签
-- ✅ **标题** (title) - 歌曲/播客标题
-- ✅ **艺术家** (artist) - 表演者
-- ✅ **专辑** (album) - 专辑名称
-- ✅ **专辑艺术家** (album_artist)
-- ✅ **曲目编号** (track_number/track_total)
-- ✅ **光盘编号** (disc_number/disc_total)
-- ✅ **发行日期** (date)
-- ✅ **流派** (genre)
-- ✅ **作曲者** (composer)
-- ✅ **评论** (comment)
-- ✅ **歌词** (lyrics)
-- ✅ **版权** (copyright)
-- ✅ **编码器** (encoder)
-- ✅ **发行商** (publisher)
-- ✅ **ISRC** (国际标准录音代码)
-- ✅ **语言** (language)
-- ✅ **自定义标签** (custom_tags)
+### ID3/Metadata Tags
+- ✅ **Title** (title) - Song/podcast title
+- ✅ **Artist** (artist) - Performer
+- ✅ **Album** (album) - Album name
+- ✅ **Album Artist** (album_artist)
+- ✅ **Track Number** (track_number/track_total)
+- ✅ **Disc Number** (disc_number/disc_total)
+- ✅ **Release Date** (date)
+- ✅ **Genre** (genre)
+- ✅ **Composer** (composer)
+- ✅ **Comment** (comment)
+- ✅ **Lyrics** (lyrics)
+- ✅ **Copyright** (copyright)
+- ✅ **Encoder** (encoder)
+- ✅ **Publisher** (publisher)
+- ✅ **ISRC** (International Standard Recording Code)
+- ✅ **Language** (language)
+- ✅ **Custom Tags** (custom_tags)
 
-### 封面图片
-- ✅ **封面数据** (cover_art.data) - 图像字节数据
-- ✅ **MIME类型** (cover_art.mime_type) - 如 "image/jpeg", "image/png"
-- ✅ **图片描述** (cover_art.description)
-- ✅ **图片类型** (cover_art.picture_type)
+### Cover Art
+- ✅ **Cover Data** (cover_art.data) - Image byte data
+- ✅ **MIME Type** (cover_art.mime_type) - e.g., "image/jpeg", "image/png"
+- ✅ **Picture Description** (cover_art.description)
+- ✅ **Picture Type** (cover_art.picture_type)
 
-### 章节信息（播客特别重要）
-- ⚠️ **章节标记** (chapters) - 框架已准备好，等待格式特定实现
+### Chapter Information (Important for Podcasts)
+- ⚠️ **Chapter Markers** (chapters) - Framework ready, awaiting format-specific implementation
 
-## Rust API 使用示例
+## Rust API Usage Examples
 
 ```rust
 use rust_audio_player::decoder::AudioDecoder;
 
-// 加载音频文件
+// Load audio file
 let decoder = AudioDecoder::from_file("path/to/audio.mp3")?;
 
-// 访问基础格式信息
-println!("时长: {} ms", decoder.metadata.format_info.duration_ms);
-println!("采样率: {} Hz", decoder.metadata.format_info.sample_rate);
-println!("声道数: {}", decoder.metadata.format_info.channels);
-println!("编码格式: {}", decoder.metadata.format_info.codec);
+// Access basic format information
+println!("Duration: {} ms", decoder.metadata.format_info.duration_ms);
+println!("Sample Rate: {} Hz", decoder.metadata.format_info.sample_rate);
+println!("Channels: {}", decoder.metadata.format_info.channels);
+println!("Codec: {}", decoder.metadata.format_info.codec);
 
 if let Some(bitrate) = decoder.metadata.format_info.bitrate_bps {
-    println!("比特率: {} kbps", bitrate / 1000);
+    println!("Bitrate: {} kbps", bitrate / 1000);
 }
 
-// 访问音频质量参数
+// Access audio quality parameters
 if let Some(bit_depth) = decoder.metadata.quality.bit_depth {
-    println!("位深度: {} bit", bit_depth);
+    println!("Bit Depth: {} bit", bit_depth);
 }
 
 if decoder.metadata.quality.is_vbr {
-    println!("这是一个VBR文件");
+    println!("This is a VBR file");
 }
 
-// 访问标签信息
+// Access tag information
 if let Some(title) = &decoder.metadata.tags.title {
-    println!("标题: {}", title);
+    println!("Title: {}", title);
 }
 
 if let Some(artist) = &decoder.metadata.tags.artist {
-    println!("艺术家: {}", artist);
+    println!("Artist: {}", artist);
 }
 
 if let Some(album) = &decoder.metadata.tags.album {
-    println!("专辑: {}", album);
+    println!("Album: {}", album);
 }
 
 if let Some(lyrics) = &decoder.metadata.tags.lyrics {
-    println!("歌词:\n{}", lyrics);
+    println!("Lyrics:\n{}", lyrics);
 }
 
-// 获取封面图片
+// Get cover art
 if let Some(cover) = decoder.get_cover_art() {
-    println!("封面格式: {}", cover.mime_type);
-    println!("封面大小: {} bytes", cover.data.len());
+    println!("Cover Format: {}", cover.mime_type);
+    println!("Cover Size: {} bytes", cover.data.len());
 
-    // 保存封面到文件
+    // Save cover to file
     std::fs::write("cover.jpg", &cover.data)?;
 }
 
-// 获取元数据摘要
-println!("\n元数据摘要:\n{}", decoder.metadata.summary());
+// Get metadata summary
+println!("\nMetadata Summary:\n{}", decoder.metadata.summary());
 ```
 
-## Android JNI API 使用示例
+## Android JNI API Usage Examples
 
-### Kotlin/Java 代码
+### Kotlin/Java Code
 
 ```kotlin
-// 1. 创建播放器并加载文件
+// 1. Create player and load file
 val player = RustAudioPlayer()
 player.loadFile("/path/to/audio.mp3")
 
-// 2. 获取元数据（JSON格式）
+// 2. Get metadata (JSON format)
 val metadataJson = player.getMetadataJson()
 val metadata = JSONObject(metadataJson)
 
-// 3. 解析基础信息
+// 3. Parse basic information
 val formatInfo = metadata.getJSONObject("formatInfo")
 val durationMs = formatInfo.getLong("durationMs")
 val sampleRate = formatInfo.getInt("sampleRate")
@@ -122,29 +122,29 @@ val channels = formatInfo.getInt("channels")
 val codec = formatInfo.getString("codec")
 val bitrateBps = formatInfo.optInt("bitrateBps", -1)
 
-Log.i("Metadata", "时长: ${durationMs}ms")
-Log.i("Metadata", "采样率: ${sampleRate}Hz")
-Log.i("Metadata", "声道: $channels")
-Log.i("Metadata", "编码: $codec")
+Log.i("Metadata", "Duration: ${durationMs}ms")
+Log.i("Metadata", "Sample Rate: ${sampleRate}Hz")
+Log.i("Metadata", "Channels: $channels")
+Log.i("Metadata", "Codec: $codec")
 
 if (bitrateBps > 0) {
-    Log.i("Metadata", "比特率: ${bitrateBps / 1000}kbps")
+    Log.i("Metadata", "Bitrate: ${bitrateBps / 1000}kbps")
 }
 
-// 4. 解析音频质量
+// 4. Parse audio quality
 val quality = metadata.getJSONObject("quality")
 val bitDepth = quality.optInt("bitDepth", -1)
 val isVbr = quality.getBoolean("isVbr")
 
 if (bitDepth > 0) {
-    Log.i("Metadata", "位深度: ${bitDepth}bit")
+    Log.i("Metadata", "Bit Depth: ${bitDepth}bit")
 }
 
 if (isVbr) {
-    Log.i("Metadata", "VBR编码")
+    Log.i("Metadata", "VBR encoding")
 }
 
-// 5. 解析标签信息
+// 5. Parse tag information
 val tags = metadata.getJSONObject("tags")
 val title = tags.optString("title", null)
 val artist = tags.optString("artist", null)
@@ -152,53 +152,53 @@ val album = tags.optString("album", null)
 val genre = tags.optString("genre", null)
 val lyrics = tags.optString("lyrics", null)
 
-title?.let { Log.i("Metadata", "标题: $it") }
-artist?.let { Log.i("Metadata", "艺术家: $it") }
-album?.let { Log.i("Metadata", "专辑: $it") }
-genre?.let { Log.i("Metadata", "流派: $it") }
-lyrics?.let { Log.i("Metadata", "歌词:\n$it") }
+title?.let { Log.i("Metadata", "Title: $it") }
+artist?.let { Log.i("Metadata", "Artist: $it") }
+album?.let { Log.i("Metadata", "Album: $it") }
+genre?.let { Log.i("Metadata", "Genre: $it") }
+lyrics?.let { Log.i("Metadata", "Lyrics:\n$it") }
 
-// 6. 获取封面图片
+// 6. Get cover art
 if (metadata.getBoolean("hasCoverArt")) {
     val coverData = player.getCoverArt()
     val coverMimeType = player.getCoverArtMimeType()
 
-    Log.i("Metadata", "封面格式: $coverMimeType")
-    Log.i("Metadata", "封面大小: ${coverData.size} bytes")
+    Log.i("Metadata", "Cover Format: $coverMimeType")
+    Log.i("Metadata", "Cover Size: ${coverData.size} bytes")
 
-    // 将封面转换为Bitmap
+    // Convert cover to Bitmap
     val bitmap = BitmapFactory.decodeByteArray(coverData, 0, coverData.size)
     imageView.setImageBitmap(bitmap)
 }
 ```
 
-### Java Native Methods 声明
+### Java Native Methods Declaration
 
-在 `RustAudioPlayer.java` 中添加以下方法：
+Add the following methods to `RustAudioPlayer.java`:
 
 ```java
 public class RustAudioPlayer {
-    // ... 现有方法 ...
+    // ... existing methods ...
 
     /**
-     * 获取音频元数据（JSON格式）
-     * @return JSON字符串，包含所有元数据信息
+     * Get audio metadata (JSON format)
+     * @return JSON string containing all metadata information
      */
     public native String nativeGetMetadataJson(long playerId);
 
     /**
-     * 获取封面图片数据
-     * @return 图片字节数组，如果没有封面则返回null
+     * Get cover art data
+     * @return Image byte array, or null if no cover art
      */
     public native byte[] nativeGetCoverArt(long playerId);
 
     /**
-     * 获取封面图片MIME类型
-     * @return MIME类型字符串（如 "image/jpeg"），如果没有封面则返回null
+     * Get cover art MIME type
+     * @return MIME type string (e.g., "image/jpeg"), or null if no cover art
      */
     public native String nativeGetCoverArtMimeType(long playerId);
 
-    // 包装方法
+    // Wrapper methods
     public String getMetadataJson() {
         return nativeGetMetadataJson(this.playerId);
     }
@@ -213,12 +213,12 @@ public class RustAudioPlayer {
 }
 ```
 
-## 支持的音频格式
+## Supported Audio Formats
 
-元数据提取支持以下格式：
+Metadata extraction supports the following formats:
 
-| 格式 | 扩展名 | 元数据标准 | 封面支持 |
-|------|--------|------------|----------|
+| Format | Extension | Metadata Standard | Cover Support |
+|--------|-----------|-------------------|---------------|
 | MP3 | .mp3 | ID3v1, ID3v2 | ✅ |
 | AAC | .m4a, .aac | iTunes metadata | ✅ |
 | FLAC | .flac | Vorbis Comments | ✅ |
@@ -227,7 +227,7 @@ public class RustAudioPlayer {
 | WAV | .wav | RIFF INFO | ⚠️ |
 | ALAC | .m4a | iTunes metadata | ✅ |
 
-## JSON 响应格式
+## JSON Response Format
 
 ```json
 {
@@ -246,10 +246,10 @@ public class RustAudioPlayer {
     "instantaneousBitrateBps": 320000
   },
   "tags": {
-    "title": "示例歌曲",
-    "artist": "示例艺术家",
-    "album": "示例专辑",
-    "albumArtist": "示例专辑艺术家",
+    "title": "Example Song",
+    "artist": "Example Artist",
+    "album": "Example Album",
+    "albumArtist": "Example Album Artist",
     "trackNumber": 1,
     "trackTotal": 12,
     "discNumber": 1,
@@ -258,67 +258,67 @@ public class RustAudioPlayer {
     "genre": "Pop",
     "composer": null,
     "comment": null,
-    "lyrics": "歌词内容...",
+    "lyrics": "Lyrics content...",
     "copyright": "© 2024",
     "encoder": "LAME 3.100",
     "publisher": null,
     "isrc": "USRC12345678",
-    "language": "zh"
+    "language": "en"
   },
   "hasCoverArt": true
 }
 ```
 
-## 实现细节
+## Implementation Details
 
-### 架构
+### Architecture
 
-1. **metadata.rs** - 定义所有元数据结构
-   - `AudioMetadata` - 顶层元数据容器
-   - `FormatInfo` - 格式信息
-   - `QualityParams` - 质量参数
-   - `AudioTags` - 标签信息
-   - `CoverArt` - 封面图片
-   - `Chapter` - 章节信息
+1. **metadata.rs** - Defines all metadata structures
+   - `AudioMetadata` - Top-level metadata container
+   - `FormatInfo` - Format information
+   - `QualityParams` - Quality parameters
+   - `AudioTags` - Tag information
+   - `CoverArt` - Cover art
+   - `Chapter` - Chapter information
 
-2. **decoder.rs** - 元数据提取逻辑
-   - `extract_metadata()` - 提取完整元数据
-   - `extract_tags()` - 从Symphonia标签提取
-   - `extract_cover_art()` - 提取封面图片
-   - `extract_chapters()` - 提取章节（待完善）
+2. **decoder.rs** - Metadata extraction logic
+   - `extract_metadata()` - Extract complete metadata
+   - `extract_tags()` - Extract from Symphonia tags
+   - `extract_cover_art()` - Extract cover art
+   - `extract_chapters()` - Extract chapters (to be implemented)
 
-3. **jni_bindings.rs** - Android JNI接口
-   - `nativeGetMetadataJson()` - 返回JSON格式元数据
-   - `nativeGetCoverArt()` - 返回封面字节数组
-   - `nativeGetCoverArtMimeType()` - 返回MIME类型
+3. **jni_bindings.rs** - Android JNI interface
+   - `nativeGetMetadataJson()` - Return metadata in JSON format
+   - `nativeGetCoverArt()` - Return cover byte array
+   - `nativeGetCoverArtMimeType()` - Return MIME type
 
-### 使用的库
+### Libraries Used
 
-- **Symphonia 0.5** - 强大的Rust音频解码库
-  - 支持多种格式的元数据标准
-  - 自动识别和解析标签
-  - 内置封面图片提取
+- **Symphonia 0.5** - Powerful Rust audio decoding library
+  - Supports metadata standards for multiple formats
+  - Automatic tag recognition and parsing
+  - Built-in cover art extraction
 
-## 注意事项
+## Notes
 
-1. **章节支持**: 章节提取框架已就绪，但需要针对特定格式（如MP3的ID3 CHAP，MP4的章节）进行扩展实现
+1. **Chapter Support**: Chapter extraction framework is ready but requires format-specific implementation (e.g., MP3 ID3 CHAP, MP4 chapters)
 
-2. **性能**: 元数据在文件加载时一次性提取，不会影响播放性能
+2. **Performance**: Metadata is extracted once when the file is loaded and does not affect playback performance
 
-3. **内存**: 封面图片数据会保存在内存中，大型图片可能占用较多内存
+3. **Memory**: Cover art data is stored in memory; large images may consume significant memory
 
-4. **编码**: 所有文本字段都使用UTF-8编码
+4. **Encoding**: All text fields use UTF-8 encoding
 
-5. **兼容性**: 在Android上测试，需要NDK编译环境
+5. **Compatibility**: Tested on Android, requires NDK build environment
 
-## 下一步优化
+## Future Optimizations
 
-- [ ] 实现完整的章节提取（MP3 CHAP, MP4 chapters）
-- [ ] 添加自定义标签的迭代器支持
-- [ ] 支持写入/修改元数据（目前只读）
-- [ ] 优化大型封面图片的内存使用
-- [ ] 添加流媒体URL的元数据提取
+- [ ] Implement complete chapter extraction (MP3 CHAP, MP4 chapters)
+- [ ] Add iterator support for custom tags
+- [ ] Support writing/modifying metadata (currently read-only)
+- [ ] Optimize memory usage for large cover art
+- [ ] Add metadata extraction for streaming URLs
 
-## 许可证
+## License
 
-与rust-audio-player主项目相同
+Same as the rust-audio-player main project

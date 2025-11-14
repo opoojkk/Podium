@@ -105,7 +105,7 @@ impl AudioDecoder {
         // Extract comprehensive metadata
         let metadata = Self::extract_metadata(
             &mut format_reader,
-            &probe_result.metadata,
+            &mut probe_result.metadata,
             &codec_params,
             sample_rate,
             channels,
@@ -113,7 +113,7 @@ impl AudioDecoder {
         );
 
         // Extract cover art if available
-        let cover_art = Self::extract_cover_art(&probe_result.metadata);
+        let cover_art = Self::extract_cover_art(&mut probe_result.metadata);
 
         log::info!("Loaded audio: {}Hz, {} channels, {} ms",
                    format.sample_rate, format.channels, format.duration_ms);
@@ -286,7 +286,7 @@ impl AudioDecoder {
     /// Extract comprehensive metadata from the audio file
     fn extract_metadata(
         format_reader: &mut Box<dyn FormatReader>,
-        probe_metadata: &symphonia::core::probe::ProbedMetadata,
+        probe_metadata: &mut symphonia::core::probe::ProbedMetadata,
         codec_params: &symphonia::core::codecs::CodecParameters,
         sample_rate: u32,
         channels: u16,
@@ -316,8 +316,10 @@ impl AudioDecoder {
         };
 
         // Extract tags from probe metadata
-        if let Some(current) = probe_metadata.get().and_then(|m| m.current()) {
-            metadata.tags = Self::extract_tags(current.tags());
+        if let Some(meta_ref) = probe_metadata.get() {
+            if let Some(current) = meta_ref.current() {
+                metadata.tags = Self::extract_tags(current.tags());
+            }
         }
 
         // Also try to get metadata from format reader
@@ -427,8 +429,9 @@ impl AudioDecoder {
     }
 
     /// Extract cover art from metadata
-    fn extract_cover_art(probe_metadata: &symphonia::core::probe::ProbedMetadata) -> Option<CoverArt> {
-        let current = probe_metadata.get().and_then(|m| m.current())?;
+    fn extract_cover_art(probe_metadata: &mut symphonia::core::probe::ProbedMetadata) -> Option<CoverArt> {
+        let meta_ref = probe_metadata.get()?;
+        let current = meta_ref.current()?;
 
         // Look for visual (cover art) in metadata
         for visual in current.visuals() {
