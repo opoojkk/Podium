@@ -8,7 +8,7 @@ use symphonia::core::codecs::{Decoder, DecoderOptions};
 use symphonia::core::errors::Error as SymphoniaError;
 use symphonia::core::formats::{FormatOptions, FormatReader, SeekMode, SeekTo};
 use symphonia::core::io::{MediaSourceStream, MediaSource};
-use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value, Visual, MetadataRevision};
+use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value, Visual};
 use symphonia::core::probe::Hint;
 use std::fs::File;
 use std::io::Cursor;
@@ -62,7 +62,7 @@ impl AudioDecoder {
         let media_source_stream = MediaSourceStream::new(media_source, Default::default());
 
         // Probe the media source
-        let mut probe_result = symphonia::default::get_probe()
+        let probe_result = symphonia::default::get_probe()
             .format(&hint, media_source_stream, &FormatOptions::default(), &MetadataOptions::default())
             .map_err(|e| AudioError::LoadError(format!("Failed to probe media: {}", e)))?;
 
@@ -74,14 +74,14 @@ impl AudioDecoder {
             .ok_or_else(|| AudioError::LoadError("No default track found".to_string()))?;
 
         let track_id = track.id;
+        let codec_params = track.codec_params.clone();
 
         // Create decoder for the track
         let decoder = symphonia::default::get_codecs()
-            .make(&track.codec_params, &DecoderOptions::default())
+            .make(&codec_params, &DecoderOptions::default())
             .map_err(|e| AudioError::DecodingError(format!("Failed to create decoder: {}", e)))?;
 
         // Extract audio format information
-        let codec_params = &track.codec_params;
         let sample_rate = codec_params.sample_rate
             .ok_or_else(|| AudioError::UnsupportedFormat("Sample rate not specified".to_string()))?;
         let channels = codec_params.channels
@@ -106,7 +106,7 @@ impl AudioDecoder {
         let metadata = Self::extract_metadata(
             &mut format_reader,
             &probe_result.metadata,
-            codec_params,
+            &codec_params,
             sample_rate,
             channels,
             duration_ms,
@@ -316,10 +316,8 @@ impl AudioDecoder {
         };
 
         // Extract tags from probe metadata
-        if let Some(metadata_rev) = probe_metadata.get() {
-            if let Some(current) = metadata_rev.current() {
-                metadata.tags = Self::extract_tags(current.tags());
-            }
+        if let Some(current) = probe_metadata.get().and_then(|m| m.current()) {
+            metadata.tags = Self::extract_tags(current.tags());
         }
 
         // Also try to get metadata from format reader
@@ -430,27 +428,22 @@ impl AudioDecoder {
 
     /// Extract cover art from metadata
     fn extract_cover_art(probe_metadata: &symphonia::core::probe::ProbedMetadata) -> Option<CoverArt> {
-        if let Some(metadata_rev) = probe_metadata.get() {
-            if let Some(current) = metadata_rev.current() {
-                // Look for visual (cover art) in metadata
-                for visual in current.visuals() {
-                    // Prefer front cover, but accept any cover if that's all we have
-                    if let Some(usage) = visual.usage {
-                        if usage == symphonia::core::meta::StandardVisualKey::FrontCover
-                            || usage == symphonia::core::meta::StandardVisualKey::OtherIcon
-                        {
-                            return Some(Self::visual_to_cover_art(visual));
-                        }
-                    }
-                }
+        let current = probe_metadata.get().and_then(|m| m.current())?;
 
-                // If no front cover found, return the first visual
-                if let Some(visual) = current.visuals().first() {
+        // Look for visual (cover art) in metadata
+        for visual in current.visuals() {
+            // Prefer front cover, but accept any cover if that's all we have
+            if let Some(usage) = visual.usage {
+                if usage == symphonia::core::meta::StandardVisualKey::FrontCover
+                    || usage == symphonia::core::meta::StandardVisualKey::OtherIcon
+                {
                     return Some(Self::visual_to_cover_art(visual));
                 }
             }
         }
-        None
+
+        // If no front cover found, return the first visual
+        current.visuals().first().map(Self::visual_to_cover_art)
     }
 
     /// Convert Symphonia Visual to our CoverArt structure

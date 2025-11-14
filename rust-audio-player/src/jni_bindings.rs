@@ -428,8 +428,8 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetMetadat
                 if let Some(ref decoder) = *decoder_guard {
                     let metadata = &decoder.metadata;
 
-                // Create JSON representation of metadata
-                let json = format!(
+                    // Create JSON representation of metadata
+                    let json = format!(
                     r#"{{
                         "formatInfo": {{
                             "durationMs": {},
@@ -512,6 +512,12 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetMetadat
                         Err(_) => std::ptr::null_mut()
                     }
                 }
+            } else {
+                log::warn!("No decoder available for player {}", player_id);
+                match string_to_jstring(&env, "{}") {
+                    Ok(jstr) => jstr,
+                    Err(_) => std::ptr::null_mut()
+                }
             }
         } else {
             log::error!("Failed to downcast player to AndroidAudioPlayer");
@@ -535,7 +541,7 @@ fn json_option_string(opt: &Option<String>) -> String {
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverArt<'local>(
-    env: JNIEnv<'local>,
+    mut env: JNIEnv<'local>,
     _class: JClass,
     player_id: jlong,
 ) -> JByteArray<'local> {
@@ -550,7 +556,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverAr
                 if let Some(ref decoder) = *decoder_guard {
                     if let Some(cover_art) = decoder.get_cover_art() {
                         match env.byte_array_from_slice(&cover_art.data) {
-                            Ok(byte_array) => return byte_array.into_raw(),
+                            Ok(byte_array) => return byte_array,
                             Err(e) => {
                                 log::error!("Failed to create byte array: {}", e);
                             }
@@ -561,7 +567,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverAr
         }
     }
 
-    std::ptr::null_mut()
+    JByteArray::default()
 }
 
 /// Get cover art MIME type
