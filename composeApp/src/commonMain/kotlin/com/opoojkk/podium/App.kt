@@ -357,22 +357,50 @@ fun PodiumApp(
                                         // The episode will be available after RSS parsing, user can play it from subscriptions
                                     } else {
                                         // Fallback to web link
-                                        showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
+                                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
+                                        val webLink = linkMatch?.groupValues?.get(1)
+                                        if (webLink != null) {
+                                            snackbarHostState.showSnackbar("在小宇宙中查看此节目", actionLabel = "打开")
+                                            openUrlInBrowser(webLink)
+                                        }
                                     }
                                 }.onFailure {
-                                    showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
+                                    val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
+                                    val webLink = linkMatch?.groupValues?.get(1)
+                                    if (webLink != null) {
+                                        snackbarHostState.showSnackbar("在小宇宙中查看此节目", actionLabel = "打开")
+                                        openUrlInBrowser(webLink)
+                                    }
                                 }
                             } else {
-                                snackbarHostState.showSnackbar("未找到匹配的节目")
-                                showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
+                                val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
+                                val webLink = linkMatch?.groupValues?.get(1)
+                                if (webLink != null) {
+                                    snackbarHostState.showSnackbar("未找到匹配的节目，在小宇宙中查看", actionLabel = "打开")
+                                    openUrlInBrowser(webLink)
+                                } else {
+                                    snackbarHostState.showSnackbar("未找到匹配的节目")
+                                }
                             }
                         }.onFailure { error ->
-                            snackbarHostState.showSnackbar("搜索失败：${error.message}")
-                            showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
+                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
+                            val webLink = linkMatch?.groupValues?.get(1)
+                            if (webLink != null) {
+                                snackbarHostState.showSnackbar("搜索失败，在小宇宙中查看", actionLabel = "打开")
+                                openUrlInBrowser(webLink)
+                            } else {
+                                snackbarHostState.showSnackbar("搜索失败：${error.message}")
+                            }
                         }
                     } catch (e: Exception) {
-                        snackbarHostState.showSnackbar("发生错误")
-                        showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
+                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
+                        val webLink = linkMatch?.groupValues?.get(1)
+                        if (webLink != null) {
+                            snackbarHostState.showSnackbar("发生错误，在小宇宙中查看", actionLabel = "打开")
+                            openUrlInBrowser(webLink)
+                        } else {
+                            snackbarHostState.showSnackbar("发生错误")
+                        }
                     }
                 }
             } else {
@@ -380,26 +408,6 @@ fun PodiumApp(
                 pendingEpisodeId = episode.id
                 controller.playEpisode(episode)
             }
-        }
-    }
-
-    // Helper function to show 小宇宙 fallback for episodes
-    suspend fun showXiaoyuzhouFallback(episode: Episode, openUrl: (String) -> Boolean, snackbar: SnackbarHostState) {
-        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
-        val webLink = linkMatch?.groupValues?.get(1)
-        if (webLink != null) {
-            snackbar.showSnackbar("在小宇宙中查看此节目", actionLabel = "打开")
-            openUrl(webLink)
-        }
-    }
-
-    // Helper function to show 小宇宙 fallback for podcasts
-    suspend fun showPodcastXiaoyuzhouFallback(podcast: Podcast, openUrl: (String) -> Boolean, snackbar: SnackbarHostState) {
-        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-        val webLink = linkMatch?.groupValues?.get(1)
-        if (webLink != null) {
-            snackbar.showSnackbar("在小宇宙中查看此播客", actionLabel = "打开")
-            openUrl(webLink)
         }
     }
 
@@ -907,15 +915,15 @@ private fun DesktopLayout(
                                                     snackbarHostState.showSnackbar("正在苹果播客中搜索...")
 
                                                     // Search Apple Podcast for this podcast
-                                                    val result = applePodcastSearchRepository.searchPodcast(
+                                                    val searchResult = applePodcastSearchRepository.searchPodcast(
                                                         query = podcast.title,
                                                         limit = 5
                                                     )
 
-                                                    result.onSuccess { podcasts ->
-                                                        if (podcasts.isNotEmpty()) {
+                                                    searchResult.onSuccess { searchPodcasts ->
+                                                        if (searchPodcasts.isNotEmpty()) {
                                                             // Found matching podcast
-                                                            val found = podcasts.first()
+                                                            val found = searchPodcasts.first()
                                                             val feedUrl = found.feedUrl
 
                                                             // Subscribe to the podcast
@@ -927,16 +935,34 @@ private fun DesktopLayout(
                                                             }
                                                         } else {
                                                             // Not found, fallback to 小宇宙
-                                                            snackbarHostState.showSnackbar("未找到匹配的播客")
-                                                            showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
+                                                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                                            val webLink = linkMatch?.groupValues?.get(1)
+                                                            if (webLink != null) {
+                                                                snackbarHostState.showSnackbar("未找到匹配的播客，在小宇宙中查看", actionLabel = "打开")
+                                                                openUrlInBrowser(webLink)
+                                                            } else {
+                                                                snackbarHostState.showSnackbar("未找到匹配的播客")
+                                                            }
                                                         }
                                                     }.onFailure { error ->
-                                                        snackbarHostState.showSnackbar("搜索失败：${error.message}")
-                                                        showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
+                                                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                                        val webLink = linkMatch?.groupValues?.get(1)
+                                                        if (webLink != null) {
+                                                            snackbarHostState.showSnackbar("搜索失败，在小宇宙中查看", actionLabel = "打开")
+                                                            openUrlInBrowser(webLink)
+                                                        } else {
+                                                            snackbarHostState.showSnackbar("搜索失败：${error.message}")
+                                                        }
                                                     }
                                                 } catch (e: Exception) {
-                                                    snackbarHostState.showSnackbar("发生错误")
-                                                    showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
+                                                    val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                                    val webLink = linkMatch?.groupValues?.get(1)
+                                                    if (webLink != null) {
+                                                        snackbarHostState.showSnackbar("发生错误，在小宇宙中查看", actionLabel = "打开")
+                                                        openUrlInBrowser(webLink)
+                                                    } else {
+                                                        snackbarHostState.showSnackbar("发生错误")
+                                                    }
                                                 }
                                             }
                                         } else {
@@ -1391,15 +1417,15 @@ private fun MobileLayout(
                                                     snackbarHostState.showSnackbar("正在苹果播客中搜索...")
 
                                                     // Search Apple Podcast for this podcast
-                                                    val result = applePodcastSearchRepository.searchPodcast(
+                                                    val searchResult = applePodcastSearchRepository.searchPodcast(
                                                         query = podcast.title,
                                                         limit = 5
                                                     )
 
-                                                    result.onSuccess { podcasts ->
-                                                        if (podcasts.isNotEmpty()) {
+                                                    searchResult.onSuccess { searchPodcasts ->
+                                                        if (searchPodcasts.isNotEmpty()) {
                                                             // Found matching podcast
-                                                            val found = podcasts.first()
+                                                            val found = searchPodcasts.first()
                                                             val feedUrl = found.feedUrl
 
                                                             // Subscribe to the podcast
@@ -1411,16 +1437,34 @@ private fun MobileLayout(
                                                             }
                                                         } else {
                                                             // Not found, fallback to 小宇宙
-                                                            snackbarHostState.showSnackbar("未找到匹配的播客")
-                                                            showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
+                                                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                                            val webLink = linkMatch?.groupValues?.get(1)
+                                                            if (webLink != null) {
+                                                                snackbarHostState.showSnackbar("未找到匹配的播客，在小宇宙中查看", actionLabel = "打开")
+                                                                openUrlInBrowser(webLink)
+                                                            } else {
+                                                                snackbarHostState.showSnackbar("未找到匹配的播客")
+                                                            }
                                                         }
                                                     }.onFailure { error ->
-                                                        snackbarHostState.showSnackbar("搜索失败：${error.message}")
-                                                        showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
+                                                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                                        val webLink = linkMatch?.groupValues?.get(1)
+                                                        if (webLink != null) {
+                                                            snackbarHostState.showSnackbar("搜索失败，在小宇宙中查看", actionLabel = "打开")
+                                                            openUrlInBrowser(webLink)
+                                                        } else {
+                                                            snackbarHostState.showSnackbar("搜索失败：${error.message}")
+                                                        }
                                                     }
                                                 } catch (e: Exception) {
-                                                    snackbarHostState.showSnackbar("发生错误")
-                                                    showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
+                                                    val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                                    val webLink = linkMatch?.groupValues?.get(1)
+                                                    if (webLink != null) {
+                                                        snackbarHostState.showSnackbar("发生错误，在小宇宙中查看", actionLabel = "打开")
+                                                        openUrlInBrowser(webLink)
+                                                    } else {
+                                                        snackbarHostState.showSnackbar("发生错误")
+                                                    }
                                                 }
                                             }
                                         } else {
