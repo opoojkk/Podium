@@ -62,7 +62,7 @@ impl AudioDecoder {
         let media_source_stream = MediaSourceStream::new(media_source, Default::default());
 
         // Probe the media source
-        let probe_result = symphonia::default::get_probe()
+        let mut probe_result = symphonia::default::get_probe()
             .format(&hint, media_source_stream, &FormatOptions::default(), &MetadataOptions::default())
             .map_err(|e| AudioError::LoadError(format!("Failed to probe media: {}", e)))?;
 
