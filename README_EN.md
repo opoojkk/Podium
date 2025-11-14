@@ -138,7 +138,7 @@ This project is licensed under **GPLv3** - see [LICENSE](LICENSE) for details
 
 ## 🙏 Acknowledgements
 
-Thanks to the open-source community and these projects: [JetBrains](https://www.jetbrains.com/) (Kotlin & Compose MP) · [Rust](https://www.rust-lang.org/) · [SQLDelight](https://cashapp.github.io/sqldelight/) · [Ktor](https://ktor.io/) · [Coil](https://coil-kt.github.io/coil/) · [cpal](https://github.com/RustAudio/cpal)
+Thanks to the open-source community and these projects: [JetBrains](https://www.jetbrains.com/) (Kotlin & Compose MP) · [Rust](https://www.rust-lang.org/) · [SQLDelight](https://cashapp.github.io/sqldelight/) · [Ktor](https://ktor.io/) · [Coil](https://coil-kt.github.io/coil/) · [cpal](https://github.com/RustAudio/cpal) · [XYZRank](https://github.com/eddiehe99/xyzrank) (trending podcast data)
 
 <div align="center">
 

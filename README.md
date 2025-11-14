@@ -138,7 +138,7 @@ Podium 采用分层架构，结合 Kotlin Multiplatform 和 Rust 原生组件：
 
 ## 🙏 致谢
 
-感谢开源社区和以下项目：[JetBrains](https://www.jetbrains.com/) (Kotlin & Compose MP) · [Rust](https://www.rust-lang.org/) · [SQLDelight](https://cashapp.github.io/sqldelight/) · [Ktor](https://ktor.io/) · [Coil](https://coil-kt.github.io/coil/) · [cpal](https://github.com/RustAudio/cpal)
+感谢开源社区和以下项目：[JetBrains](https://www.jetbrains.com/) (Kotlin & Compose MP) · [Rust](https://www.rust-lang.org/) · [SQLDelight](https://cashapp.github.io/sqldelight/) · [Ktor](https://ktor.io/) · [Coil](https://coil-kt.github.io/coil/) · [cpal](https://github.com/RustAudio/cpal) · [XYZRank](https://github.com/eddiehe99/xyzrank) (热门播客数据)
 
 <div align="center">
 

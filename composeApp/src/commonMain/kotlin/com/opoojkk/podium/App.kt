@@ -33,7 +33,10 @@ import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
 import com.opoojkk.podium.ui.categories.CategoriesScreen
 import com.opoojkk.podium.ui.categories.CategoryDetailScreen
 import com.opoojkk.podium.data.repository.RecommendedPodcastRepository
+import com.opoojkk.podium.data.repository.XYZRankRepository
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
+import com.opoojkk.podium.data.model.xyzrank.XYZRankEpisode
+import com.opoojkk.podium.data.model.xyzrank.XYZRankPodcast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
@@ -109,6 +112,15 @@ fun PodiumApp(
 
     val recommendedPodcasts = remember { mutableStateOf<List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>>(emptyList()) }
 
+    // XYZRank repository and states
+    val xyzRankRepository = remember {
+        XYZRankRepository(httpClient = environment.httpClient)
+    }
+    val hotEpisodes = remember { mutableStateOf<List<XYZRankEpisode>>(emptyList()) }
+    val hotPodcasts = remember { mutableStateOf<List<XYZRankPodcast>>(emptyList()) }
+    val newEpisodes = remember { mutableStateOf<List<XYZRankEpisode>>(emptyList()) }
+    val newPodcasts = remember { mutableStateOf<List<XYZRankPodcast>>(emptyList()) }
+
     // Load categories and recommended podcasts on app start
     LaunchedEffect(Unit) {
         categoriesLoading.value = true
@@ -123,6 +135,24 @@ fun PodiumApp(
         recommendedResult.onSuccess { podcasts ->
             recommendedPodcasts.value = podcasts
             println("📻 Loaded ${podcasts.size} recommended podcasts")
+        }
+
+        // Load XYZRank data
+        xyzRankRepository.getHotEpisodes().onSuccess { episodes ->
+            hotEpisodes.value = episodes.take(10)
+            println("🔥 Loaded ${episodes.size} hot episodes")
+        }
+        xyzRankRepository.getHotPodcasts().onSuccess { podcasts ->
+            hotPodcasts.value = podcasts.take(10)
+            println("🔥 Loaded ${podcasts.size} hot podcasts")
+        }
+        xyzRankRepository.getNewEpisodes().onSuccess { episodes ->
+            newEpisodes.value = episodes.take(10)
+            println("✨ Loaded ${episodes.size} new episodes")
+        }
+        xyzRankRepository.getNewPodcasts().onSuccess { podcasts ->
+            newPodcasts.value = podcasts.take(10)
+            println("✨ Loaded ${podcasts.size} new podcasts")
         }
     }
     val showImportDialog = remember { mutableStateOf(false) }
@@ -737,7 +767,13 @@ private fun DesktopLayout(
                         else -> {
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
-                                    state = homeState.copy(recommendedPodcasts = recommendedPodcasts),
+                                    state = homeState.copy(
+                                        recommendedPodcasts = recommendedPodcasts,
+                                        hotEpisodes = hotEpisodes.value,
+                                        hotPodcasts = hotPodcasts.value,
+                                        newEpisodes = newEpisodes.value,
+                                        newPodcasts = newPodcasts.value
+                                    ),
                                     onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
                                     onClearSearch = controller::clearHomeSearch,
@@ -1172,7 +1208,13 @@ private fun MobileLayout(
                         ) {
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
-                                    state = homeState.copy(recommendedPodcasts = recommendedPodcasts),
+                                    state = homeState.copy(
+                                        recommendedPodcasts = recommendedPodcasts,
+                                        hotEpisodes = hotEpisodes.value,
+                                        hotPodcasts = hotPodcasts.value,
+                                        newEpisodes = newEpisodes.value,
+                                        newPodcasts = newPodcasts.value
+                                    ),
                                     onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
                                     onClearSearch = controller::clearHomeSearch,

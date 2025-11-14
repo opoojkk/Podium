@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
+import com.opoojkk.podium.data.model.xyzrank.XYZRankEpisode
+import com.opoojkk.podium.data.model.xyzrank.XYZRankPodcast
 import com.opoojkk.podium.presentation.HomeUiState
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRow
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRowSkeleton
@@ -201,6 +203,74 @@ fun HomeScreen(
                             HorizontalRecommendedPodcastRow(
                                 podcasts = state.recommendedPodcasts.take(10),
                                 onPodcastClick = onRecommendedPodcastClick,
+                            )
+                        }
+                    }
+                }
+
+                // 热门节目 - 来自 XYZRank
+                if (state.hotEpisodes.isNotEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SectionHeader(
+                                title = "热门节目",
+                                description = "当下最受欢迎的播客节目",
+                                onViewMore = null,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            HorizontalXYZRankEpisodeRow(
+                                episodes = state.hotEpisodes.take(10),
+                            )
+                        }
+                    }
+                }
+
+                // 热门播客 - 来自 XYZRank
+                if (state.hotPodcasts.isNotEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SectionHeader(
+                                title = "热门播客",
+                                description = "高人气的优质播客推荐",
+                                onViewMore = null,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            HorizontalXYZRankPodcastRow(
+                                podcasts = state.hotPodcasts.take(10),
+                            )
+                        }
+                    }
+                }
+
+                // 新锐节目 - 来自 XYZRank
+                if (state.newEpisodes.isNotEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SectionHeader(
+                                title = "新锐节目",
+                                description = "新鲜出炉的精彩节目",
+                                onViewMore = null,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            HorizontalXYZRankEpisodeRow(
+                                episodes = state.newEpisodes.take(10),
+                            )
+                        }
+                    }
+                }
+
+                // 新锐播客 - 来自 XYZRank
+                if (state.newPodcasts.isNotEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SectionHeader(
+                                title = "新锐播客",
+                                description = "值得关注的新兴播客",
+                                onViewMore = null,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            HorizontalXYZRankPodcastRow(
+                                podcasts = state.newPodcasts.take(10),
                             )
                         }
                     }
@@ -486,6 +556,214 @@ private fun HorizontalRecommendedPodcastCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+    }
+}
+
+/**
+ * XYZRank 节目横向滚动列表
+ */
+@Composable
+private fun HorizontalXYZRankEpisodeRow(
+    episodes: List<XYZRankEpisode>,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        items(episodes, key = { it.link }) { episode ->
+            XYZRankEpisodeCard(episode = episode)
+        }
+    }
+}
+
+/**
+ * XYZRank 节目卡片
+ */
+@Composable
+private fun XYZRankEpisodeCard(
+    episode: XYZRankEpisode,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.width(280.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // 节目封面
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                SubcomposeAsyncImage(
+                    model = episode.logoURL,
+                    contentDescription = episode.title,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                    loading = {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    },
+                )
+            }
+
+            // 节目信息
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = episode.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = episode.podcastName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                    ) {
+                        Text(
+                            text = episode.primaryGenreName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    Text(
+                        text = "${episode.playCount / 1000}K播放",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * XYZRank 播客横向滚动列表
+ */
+@Composable
+private fun HorizontalXYZRankPodcastRow(
+    podcasts: List<XYZRankPodcast>,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        items(podcasts, key = { it.id }) { podcast ->
+            XYZRankPodcastCard(podcast = podcast)
+        }
+    }
+}
+
+/**
+ * XYZRank 播客卡片
+ */
+@Composable
+private fun XYZRankPodcastCard(
+    podcast: XYZRankPodcast,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.width(160.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // 播客封面
+            Box(
+                modifier = Modifier
+                    .size(136.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                SubcomposeAsyncImage(
+                    model = podcast.logoURL,
+                    contentDescription = podcast.name,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop,
+                    loading = {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    },
+                )
+            }
+
+            // 播客名称
+            Text(
+                text = podcast.name,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            // 分类标签
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Text(
+                    text = podcast.primaryGenreName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+
+            // 播客统计信息
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = podcast.authorsText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "${podcast.trackCount}集 · ${podcast.avgPlayCount / 1000}K播放",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
