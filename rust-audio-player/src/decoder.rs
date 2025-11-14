@@ -8,9 +8,8 @@ use symphonia::core::codecs::{Decoder, DecoderOptions};
 use symphonia::core::errors::Error as SymphoniaError;
 use symphonia::core::formats::{FormatOptions, FormatReader, SeekMode, SeekTo};
 use symphonia::core::io::{MediaSourceStream, MediaSource};
-use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value, Visual};
+use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value, Visual, MetadataRevision};
 use symphonia::core::probe::Hint;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Cursor;
 use std::path::Path;
@@ -287,7 +286,7 @@ impl AudioDecoder {
     /// Extract comprehensive metadata from the audio file
     fn extract_metadata(
         format_reader: &mut Box<dyn FormatReader>,
-        probe_metadata: &symphonia::core::probe::Metadata,
+        probe_metadata: &symphonia::core::probe::ProbedMetadata,
         codec_params: &symphonia::core::codecs::CodecParameters,
         sample_rate: u32,
         channels: u16,
@@ -304,16 +303,16 @@ impl AudioDecoder {
                 .codec
                 .to_string()
                 .to_uppercase(),
-            bitrate_bps: codec_params.max_bitrate.or(codec_params.bitrate),
+            bitrate_bps: None, // Symphonia 0.5 doesn't expose bitrate directly in CodecParameters
             total_frames: codec_params.n_frames,
         };
 
         // Set quality parameters
         metadata.quality = QualityParams {
             bit_depth: codec_params.bits_per_sample.map(|b| b as u16),
-            is_vbr: codec_params.bitrate.is_none() && codec_params.max_bitrate.is_some(),
-            compression_quality: None, // Not directly available from Symphonia
-            instantaneous_bitrate_bps: codec_params.bitrate,
+            is_vbr: false, // VBR detection not available in current Symphonia version
+            compression_quality: None,
+            instantaneous_bitrate_bps: None,
         };
 
         // Extract tags from probe metadata
@@ -430,7 +429,7 @@ impl AudioDecoder {
     }
 
     /// Extract cover art from metadata
-    fn extract_cover_art(probe_metadata: &symphonia::core::probe::Metadata) -> Option<CoverArt> {
+    fn extract_cover_art(probe_metadata: &symphonia::core::probe::ProbedMetadata) -> Option<CoverArt> {
         if let Some(metadata_rev) = probe_metadata.get() {
             if let Some(current) = metadata_rev.current() {
                 // Look for visual (cover art) in metadata
@@ -458,7 +457,7 @@ impl AudioDecoder {
     fn visual_to_cover_art(visual: &Visual) -> CoverArt {
         CoverArt {
             mime_type: visual.media_type.clone(),
-            data: visual.data.clone(),
+            data: visual.data.to_vec(), // Convert Box<[u8]> to Vec<u8>
             description: visual.tags.iter().find_map(|tag| {
                 if tag.std_key == Some(StandardTagKey::Description) {
                     if let Value::String(s) = &tag.value {
@@ -472,21 +471,12 @@ impl AudioDecoder {
     }
 
     /// Extract chapter information from the audio file
-    fn extract_chapters(format_reader: &Box<dyn FormatReader>) -> Vec<Chapter> {
-        let mut chapters = Vec::new();
+    fn extract_chapters(_format_reader: &Box<dyn FormatReader>) -> Vec<Chapter> {
+        let chapters = Vec::new();
 
-        // Try to get chapters from metadata
-        if let Some(metadata_rev) = format_reader.metadata().current() {
-            // Symphonia doesn't have a direct chapter API yet,
-            // but we can look for chapter-related custom tags
-            // This is a placeholder for future implementation
-            for tag in metadata_rev.tags() {
-                if tag.key.to_lowercase().contains("chapter") {
-                    // Parse chapter information if available
-                    // This would need format-specific parsing
-                }
-            }
-        }
+        // Symphonia doesn't have a direct chapter API yet
+        // This is a placeholder for future implementation
+        // Would need format-specific parsing for MP3 CHAP, MP4 chapters, etc.
 
         chapters
     }

@@ -424,8 +424,9 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetMetadat
         let android_player = player.as_any().downcast_ref::<AndroidAudioPlayer>();
 
         if let Some(android_player) = android_player {
-            if let Some(decoder) = android_player.get_decoder() {
-                let metadata = &decoder.metadata;
+            if let Some(decoder_guard) = android_player.get_decoder() {
+                if let Some(ref decoder) = *decoder_guard {
+                    let metadata = &decoder.metadata;
 
                 // Create JSON representation of metadata
                 let json = format!(
@@ -497,20 +498,20 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetMetadat
                     decoder.get_cover_art().is_some()
                 );
 
-                match string_to_jstring(&env, &json) {
-                    Ok(jstr) => jstr,
-                    Err(e) => {
-                        log::error!("Failed to create JSON string: {}", e);
-                        std::ptr::null_mut()
+                    match string_to_jstring(&env, &json) {
+                        Ok(jstr) => jstr,
+                        Err(e) => {
+                            log::error!("Failed to create JSON string: {}", e);
+                            std::ptr::null_mut()
+                        }
+                    }
+                } else {
+                    log::warn!("No decoder loaded for player {}", player_id);
+                    match string_to_jstring(&env, "{}") {
+                        Ok(jstr) => jstr,
+                        Err(_) => std::ptr::null_mut()
                     }
                 }
-            } else {
-                log::warn!("No decoder available for player {}", player_id);
-                match string_to_jstring(&env, "{}") {
-                    Ok(jstr) => jstr,
-                    Err(_) => std::ptr::null_mut()
-                }
-            }
         } else {
             log::error!("Failed to downcast player to AndroidAudioPlayer");
             std::ptr::null_mut()
@@ -532,11 +533,11 @@ fn json_option_string(opt: &Option<String>) -> String {
 /// Get cover art as byte array
 #[cfg(target_os = "android")]
 #[no_mangle]
-pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverArt(
-    env: JNIEnv,
+pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverArt<'local>(
+    env: JNIEnv<'local>,
     _class: JClass,
     player_id: jlong,
-) -> JByteArray {
+) -> JByteArray<'local> {
     use crate::android::AndroidAudioPlayer;
 
     let registry = PLAYER_REGISTRY.lock();
@@ -544,12 +545,14 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverAr
         let android_player = player.as_any().downcast_ref::<AndroidAudioPlayer>();
 
         if let Some(android_player) = android_player {
-            if let Some(decoder) = android_player.get_decoder() {
-                if let Some(cover_art) = decoder.get_cover_art() {
-                    match env.byte_array_from_slice(&cover_art.data) {
-                        Ok(byte_array) => return byte_array.into_raw(),
-                        Err(e) => {
-                            log::error!("Failed to create byte array: {}", e);
+            if let Some(decoder_guard) = android_player.get_decoder() {
+                if let Some(ref decoder) = *decoder_guard {
+                    if let Some(cover_art) = decoder.get_cover_art() {
+                        match env.byte_array_from_slice(&cover_art.data) {
+                            Ok(byte_array) => return byte_array.into_raw(),
+                            Err(e) => {
+                                log::error!("Failed to create byte array: {}", e);
+                            }
                         }
                     }
                 }
@@ -575,12 +578,14 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverAr
         let android_player = player.as_any().downcast_ref::<AndroidAudioPlayer>();
 
         if let Some(android_player) = android_player {
-            if let Some(decoder) = android_player.get_decoder() {
-                if let Some(cover_art) = decoder.get_cover_art() {
-                    match string_to_jstring(&env, &cover_art.mime_type) {
-                        Ok(jstr) => return jstr,
-                        Err(e) => {
-                            log::error!("Failed to create MIME type string: {}", e);
+            if let Some(decoder_guard) = android_player.get_decoder() {
+                if let Some(ref decoder) = *decoder_guard {
+                    if let Some(cover_art) = decoder.get_cover_art() {
+                        match string_to_jstring(&env, &cover_art.mime_type) {
+                            Ok(jstr) => return jstr,
+                            Err(e) => {
+                                log::error!("Failed to create MIME type string: {}", e);
+                            }
                         }
                     }
                 }
