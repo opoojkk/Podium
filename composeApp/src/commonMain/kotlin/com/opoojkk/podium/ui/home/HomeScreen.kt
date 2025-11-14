@@ -66,6 +66,7 @@ fun HomeScreen(
     onViewMoreRecentUpdates: () -> Unit = {},
     onRefresh: () -> Unit = {},
     isRefreshing: Boolean = false,
+    onPodcastClick: (Podcast) -> Unit = {},
     currentPlayingEpisodeId: String? = null,
     isPlaying: Boolean = false,
     isBuffering: Boolean = false,
@@ -230,6 +231,7 @@ fun HomeScreen(
                             )
                             HorizontalPodcastRow(
                                 podcasts = state.hotPodcasts.take(10),
+                                onPodcastClick = onPodcastClick,
                             )
                         }
                     }
@@ -275,6 +277,7 @@ fun HomeScreen(
                             )
                             HorizontalPodcastRow(
                                 podcasts = state.newPodcasts.take(10),
+                                onPodcastClick = onPodcastClick,
                             )
                         }
                     }
@@ -441,6 +444,7 @@ private fun HomeSearchBar(
 @Composable
 private fun HorizontalPodcastRow(
     podcasts: List<Podcast>,
+    onPodcastClick: (Podcast) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -449,7 +453,10 @@ private fun HorizontalPodcastRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
         items(podcasts, key = { it.id }) { podcast ->
-            PodcastCard(podcast = podcast)
+            PodcastCard(
+                podcast = podcast,
+                onClick = { onPodcastClick(podcast) }
+            )
         }
     }
 }
@@ -460,10 +467,13 @@ private fun HorizontalPodcastRow(
 @Composable
 private fun PodcastCard(
     podcast: Podcast,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier.width(160.dp),
+        modifier = modifier
+            .width(160.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer

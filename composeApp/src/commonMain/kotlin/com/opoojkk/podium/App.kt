@@ -823,6 +823,21 @@ private fun DesktopLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
+                                    onPodcastClick = { podcast ->
+                                        // Handle podcast click from XYZRank
+                                        if (podcast.feedUrl.isNotBlank()) {
+                                            // Has RSS feed, try to subscribe
+                                            controller.subscribe(podcast.feedUrl)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("已订阅《${podcast.title}》")
+                                            }
+                                        } else {
+                                            // No RSS feed available
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("该播客来自 XYZRank 榜单，暂无 RSS 源可订阅")
+                                            }
+                                        }
+                                    },
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
                                 isBuffering = playbackState.isBuffering,
@@ -1262,6 +1277,21 @@ private fun MobileLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
+                                    onPodcastClick = { podcast ->
+                                        // Handle podcast click from XYZRank
+                                        if (podcast.feedUrl.isNotBlank()) {
+                                            // Has RSS feed, try to subscribe
+                                            controller.subscribe(podcast.feedUrl)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("已订阅《${podcast.title}》")
+                                            }
+                                        } else {
+                                            // No RSS feed available
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("该播客来自 XYZRank 榜单，暂无 RSS 源可订阅")
+                                            }
+                                        }
+                                    },
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
                                 isBuffering = playbackState.isBuffering,
