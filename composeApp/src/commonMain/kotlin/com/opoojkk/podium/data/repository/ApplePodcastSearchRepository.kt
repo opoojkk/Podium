@@ -117,7 +117,7 @@ data class ApplePodcastEpisodeResult(
     val trackName: String,
     val collectionId: Long,
     val collectionName: String,
-    val artistName: String,
+    val artistName: String? = null,
     @SerialName("episodeUrl")
     val audioUrl: String? = null,
     val artworkUrl600: String? = null,
