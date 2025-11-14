@@ -23,7 +23,7 @@ data class XYZRankEpisode(
     val primaryGenreName: String,
     val totalEpisodesCount: Int,
     val openRate: Double,
-    val lastReleaseDateDayCount: Int
+    val lastReleaseDateDayCount: Double
 )
 
 @Serializable
@@ -53,7 +53,7 @@ data class XYZRankPodcast(
     val authorsText: String,
     val trackCount: Int,
     val lastReleaseDate: String,
-    val lastReleaseDateDayCount: Int,
+    val lastReleaseDateDayCount: Double,
     val firstEpisodePostTime: String,
     val activeRate: Double,
     val avgDuration: Double,
