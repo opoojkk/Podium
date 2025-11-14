@@ -34,7 +34,9 @@ import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
 import com.opoojkk.podium.ui.categories.CategoriesScreen
 import com.opoojkk.podium.ui.categories.CategoryDetailScreen
+import com.opoojkk.podium.data.repository.RecommendedPodcastRepository
 import com.opoojkk.podium.data.repository.XYZRankRepository
+import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.mapper.toEpisodeWithPodcast
 import com.opoojkk.podium.data.mapper.toPodcast
 import kotlinx.coroutines.delay
@@ -468,6 +470,7 @@ fun PodiumApp(
                 downloads = downloads,
                 categories = categoriesState.value,
                 categoriesLoading = categoriesLoading.value,
+                recommendedPodcastRepository = recommendedPodcastRepository,
                 hotEpisodes = hotEpisodes.value,
                 hotPodcasts = hotPodcasts.value,
                 newEpisodes = newEpisodes.value,
@@ -508,6 +511,7 @@ fun PodiumApp(
                 downloads = downloads,
                 categories = categoriesState.value,
                 categoriesLoading = categoriesLoading.value,
+                recommendedPodcastRepository = recommendedPodcastRepository,
                 hotEpisodes = hotEpisodes.value,
                 hotPodcasts = hotPodcasts.value,
                 newEpisodes = newEpisodes.value,
@@ -577,6 +581,7 @@ private fun DesktopLayout(
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     categories: List<PodcastCategory>,
     categoriesLoading: Boolean,
+    recommendedPodcastRepository: RecommendedPodcastRepository,
     hotEpisodes: List<EpisodeWithPodcast>,
     hotPodcasts: List<Podcast>,
     newEpisodes: List<EpisodeWithPodcast>,
@@ -818,10 +823,6 @@ private fun DesktopLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
-                                    onRecommendedPodcastClick = { podcast ->
-                                        selectedRecommendedPodcast.value = podcast
-                                        showRecommendedPodcastDetail.value = true
-                                    },
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
                                 isBuffering = playbackState.isBuffering,
@@ -991,6 +992,7 @@ private fun MobileLayout(
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     categories: List<PodcastCategory>,
     categoriesLoading: Boolean,
+    recommendedPodcastRepository: RecommendedPodcastRepository,
     hotEpisodes: List<EpisodeWithPodcast>,
     hotPodcasts: List<Podcast>,
     newEpisodes: List<EpisodeWithPodcast>,
@@ -1260,10 +1262,6 @@ private fun MobileLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
-                                    onRecommendedPodcastClick = { podcast ->
-                                        selectedRecommendedPodcast.value = podcast
-                                        showRecommendedPodcastDetail.value = true
-                                    },
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
                                 isBuffering = playbackState.isBuffering,
