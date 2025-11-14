@@ -685,6 +685,7 @@ fun PodiumApp(
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onPlayEpisode = playEpisode,
+                onPodcastClick = handleXYZRankPodcastClick,
                 onOpenUrl = openUrlInBrowser,
                 snackbarHostState = snackbarHostState,
             )
@@ -726,6 +727,7 @@ fun PodiumApp(
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
                 onPlayEpisode = playEpisode,
+                onPodcastClick = handleXYZRankPodcastClick,
                 onOpenUrl = openUrlInBrowser,
                 snackbarHostState = snackbarHostState,
             )
@@ -796,6 +798,7 @@ private fun DesktopLayout(
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
+    onPodcastClick: (Podcast) -> Unit,
     onOpenUrl: (String) -> Boolean,
     snackbarHostState: SnackbarHostState,
 ) {
@@ -1029,7 +1032,7 @@ private fun DesktopLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
-                                    onPodcastClick = handleXYZRankPodcastClick,
+                                    onPodcastClick = onPodcastClick,
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
                                 isBuffering = playbackState.isBuffering,
@@ -1208,6 +1211,7 @@ private fun MobileLayout(
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
+    onPodcastClick: (Podcast) -> Unit,
     onOpenUrl: (String) -> Boolean,
     snackbarHostState: SnackbarHostState,
 ) {
@@ -1469,7 +1473,7 @@ private fun MobileLayout(
                                         }
                                     },
                                     isRefreshing = subscriptionsState.isRefreshing,
-                                    onPodcastClick = handleXYZRankPodcastClick,
+                                    onPodcastClick = onPodcastClick,
                                     currentPlayingEpisodeId = playbackState.episode?.id,
                                     isPlaying = playbackState.isPlaying,
                                 isBuffering = playbackState.isBuffering,
