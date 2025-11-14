@@ -123,25 +123,33 @@ fun PodiumApp(
 
     // Load categories and recommended podcasts on app start
     LaunchedEffect(Unit) {
+        println("🚀 LaunchedEffect started - loading data...")
+
         categoriesLoading.value = true
         val result = recommendedPodcastRepository.getAllCategories()
         result.onSuccess { categories ->
             categoriesState.value = categories
+            println("✅ Loaded ${categories.size} categories")
         }
         categoriesLoading.value = false
 
         // Load recommended podcasts for home screen
+        println("📻 Starting to load recommended podcasts...")
         val recommendedResult = recommendedPodcastRepository.getRandomRecommendedPodcasts(10)
         recommendedResult.onSuccess { podcasts ->
             recommendedPodcasts.value = podcasts
             println("📻 Loaded ${podcasts.size} recommended podcasts")
+        }.onFailure { error ->
+            println("❌ Failed to load recommended podcasts: ${error.message}")
         }
 
         // Load XYZRank data
+        println("🔥 Starting to load XYZRank data...")
+
         xyzRankRepository.getHotEpisodes()
             .onSuccess { episodes ->
                 hotEpisodes.value = episodes.take(10)
-                println("🔥 Loaded ${episodes.size} hot episodes")
+                println("🔥 Loaded ${episodes.size} hot episodes, set to state")
             }
             .onFailure { error ->
                 println("❌ Failed to load hot episodes: ${error.message}")
@@ -151,7 +159,7 @@ fun PodiumApp(
         xyzRankRepository.getHotPodcasts()
             .onSuccess { podcasts ->
                 hotPodcasts.value = podcasts.take(10)
-                println("🔥 Loaded ${podcasts.size} hot podcasts")
+                println("🔥 Loaded ${podcasts.size} hot podcasts, set to state")
             }
             .onFailure { error ->
                 println("❌ Failed to load hot podcasts: ${error.message}")
@@ -161,7 +169,7 @@ fun PodiumApp(
         xyzRankRepository.getNewEpisodes()
             .onSuccess { episodes ->
                 newEpisodes.value = episodes.take(10)
-                println("✨ Loaded ${episodes.size} new episodes")
+                println("✨ Loaded ${episodes.size} new episodes, set to state")
             }
             .onFailure { error ->
                 println("❌ Failed to load new episodes: ${error.message}")
@@ -171,12 +179,14 @@ fun PodiumApp(
         xyzRankRepository.getNewPodcasts()
             .onSuccess { podcasts ->
                 newPodcasts.value = podcasts.take(10)
-                println("✨ Loaded ${podcasts.size} new podcasts")
+                println("✨ Loaded ${podcasts.size} new podcasts, set to state")
             }
             .onFailure { error ->
                 println("❌ Failed to load new podcasts: ${error.message}")
                 error.printStackTrace()
             }
+
+        println("🏁 LaunchedEffect completed all requests")
     }
     val showImportDialog = remember { mutableStateOf(false) }
     val showExportDialog = remember { mutableStateOf(false) }
