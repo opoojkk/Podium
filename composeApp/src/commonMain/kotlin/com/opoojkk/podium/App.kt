@@ -319,14 +319,15 @@ fun PodiumApp(
         { url -> openUrl(platformContext, url) }
     }
 
-    // Handle XYZRank podcast click - search Apple Podcast and subscribe
+    // Handle XYZRank podcast click - search Apple Podcast, subscribe and open details
     val handleXYZRankPodcastClick: (Podcast) -> Unit = remember(
         controller,
         applePodcastSearchRepository,
         openUrlInBrowser,
         snackbarHostState,
         scope,
-        selectedPodcast
+        selectedPodcast,
+        subscriptionsState
     ) {
         { podcast ->
             println("🎯 Podcast clicked: id=${podcast.id}, title=${podcast.title}")
@@ -354,11 +355,27 @@ fun PodiumApp(
                                 val feedUrl = found.feedUrl
                                 println("📡 Using feed URL: $feedUrl")
 
-                                if (!controller.checkIfSubscribed(feedUrl)) {
+                                // Subscribe if not already subscribed
+                                val wasSubscribed = controller.checkIfSubscribed(feedUrl)
+                                if (!wasSubscribed) {
                                     controller.subscribe(feedUrl)
                                     println("✅ Subscribed to: ${found.collectionName}")
+                                    // Wait a bit for subscription to be processed
+                                    delay(800)
                                 } else {
                                     println("ℹ️ Already subscribed to this podcast")
+                                }
+
+                                // Find the podcast in subscriptions and open details
+                                val subscribedPodcast = subscriptionsState.subscriptions.find {
+                                    it.feedUrl == feedUrl
+                                }
+
+                                if (subscribedPodcast != null) {
+                                    println("📂 Opening podcast details: ${subscribedPodcast.title}")
+                                    selectedPodcast.value = subscribedPodcast
+                                } else {
+                                    println("⚠️ Subscribed podcast not found in state yet")
                                 }
                             } else {
                                 println("⚠️ No Apple Podcast results, trying 小宇宙 fallback")
