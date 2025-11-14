@@ -49,7 +49,7 @@ data class XYZRankPodcast(
     val rank: Int,
     val name: String,
     val logoURL: String,
-    val primaryGenreName: String,
+    val primaryGenreName: String? = null,  // Make it nullable since some podcasts don't have this field
     val authorsText: String,
     val trackCount: Int,
     val lastReleaseDate: String,
