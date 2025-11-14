@@ -781,10 +781,10 @@ private fun DesktopLayout(
                                 PodiumDestination.Home -> HomeScreen(
                                     state = homeState.copy(
                                         recommendedPodcasts = recommendedPodcasts,
-                                        hotEpisodes = hotEpisodes.value,
-                                        hotPodcasts = hotPodcasts.value,
-                                        newEpisodes = newEpisodes.value,
-                                        newPodcasts = newPodcasts.value
+                                        hotEpisodes = hotEpisodes,
+                                        hotPodcasts = hotPodcasts,
+                                        newEpisodes = newEpisodes,
+                                        newPodcasts = newPodcasts
                                     ),
                                     onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
@@ -1226,10 +1226,10 @@ private fun MobileLayout(
                                 PodiumDestination.Home -> HomeScreen(
                                     state = homeState.copy(
                                         recommendedPodcasts = recommendedPodcasts,
-                                        hotEpisodes = hotEpisodes.value,
-                                        hotPodcasts = hotPodcasts.value,
-                                        newEpisodes = newEpisodes.value,
-                                        newPodcasts = newPodcasts.value
+                                        hotEpisodes = hotEpisodes,
+                                        hotPodcasts = hotPodcasts,
+                                        newEpisodes = newEpisodes,
+                                        newPodcasts = newPodcasts
                                     ),
                                     onPlayEpisode = onPlayEpisode,
                                     onSearchQueryChange = controller::onHomeSearchQueryChange,
