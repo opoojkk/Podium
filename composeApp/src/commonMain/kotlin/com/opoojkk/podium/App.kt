@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.Episode
+import com.opoojkk.podium.data.model.EpisodeWithPodcast
+import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.data.model.PlaybackState
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
@@ -32,11 +34,9 @@ import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
 import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
 import com.opoojkk.podium.ui.categories.CategoriesScreen
 import com.opoojkk.podium.ui.categories.CategoryDetailScreen
-import com.opoojkk.podium.data.repository.RecommendedPodcastRepository
 import com.opoojkk.podium.data.repository.XYZRankRepository
-import com.opoojkk.podium.data.model.recommended.PodcastCategory
-import com.opoojkk.podium.data.model.xyzrank.XYZRankEpisode
-import com.opoojkk.podium.data.model.xyzrank.XYZRankPodcast
+import com.opoojkk.podium.data.mapper.toEpisodeWithPodcast
+import com.opoojkk.podium.data.mapper.toPodcast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
@@ -110,18 +110,16 @@ fun PodiumApp(
         )
     }
 
-    val recommendedPodcasts = remember { mutableStateOf<List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>>(emptyList()) }
-
     // XYZRank repository and states
     val xyzRankRepository = remember {
         XYZRankRepository(httpClient = environment.httpClient)
     }
-    val hotEpisodes = remember { mutableStateOf<List<XYZRankEpisode>>(emptyList()) }
-    val hotPodcasts = remember { mutableStateOf<List<XYZRankPodcast>>(emptyList()) }
-    val newEpisodes = remember { mutableStateOf<List<XYZRankEpisode>>(emptyList()) }
-    val newPodcasts = remember { mutableStateOf<List<XYZRankPodcast>>(emptyList()) }
+    val hotEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
+    val hotPodcasts = remember { mutableStateOf<List<Podcast>>(emptyList()) }
+    val newEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
+    val newPodcasts = remember { mutableStateOf<List<Podcast>>(emptyList()) }
 
-    // Load categories and recommended podcasts on app start
+    // Load categories and XYZRank data on app start
     LaunchedEffect(Unit) {
         println("🚀 LaunchedEffect started - loading data...")
 
@@ -133,22 +131,12 @@ fun PodiumApp(
         }
         categoriesLoading.value = false
 
-        // Load recommended podcasts for home screen
-        println("📻 Starting to load recommended podcasts...")
-        val recommendedResult = recommendedPodcastRepository.getRandomRecommendedPodcasts(10)
-        recommendedResult.onSuccess { podcasts ->
-            recommendedPodcasts.value = podcasts
-            println("📻 Loaded ${podcasts.size} recommended podcasts")
-        }.onFailure { error ->
-            println("❌ Failed to load recommended podcasts: ${error.message}")
-        }
-
         // Load XYZRank data
         println("🔥 Starting to load XYZRank data...")
 
         xyzRankRepository.getHotEpisodes()
             .onSuccess { episodes ->
-                hotEpisodes.value = episodes.take(10)
+                hotEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
                 println("🔥 Loaded ${episodes.size} hot episodes, set to state")
             }
             .onFailure { error ->
@@ -158,7 +146,7 @@ fun PodiumApp(
 
         xyzRankRepository.getHotPodcasts()
             .onSuccess { podcasts ->
-                hotPodcasts.value = podcasts.take(10)
+                hotPodcasts.value = podcasts.take(10).map { it.toPodcast() }
                 println("🔥 Loaded ${podcasts.size} hot podcasts, set to state")
             }
             .onFailure { error ->
@@ -168,7 +156,7 @@ fun PodiumApp(
 
         xyzRankRepository.getNewEpisodes()
             .onSuccess { episodes ->
-                newEpisodes.value = episodes.take(10)
+                newEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
                 println("✨ Loaded ${episodes.size} new episodes, set to state")
             }
             .onFailure { error ->
@@ -178,7 +166,7 @@ fun PodiumApp(
 
         xyzRankRepository.getNewPodcasts()
             .onSuccess { podcasts ->
-                newPodcasts.value = podcasts.take(10)
+                newPodcasts.value = podcasts.take(10).map { it.toPodcast() }
                 println("✨ Loaded ${podcasts.size} new podcasts, set to state")
             }
             .onFailure { error ->
@@ -480,8 +468,6 @@ fun PodiumApp(
                 downloads = downloads,
                 categories = categoriesState.value,
                 categoriesLoading = categoriesLoading.value,
-                recommendedPodcasts = recommendedPodcasts.value,
-                recommendedPodcastRepository = recommendedPodcastRepository,
                 hotEpisodes = hotEpisodes.value,
                 hotPodcasts = hotPodcasts.value,
                 newEpisodes = newEpisodes.value,
@@ -522,8 +508,6 @@ fun PodiumApp(
                 downloads = downloads,
                 categories = categoriesState.value,
                 categoriesLoading = categoriesLoading.value,
-                recommendedPodcasts = recommendedPodcasts.value,
-                recommendedPodcastRepository = recommendedPodcastRepository,
                 hotEpisodes = hotEpisodes.value,
                 hotPodcasts = hotPodcasts.value,
                 newEpisodes = newEpisodes.value,
@@ -593,12 +577,10 @@ private fun DesktopLayout(
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     categories: List<PodcastCategory>,
     categoriesLoading: Boolean,
-    recommendedPodcasts: List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>,
-    recommendedPodcastRepository: RecommendedPodcastRepository,
-    hotEpisodes: List<XYZRankEpisode>,
-    hotPodcasts: List<XYZRankPodcast>,
-    newEpisodes: List<XYZRankEpisode>,
-    newPodcasts: List<XYZRankPodcast>,
+    hotEpisodes: List<EpisodeWithPodcast>,
+    hotPodcasts: List<Podcast>,
+    newEpisodes: List<EpisodeWithPodcast>,
+    newPodcasts: List<Podcast>,
     environment: PodiumEnvironment,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
@@ -813,7 +795,6 @@ private fun DesktopLayout(
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
                                     state = homeState.copy(
-                                        recommendedPodcasts = recommendedPodcasts,
                                         hotEpisodes = hotEpisodes,
                                         hotPodcasts = hotPodcasts,
                                         newEpisodes = newEpisodes,
@@ -1010,12 +991,10 @@ private fun MobileLayout(
     downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
     categories: List<PodcastCategory>,
     categoriesLoading: Boolean,
-    recommendedPodcasts: List<Pair<com.opoojkk.podium.data.model.recommended.RecommendedPodcast, String>>,
-    recommendedPodcastRepository: RecommendedPodcastRepository,
-    hotEpisodes: List<XYZRankEpisode>,
-    hotPodcasts: List<XYZRankPodcast>,
-    newEpisodes: List<XYZRankEpisode>,
-    newPodcasts: List<XYZRankPodcast>,
+    hotEpisodes: List<EpisodeWithPodcast>,
+    hotPodcasts: List<Podcast>,
+    newEpisodes: List<EpisodeWithPodcast>,
+    newPodcasts: List<Podcast>,
     environment: PodiumEnvironment,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
@@ -1258,7 +1237,6 @@ private fun MobileLayout(
                             when (appState.currentDestination) {
                                 PodiumDestination.Home -> HomeScreen(
                                     state = homeState.copy(
-                                        recommendedPodcasts = recommendedPodcasts,
                                         hotEpisodes = hotEpisodes,
                                         hotPodcasts = hotPodcasts,
                                         newEpisodes = newEpisodes,
