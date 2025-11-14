@@ -329,9 +329,13 @@ fun PodiumApp(
         selectedPodcast
     ) {
         { podcast ->
+            println("🎯 Podcast clicked: id=${podcast.id}, title=${podcast.title}")
+            println("📝 Podcast description:\n${podcast.description}")
+
             if (podcast.id.startsWith("xyzrank_podcast_")) {
                 scope.launch {
                     try {
+                        println("🔍 Searching Apple Podcast for: ${podcast.title}")
                         snackbarHostState.showSnackbar("正在苹果播客中搜索...")
 
                         val searchResult = applePodcastSearchRepository.searchPodcast(
@@ -340,9 +344,16 @@ fun PodiumApp(
                         )
 
                         searchResult.onSuccess { searchPodcasts ->
+                            println("✅ Apple Podcast search results: ${searchPodcasts.size} found")
+                            searchPodcasts.forEachIndexed { index, result ->
+                                println("  [$index] ${result.collectionName}")
+                                println("      feedUrl: ${result.feedUrl}")
+                            }
+
                             if (searchPodcasts.isNotEmpty()) {
                                 val found = searchPodcasts.first()
                                 val feedUrl = found.feedUrl
+                                println("📡 Using feed URL: $feedUrl")
 
                                 if (!controller.checkIfSubscribed(feedUrl)) {
                                     controller.subscribe(feedUrl)
@@ -351,8 +362,10 @@ fun PodiumApp(
                                     snackbarHostState.showSnackbar("已订阅此播客")
                                 }
                             } else {
+                                println("⚠️ No Apple Podcast results, trying 小宇宙 fallback")
                                 val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
                                 val webLink = linkMatch?.groupValues?.get(1)
+                                println("🔗 Extracted link: $webLink")
                                 if (webLink != null) {
                                     snackbarHostState.showSnackbar("未找到匹配的播客，在小宇宙中查看", actionLabel = "打开")
                                     openUrlInBrowser(webLink)
@@ -361,8 +374,11 @@ fun PodiumApp(
                                 }
                             }
                         }.onFailure { error ->
+                            println("❌ Apple Podcast search failed: ${error.message}")
+                            error.printStackTrace()
                             val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
                             val webLink = linkMatch?.groupValues?.get(1)
+                            println("🔗 Fallback link: $webLink")
                             if (webLink != null) {
                                 snackbarHostState.showSnackbar("搜索失败，在小宇宙中查看", actionLabel = "打开")
                                 openUrlInBrowser(webLink)
@@ -371,8 +387,11 @@ fun PodiumApp(
                             }
                         }
                     } catch (e: Exception) {
+                        println("💥 Exception: ${e.message}")
+                        e.printStackTrace()
                         val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
                         val webLink = linkMatch?.groupValues?.get(1)
+                        println("🔗 Exception fallback link: $webLink")
                         if (webLink != null) {
                             snackbarHostState.showSnackbar("发生错误，在小宇宙中查看", actionLabel = "打开")
                             openUrlInBrowser(webLink)
@@ -382,6 +401,7 @@ fun PodiumApp(
                     }
                 }
             } else {
+                println("📂 Opening normal podcast details")
                 selectedPodcast.value = podcast
             }
         }
@@ -393,56 +413,83 @@ fun PodiumApp(
 
     val playEpisode: (Episode) -> Unit = remember(controller, openUrlInBrowser, snackbarHostState, scope, applePodcastSearchRepository) {
         { episode ->
+            println("🎬 Episode play requested: id=${episode.id}, title=${episode.title}")
+            println("📝 Episode description:\n${episode.description}")
+            println("🎵 Audio URL: '${episode.audioUrl}'")
+
             // Check if episode is from XYZRank (no audio URL)
             if (episode.audioUrl.isBlank() && episode.id.startsWith("xyzrank_episode_")) {
+                println("🔍 XYZRank episode detected, searching Apple Podcast...")
                 scope.launch {
                     try {
-                        // Show searching message
                         snackbarHostState.showSnackbar("正在苹果播客中搜索...")
 
                         // Search Apple Podcast for this episode
+                        println("🔍 Searching for episode: podcast='${episode.podcastTitle}', episode='${episode.title}'")
                         val result = applePodcastSearchRepository.searchEpisode(
                             podcastName = episode.podcastTitle,
                             episodeTitle = episode.title
                         )
 
                         result.onSuccess { episodes ->
+                            println("✅ Episode search results: ${episodes.size} found")
+                            episodes.forEachIndexed { index, ep ->
+                                println("  [$index] ${ep.trackName}")
+                                println("      audioUrl: ${ep.audioUrl}")
+                            }
+
                             if (episodes.isNotEmpty()) {
                                 val found = episodes.first()
+                                println("🔍 Now searching for podcast RSS feed...")
                                 // Try to get podcast RSS feed first
                                 val podcastResult = applePodcastSearchRepository.searchPodcast(episode.podcastTitle, limit = 1)
 
                                 podcastResult.onSuccess { podcasts ->
+                                    println("✅ Podcast search results: ${podcasts.size} found")
+                                    podcasts.forEach { p ->
+                                        println("  ${p.collectionName}")
+                                        println("    feedUrl: ${p.feedUrl}")
+                                    }
+
                                     if (podcasts.isNotEmpty()) {
                                         val feedUrl = podcasts.first().feedUrl
+                                        println("📡 Subscribing to: $feedUrl")
                                         // Subscribe to podcast if not already
                                         if (!controller.checkIfSubscribed(feedUrl)) {
                                             controller.subscribe(feedUrl)
                                             snackbarHostState.showSnackbar("已找到并订阅《${episode.podcastTitle}》，正在加载节目...")
                                         } else {
+                                            println("ℹ️ Already subscribed")
                                             snackbarHostState.showSnackbar("正在从订阅中加载节目...")
                                         }
                                         // The episode will be available after RSS parsing, user can play it from subscriptions
                                     } else {
+                                        println("⚠️ No podcast found, fallback to 小宇宙")
                                         // Fallback to web link
                                         val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                                         val webLink = linkMatch?.groupValues?.get(1)
+                                        println("🔗 Extracted link: $webLink")
                                         if (webLink != null) {
                                             snackbarHostState.showSnackbar("在小宇宙中查看此节目", actionLabel = "打开")
                                             openUrlInBrowser(webLink)
                                         }
                                     }
-                                }.onFailure {
+                                }.onFailure { error ->
+                                    println("❌ Podcast search failed: ${error.message}")
+                                    error.printStackTrace()
                                     val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                                     val webLink = linkMatch?.groupValues?.get(1)
+                                    println("🔗 Fallback link: $webLink")
                                     if (webLink != null) {
                                         snackbarHostState.showSnackbar("在小宇宙中查看此节目", actionLabel = "打开")
                                         openUrlInBrowser(webLink)
                                     }
                                 }
                             } else {
+                                println("⚠️ No episodes found, fallback to 小宇宙")
                                 val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                                 val webLink = linkMatch?.groupValues?.get(1)
+                                println("🔗 Extracted link: $webLink")
                                 if (webLink != null) {
                                     snackbarHostState.showSnackbar("未找到匹配的节目，在小宇宙中查看", actionLabel = "打开")
                                     openUrlInBrowser(webLink)
@@ -451,8 +498,11 @@ fun PodiumApp(
                                 }
                             }
                         }.onFailure { error ->
+                            println("❌ Episode search failed: ${error.message}")
+                            error.printStackTrace()
                             val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                             val webLink = linkMatch?.groupValues?.get(1)
+                            println("🔗 Fallback link: $webLink")
                             if (webLink != null) {
                                 snackbarHostState.showSnackbar("搜索失败，在小宇宙中查看", actionLabel = "打开")
                                 openUrlInBrowser(webLink)
@@ -461,8 +511,11 @@ fun PodiumApp(
                             }
                         }
                     } catch (e: Exception) {
+                        println("💥 Exception: ${e.message}")
+                        e.printStackTrace()
                         val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                         val webLink = linkMatch?.groupValues?.get(1)
+                        println("🔗 Exception fallback link: $webLink")
                         if (webLink != null) {
                             snackbarHostState.showSnackbar("发生错误，在小宇宙中查看", actionLabel = "打开")
                             openUrlInBrowser(webLink)
@@ -472,6 +525,7 @@ fun PodiumApp(
                     }
                 }
             } else {
+                println("▶️ Playing normal episode")
                 // Normal episode, play it
                 pendingEpisodeId = episode.id
                 controller.playEpisode(episode)
