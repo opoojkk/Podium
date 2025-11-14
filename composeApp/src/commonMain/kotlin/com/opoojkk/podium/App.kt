@@ -359,11 +359,10 @@ fun PodiumApp(
                                 val recommendedPodcast = com.opoojkk.podium.data.model.recommended.RecommendedPodcast(
                                     id = found.collectionId.toString(),
                                     name = found.collectionName,
-                                    author = found.artistName,
+                                    host = found.artistName,
                                     description = podcast.description, // Use XYZRank description
-                                    imageUrl = found.artworkUrl600 ?: found.artworkUrl100,
-                                    rssUrl = found.feedUrl,
-                                    genres = found.genres ?: emptyList()
+                                    artworkUrl = found.artworkUrl600 ?: found.artworkUrl100,
+                                    rssUrl = found.feedUrl
                                 )
 
                                 println("📂 Opening podcast details (as recommended): ${recommendedPodcast.name}")

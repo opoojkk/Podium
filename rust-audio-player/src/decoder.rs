@@ -31,6 +31,7 @@ pub struct AudioDecoder {
     pub format: AudioFormat,
     pub metadata: AudioMetadata,
     cover_art: Option<CoverArt>,
+    channels_verified: bool,
 }
 
 impl AudioDecoder {
@@ -84,9 +85,15 @@ impl AudioDecoder {
         // Extract audio format information
         let sample_rate = codec_params.sample_rate
             .ok_or_else(|| AudioError::UnsupportedFormat("Sample rate not specified".to_string()))?;
-        let channels = codec_params.channels
-            .ok_or_else(|| AudioError::UnsupportedFormat("Channels not specified".to_string()))?
-            .count() as u16;
+
+        // Try to get channels from codec params, but if not available, decode the first packet
+        let (channels, channels_verified) = if let Some(ch) = codec_params.channels {
+            (ch.count() as u16, true)
+        } else {
+            log::warn!("Channels not specified in codec params, will decode first packet to determine");
+            // Default to stereo, we'll verify this when decoding the first packet
+            (2, false)
+        };
 
         // Calculate duration
         let duration_ms = if let Some(n_frames) = codec_params.n_frames {
@@ -239,6 +246,7 @@ impl AudioDecoder {
             format,
             metadata,
             cover_art,
+            channels_verified,
         })
     }
 
@@ -263,6 +271,29 @@ impl AudioDecoder {
         // Decode the packet
         let decoded = self.decoder.decode(&packet)
             .map_err(|e| AudioError::DecodingError(format!("Failed to decode packet: {}", e)))?;
+
+        // Verify/update channels on first decode if not already verified
+        if !self.channels_verified {
+            let actual_channels = match &decoded {
+                AudioBufferRef::F32(buf) => buf.spec().channels.count(),
+                AudioBufferRef::U8(buf) => buf.spec().channels.count(),
+                AudioBufferRef::U16(buf) => buf.spec().channels.count(),
+                AudioBufferRef::U24(buf) => buf.spec().channels.count(),
+                AudioBufferRef::U32(buf) => buf.spec().channels.count(),
+                AudioBufferRef::S8(buf) => buf.spec().channels.count(),
+                AudioBufferRef::S16(buf) => buf.spec().channels.count(),
+                AudioBufferRef::S24(buf) => buf.spec().channels.count(),
+                AudioBufferRef::S32(buf) => buf.spec().channels.count(),
+                AudioBufferRef::F64(buf) => buf.spec().channels.count(),
+            } as u16;
+
+            if actual_channels != self.format.channels {
+                log::info!("Updating channels from default {} to actual {}", self.format.channels, actual_channels);
+                self.format.channels = actual_channels;
+                self.metadata.format_info.channels = actual_channels;
+            }
+            self.channels_verified = true;
+        }
 
         // Convert audio buffer to f32 samples
         let mut samples = Self::convert_to_f32(&decoded)?;
