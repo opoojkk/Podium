@@ -1,0 +1,118 @@
+package com.opoojkk.podium.data.repository
+
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * Repository for searching podcasts and episodes using Apple Podcast Search API (iTunes Search API)
+ */
+class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
+
+    companion object {
+        private const val BASE_URL = "https://itunes.apple.com/search"
+    }
+
+    /**
+     * Search for podcasts by name
+     */
+    suspend fun searchPodcast(query: String, limit: Int = 5): Result<List<ApplePodcastResult>> = withContext(Dispatchers.IO) {
+        try {
+            val response = httpClient.get(BASE_URL) {
+                parameter("term", query)
+                parameter("entity", "podcast")
+                parameter("limit", limit)
+                parameter("country", "cn") // Search in China store for better Chinese podcast results
+            }.body<ApplePodcastSearchResponse>()
+
+            Result.success(response.results)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Search for podcast episodes by title
+     */
+    suspend fun searchEpisode(podcastName: String, episodeTitle: String, limit: Int = 5): Result<List<ApplePodcastEpisodeResult>> = withContext(Dispatchers.IO) {
+        try {
+            // Search for the podcast first to get its collection ID
+            val podcastResponse = httpClient.get(BASE_URL) {
+                parameter("term", podcastName)
+                parameter("entity", "podcast")
+                parameter("limit", 1)
+                parameter("country", "cn")
+            }.body<ApplePodcastSearchResponse>()
+
+            if (podcastResponse.results.isEmpty()) {
+                return@withContext Result.success(emptyList())
+            }
+
+            // Then search for episodes in that podcast
+            val collectionId = podcastResponse.results.first().collectionId
+            val episodeResponse = httpClient.get(BASE_URL) {
+                parameter("term", episodeTitle)
+                parameter("entity", "podcastEpisode")
+                parameter("limit", limit)
+                parameter("country", "cn")
+            }.body<ApplePodcastEpisodeSearchResponse>()
+
+            // Filter episodes that belong to this podcast
+            val matchingEpisodes = episodeResponse.results.filter {
+                it.collectionId == collectionId
+            }
+
+            Result.success(matchingEpisodes)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+
+@Serializable
+data class ApplePodcastSearchResponse(
+    val resultCount: Int,
+    val results: List<ApplePodcastResult>
+)
+
+@Serializable
+data class ApplePodcastResult(
+    val collectionId: Long,
+    val collectionName: String,
+    val artistName: String,
+    val artworkUrl600: String? = null,
+    val artworkUrl100: String? = null,
+    val feedUrl: String,
+    val trackCount: Int? = null,
+    val primaryGenreName: String? = null,
+    val genres: List<String>? = null
+)
+
+@Serializable
+data class ApplePodcastEpisodeSearchResponse(
+    val resultCount: Int,
+    val results: List<ApplePodcastEpisodeResult>
+)
+
+@Serializable
+data class ApplePodcastEpisodeResult(
+    val trackId: Long,
+    val trackName: String,
+    val collectionId: Long,
+    val collectionName: String,
+    val artistName: String,
+    @SerialName("episodeUrl")
+    val audioUrl: String? = null,
+    val artworkUrl600: String? = null,
+    val artworkUrl100: String? = null,
+    val releaseDate: String,
+    val description: String? = null,
+    @SerialName("trackTimeMillis")
+    val durationMs: Long? = null,
+    val feedUrl: String? = null
+)

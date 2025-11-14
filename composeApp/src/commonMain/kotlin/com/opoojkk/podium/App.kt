@@ -116,6 +116,9 @@ fun PodiumApp(
     val xyzRankRepository = remember {
         XYZRankRepository(httpClient = environment.httpClient)
     }
+    val applePodcastSearchRepository = remember {
+        com.opoojkk.podium.data.repository.ApplePodcastSearchRepository(httpClient = environment.httpClient)
+    }
     val hotEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
     val hotPodcasts = remember { mutableStateOf<List<Podcast>>(emptyList()) }
     val newEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
@@ -320,27 +323,56 @@ fun PodiumApp(
     var previousPlaybackState by remember { mutableStateOf(playbackState) }
     var lastHandledCompletionId by remember { mutableStateOf<String?>(null) }
 
-    val playEpisode: (Episode) -> Unit = remember(controller, openUrlInBrowser, snackbarHostState, scope) {
+    val playEpisode: (Episode) -> Unit = remember(controller, openUrlInBrowser, snackbarHostState, scope, applePodcastSearchRepository) {
         { episode ->
             // Check if episode is from XYZRank (no audio URL)
             if (episode.audioUrl.isBlank() && episode.id.startsWith("xyzrank_episode_")) {
-                // Extract web link from description
-                val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
-                val webLink = linkMatch?.groupValues?.get(1)
+                scope.launch {
+                    try {
+                        // Show searching message
+                        snackbarHostState.showSnackbar("正在苹果播客中搜索...")
 
-                if (webLink != null) {
-                    // Open in browser/external app
-                    val opened = openUrlInBrowser(webLink)
-                    scope.launch {
-                        if (opened) {
-                            snackbarHostState.showSnackbar("已在小宇宙中打开")
-                        } else {
-                            snackbarHostState.showSnackbar("无法打开链接")
+                        // Search Apple Podcast for this episode
+                        val result = applePodcastSearchRepository.searchEpisode(
+                            podcastName = episode.podcastTitle,
+                            episodeTitle = episode.title
+                        )
+
+                        result.onSuccess { episodes ->
+                            if (episodes.isNotEmpty()) {
+                                val found = episodes.first()
+                                // Try to get podcast RSS feed first
+                                val podcastResult = applePodcastSearchRepository.searchPodcast(episode.podcastTitle, limit = 1)
+
+                                podcastResult.onSuccess { podcasts ->
+                                    if (podcasts.isNotEmpty()) {
+                                        val feedUrl = podcasts.first().feedUrl
+                                        // Subscribe to podcast if not already
+                                        if (!controller.checkIfSubscribed(feedUrl)) {
+                                            controller.subscribe(feedUrl)
+                                            snackbarHostState.showSnackbar("已找到并订阅《${episode.podcastTitle}》，正在加载节目...")
+                                        } else {
+                                            snackbarHostState.showSnackbar("正在从订阅中加载节目...")
+                                        }
+                                        // The episode will be available after RSS parsing, user can play it from subscriptions
+                                    } else {
+                                        // Fallback to web link
+                                        showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
+                                    }
+                                }.onFailure {
+                                    showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
+                                }
+                            } else {
+                                snackbarHostState.showSnackbar("未找到匹配的节目")
+                                showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
+                            }
+                        }.onFailure { error ->
+                            snackbarHostState.showSnackbar("搜索失败：${error.message}")
+                            showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
                         }
-                    }
-                } else {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("此节目来自 XYZRank 榜单，仅供浏览")
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("发生错误")
+                        showXiaoyuzhouFallback(episode, openUrlInBrowser, snackbarHostState)
                     }
                 }
             } else {
@@ -348,6 +380,26 @@ fun PodiumApp(
                 pendingEpisodeId = episode.id
                 controller.playEpisode(episode)
             }
+        }
+    }
+
+    // Helper function to show 小宇宙 fallback for episodes
+    suspend fun showXiaoyuzhouFallback(episode: Episode, openUrl: (String) -> Boolean, snackbar: SnackbarHostState) {
+        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
+        val webLink = linkMatch?.groupValues?.get(1)
+        if (webLink != null) {
+            snackbar.showSnackbar("在小宇宙中查看此节目", actionLabel = "打开")
+            openUrl(webLink)
+        }
+    }
+
+    // Helper function to show 小宇宙 fallback for podcasts
+    suspend fun showPodcastXiaoyuzhouFallback(podcast: Podcast, openUrl: (String) -> Boolean, snackbar: SnackbarHostState) {
+        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+        val webLink = linkMatch?.groupValues?.get(1)
+        if (webLink != null) {
+            snackbar.showSnackbar("在小宇宙中查看此播客", actionLabel = "打开")
+            openUrl(webLink)
         }
     }
 
@@ -849,29 +901,42 @@ private fun DesktopLayout(
                                     isRefreshing = subscriptionsState.isRefreshing,
                                     onPodcastClick = { podcast ->
                                         // Handle podcast click from XYZRank
-                                        if (podcast.feedUrl.isNotBlank() && podcast.id.startsWith("xyzrank_podcast_")) {
-                                            // XYZRank podcast with RSS feed, try to subscribe
-                                            controller.subscribe(podcast.feedUrl)
+                                        if (podcast.id.startsWith("xyzrank_podcast_")) {
                                             scope.launch {
-                                                snackbarHostState.showSnackbar("已订阅《${podcast.title}》")
-                                            }
-                                        } else if (podcast.id.startsWith("xyzrank_podcast_")) {
-                                            // XYZRank podcast without RSS, try to open 小宇宙 link
-                                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                            val webLink = linkMatch?.groupValues?.get(1)
+                                                try {
+                                                    snackbarHostState.showSnackbar("正在苹果播客中搜索...")
 
-                                            if (webLink != null) {
-                                                val opened = openUrlInBrowser(webLink)
-                                                scope.launch {
-                                                    if (opened) {
-                                                        snackbarHostState.showSnackbar("已在小宇宙中打开")
-                                                    } else {
-                                                        snackbarHostState.showSnackbar("无法打开链接")
+                                                    // Search Apple Podcast for this podcast
+                                                    val result = applePodcastSearchRepository.searchPodcast(
+                                                        query = podcast.title,
+                                                        limit = 5
+                                                    )
+
+                                                    result.onSuccess { podcasts ->
+                                                        if (podcasts.isNotEmpty()) {
+                                                            // Found matching podcast
+                                                            val found = podcasts.first()
+                                                            val feedUrl = found.feedUrl
+
+                                                            // Subscribe to the podcast
+                                                            if (!controller.checkIfSubscribed(feedUrl)) {
+                                                                controller.subscribe(feedUrl)
+                                                                snackbarHostState.showSnackbar("已找到并订阅《${found.collectionName}》")
+                                                            } else {
+                                                                snackbarHostState.showSnackbar("已订阅此播客")
+                                                            }
+                                                        } else {
+                                                            // Not found, fallback to 小宇宙
+                                                            snackbarHostState.showSnackbar("未找到匹配的播客")
+                                                            showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
+                                                        }
+                                                    }.onFailure { error ->
+                                                        snackbarHostState.showSnackbar("搜索失败：${error.message}")
+                                                        showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
                                                     }
-                                                }
-                                            } else {
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar("该播客来自 XYZRank 榜单，暂无可用链接")
+                                                } catch (e: Exception) {
+                                                    snackbarHostState.showSnackbar("发生错误")
+                                                    showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
                                                 }
                                             }
                                         } else {
@@ -1320,29 +1385,42 @@ private fun MobileLayout(
                                     isRefreshing = subscriptionsState.isRefreshing,
                                     onPodcastClick = { podcast ->
                                         // Handle podcast click from XYZRank
-                                        if (podcast.feedUrl.isNotBlank() && podcast.id.startsWith("xyzrank_podcast_")) {
-                                            // XYZRank podcast with RSS feed, try to subscribe
-                                            controller.subscribe(podcast.feedUrl)
+                                        if (podcast.id.startsWith("xyzrank_podcast_")) {
                                             scope.launch {
-                                                snackbarHostState.showSnackbar("已订阅《${podcast.title}》")
-                                            }
-                                        } else if (podcast.id.startsWith("xyzrank_podcast_")) {
-                                            // XYZRank podcast without RSS, try to open 小宇宙 link
-                                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                            val webLink = linkMatch?.groupValues?.get(1)
+                                                try {
+                                                    snackbarHostState.showSnackbar("正在苹果播客中搜索...")
 
-                                            if (webLink != null) {
-                                                val opened = openUrlInBrowser(webLink)
-                                                scope.launch {
-                                                    if (opened) {
-                                                        snackbarHostState.showSnackbar("已在小宇宙中打开")
-                                                    } else {
-                                                        snackbarHostState.showSnackbar("无法打开链接")
+                                                    // Search Apple Podcast for this podcast
+                                                    val result = applePodcastSearchRepository.searchPodcast(
+                                                        query = podcast.title,
+                                                        limit = 5
+                                                    )
+
+                                                    result.onSuccess { podcasts ->
+                                                        if (podcasts.isNotEmpty()) {
+                                                            // Found matching podcast
+                                                            val found = podcasts.first()
+                                                            val feedUrl = found.feedUrl
+
+                                                            // Subscribe to the podcast
+                                                            if (!controller.checkIfSubscribed(feedUrl)) {
+                                                                controller.subscribe(feedUrl)
+                                                                snackbarHostState.showSnackbar("已找到并订阅《${found.collectionName}》")
+                                                            } else {
+                                                                snackbarHostState.showSnackbar("已订阅此播客")
+                                                            }
+                                                        } else {
+                                                            // Not found, fallback to 小宇宙
+                                                            snackbarHostState.showSnackbar("未找到匹配的播客")
+                                                            showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
+                                                        }
+                                                    }.onFailure { error ->
+                                                        snackbarHostState.showSnackbar("搜索失败：${error.message}")
+                                                        showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
                                                     }
-                                                }
-                                            } else {
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar("该播客来自 XYZRank 榜单，暂无可用链接")
+                                                } catch (e: Exception) {
+                                                    snackbarHostState.showSnackbar("发生错误")
+                                                    showPodcastXiaoyuzhouFallback(podcast, openUrlInBrowser, snackbarHostState)
                                                 }
                                             }
                                         } else {
