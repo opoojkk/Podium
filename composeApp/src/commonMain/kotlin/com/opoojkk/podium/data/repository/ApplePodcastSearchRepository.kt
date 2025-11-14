@@ -4,10 +4,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 /**
  * Repository for searching podcasts and episodes using Apple Podcast Search API (iTunes Search API)
@@ -18,18 +20,24 @@ class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
         private const val BASE_URL = "https://itunes.apple.com/search"
     }
 
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
+
     /**
      * Search for podcasts by name
      */
     suspend fun searchPodcast(query: String, limit: Int = 5): Result<List<ApplePodcastResult>> = withContext(Dispatchers.IO) {
         try {
-            val response = httpClient.get(BASE_URL) {
+            val responseText = httpClient.get(BASE_URL) {
                 parameter("term", query)
                 parameter("entity", "podcast")
                 parameter("limit", limit)
                 parameter("country", "cn") // Search in China store for better Chinese podcast results
-            }.body<ApplePodcastSearchResponse>()
+            }.bodyAsText()
 
+            val response = json.decodeFromString<ApplePodcastSearchResponse>(responseText)
             Result.success(response.results)
         } catch (e: Exception) {
             Result.failure(e)
@@ -42,12 +50,14 @@ class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
     suspend fun searchEpisode(podcastName: String, episodeTitle: String, limit: Int = 5): Result<List<ApplePodcastEpisodeResult>> = withContext(Dispatchers.IO) {
         try {
             // Search for the podcast first to get its collection ID
-            val podcastResponse = httpClient.get(BASE_URL) {
+            val podcastResponseText = httpClient.get(BASE_URL) {
                 parameter("term", podcastName)
                 parameter("entity", "podcast")
                 parameter("limit", 1)
                 parameter("country", "cn")
-            }.body<ApplePodcastSearchResponse>()
+            }.bodyAsText()
+
+            val podcastResponse = json.decodeFromString<ApplePodcastSearchResponse>(podcastResponseText)
 
             if (podcastResponse.results.isEmpty()) {
                 return@withContext Result.success(emptyList())
@@ -55,12 +65,14 @@ class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
 
             // Then search for episodes in that podcast
             val collectionId = podcastResponse.results.first().collectionId
-            val episodeResponse = httpClient.get(BASE_URL) {
+            val episodeResponseText = httpClient.get(BASE_URL) {
                 parameter("term", episodeTitle)
                 parameter("entity", "podcastEpisode")
                 parameter("limit", limit)
                 parameter("country", "cn")
-            }.body<ApplePodcastEpisodeSearchResponse>()
+            }.bodyAsText()
+
+            val episodeResponse = json.decodeFromString<ApplePodcastEpisodeSearchResponse>(episodeResponseText)
 
             // Filter episodes that belong to this podcast
             val matchingEpisodes = episodeResponse.results.filter {
