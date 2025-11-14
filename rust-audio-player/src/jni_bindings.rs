@@ -512,6 +512,7 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetMetadat
                         Err(_) => std::ptr::null_mut()
                     }
                 }
+            }
         } else {
             log::error!("Failed to downcast player to AndroidAudioPlayer");
             std::ptr::null_mut()
