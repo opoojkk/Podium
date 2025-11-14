@@ -430,34 +430,53 @@ fun PodiumApp(
                                 val found = episodes.first()
                                 println("🎵 Found episode with audioUrl: ${found.audioUrl}")
 
-                                // Create Episode from search result and play immediately
-                                val playableEpisode = Episode(
-                                    id = "apple_${found.trackId}",
-                                    podcastId = found.collectionId.toString(),
-                                    podcastTitle = found.collectionName,
-                                    title = found.trackName,
-                                    description = found.description ?: episode.description,
-                                    audioUrl = found.audioUrl,
-                                    publishDate = found.releaseDate,
-                                    duration = found.trackTimeMillis,
-                                    imageUrl = found.artworkUrl600 ?: found.artworkUrl100 ?: episode.imageUrl
-                                )
+                                // Check if we have a valid audio URL
+                                val validAudioUrl = found.audioUrl?.takeIf { it.isNotBlank() }
+                                if (validAudioUrl != null) {
+                                    // Parse release date to Instant
+                                    val publishDate = try {
+                                        kotlinx.datetime.Instant.parse(found.releaseDate)
+                                    } catch (e: Exception) {
+                                        println("⚠️ Failed to parse date: ${found.releaseDate}, using current time")
+                                        kotlinx.datetime.Clock.System.now()
+                                    }
 
-                                println("▶️ Playing converted episode")
-                                pendingEpisodeId = playableEpisode.id
-                                controller.playEpisode(playableEpisode)
+                                    // Create Episode from search result and play immediately
+                                    val playableEpisode = Episode(
+                                        id = "apple_${found.trackId}",
+                                        podcastId = found.collectionId.toString(),
+                                        podcastTitle = found.collectionName,
+                                        title = found.trackName,
+                                        description = found.description ?: episode.description,
+                                        audioUrl = validAudioUrl,
+                                        publishDate = publishDate,
+                                        duration = found.durationMs,
+                                        imageUrl = found.artworkUrl600 ?: found.artworkUrl100 ?: episode.imageUrl
+                                    )
 
-                                // Subscribe to podcast in background for future access
-                                println("🔍 Searching for podcast RSS feed in background...")
-                                val podcastResult = applePodcastSearchRepository.searchPodcast(episode.podcastTitle, limit = 1)
-                                podcastResult.onSuccess { podcasts ->
-                                    if (podcasts.isNotEmpty()) {
-                                        val feedUrl = podcasts.first().feedUrl
-                                        println("📡 Background subscribing to: $feedUrl")
-                                        if (!controller.checkIfSubscribed(feedUrl)) {
-                                            controller.subscribe(feedUrl)
-                                            println("✅ Subscribed successfully")
+                                    println("▶️ Playing converted episode")
+                                    pendingEpisodeId = playableEpisode.id
+                                    controller.playEpisode(playableEpisode)
+
+                                    // Subscribe to podcast in background for future access
+                                    println("🔍 Searching for podcast RSS feed in background...")
+                                    val podcastResult = applePodcastSearchRepository.searchPodcast(episode.podcastTitle, limit = 1)
+                                    podcastResult.onSuccess { podcasts ->
+                                        if (podcasts.isNotEmpty()) {
+                                            val feedUrl = podcasts.first().feedUrl
+                                            println("📡 Background subscribing to: $feedUrl")
+                                            if (!controller.checkIfSubscribed(feedUrl)) {
+                                                controller.subscribe(feedUrl)
+                                                println("✅ Subscribed successfully")
+                                            }
                                         }
+                                    }
+                                } else {
+                                    println("⚠️ No valid audio URL in search result")
+                                    val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
+                                    val webLink = linkMatch?.groupValues?.get(1)
+                                    if (webLink != null) {
+                                        openUrlInBrowser(webLink)
                                     }
                                 }
                             } else {
