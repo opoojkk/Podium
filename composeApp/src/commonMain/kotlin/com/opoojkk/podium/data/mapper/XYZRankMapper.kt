@@ -17,14 +17,16 @@ import kotlinx.datetime.toLocalDateTime
 
 /**
  * Convert XYZRankEpisode to EpisodeWithPodcast
+ * Note: XYZRank episodes cannot be played directly as they don't have audio URLs,
+ * only web links to platforms like 小宇宙
  */
 fun XYZRankEpisode.toEpisodeWithPodcast(): EpisodeWithPodcast {
     val podcast = Podcast(
         id = "xyzrank_podcast_$podcastID",
         title = podcastName,
-        description = "来自 XYZRank 热门榜单 · $primaryGenreName",
+        description = "来自 XYZRank 热门榜单 · $primaryGenreName\n小宇宙链接：$link",
         artworkUrl = logoURL,
-        feedUrl = "", // XYZRank doesn't provide RSS feed URL
+        feedUrl = "", // XYZRank doesn't provide RSS feed URL in episode data
         lastUpdated = parsePostTime(postTime),
         autoDownload = false,
     )
@@ -38,9 +40,10 @@ fun XYZRankEpisode.toEpisodeWithPodcast(): EpisodeWithPodcast {
             playCount = playCount,
             commentCount = commentCount,
             subscription = subscription,
-            openRate = openRate
+            openRate = openRate,
+            webLink = link
         ),
-        audioUrl = link, // Note: this is the episode web link, not direct audio URL
+        audioUrl = "", // XYZRank episodes don't have direct audio URLs
         publishDate = parsePostTime(postTime),
         duration = duration.toLong() * 1000, // Convert seconds to milliseconds
         imageUrl = logoURL,
@@ -56,6 +59,9 @@ fun XYZRankEpisode.toEpisodeWithPodcast(): EpisodeWithPodcast {
  * Convert XYZRankPodcast to Podcast
  */
 fun XYZRankPodcast.toPodcast(): Podcast {
+    val xiaoyuzhouLink = links.firstOrNull { it.name.contains("小宇宙", ignoreCase = true) }?.url
+    val rssLink = links.firstOrNull { it.name.contains("RSS", ignoreCase = true) }?.url
+
     return Podcast(
         id = "xyzrank_podcast_$id",
         title = name,
@@ -65,10 +71,12 @@ fun XYZRankPodcast.toPodcast(): Podcast {
             trackCount = trackCount,
             avgPlayCount = avgPlayCount,
             avgDuration = avgDuration,
-            activeRate = activeRate
+            activeRate = activeRate,
+            xiaoyuzhouLink = xiaoyuzhouLink,
+            rssLink = rssLink
         ),
         artworkUrl = logoURL,
-        feedUrl = links.firstOrNull { it.name.contains("RSS", ignoreCase = true) }?.url ?: "",
+        feedUrl = rssLink ?: "",
         lastUpdated = parseLastReleaseDate(lastReleaseDate),
         autoDownload = false,
     )
@@ -81,13 +89,18 @@ private fun buildEpisodeDescription(
     playCount: Int,
     commentCount: Int,
     subscription: Int,
-    openRate: Double
+    openRate: Double,
+    webLink: String
 ): String {
     return buildString {
+        append("📊 数据统计\n")
         append("播放量：${formatCount(playCount)} · ")
         append("评论：${formatCount(commentCount)} · ")
         append("订阅：${formatCount(subscription)} · ")
-        append("打开率：${"%.1f".format(openRate * 100)}%")
+        append("打开率：${"%.1f".format(openRate * 100)}%\n\n")
+        append("🔗 来源：XYZRank 榜单\n")
+        append("💡 提示：此节目来自榜单推荐，点击可在小宇宙中收听\n")
+        append("链接：$webLink")
     }
 }
 
@@ -100,15 +113,28 @@ private fun buildPodcastDescription(
     trackCount: Int,
     avgPlayCount: Int,
     avgDuration: Double,
-    activeRate: Double
+    activeRate: Double,
+    xiaoyuzhouLink: String?,
+    rssLink: String?
 ): String {
     return buildString {
+        append("📊 播客信息\n")
         genre?.let { append("分类：$it\n") }
         append("作者：$authors\n")
         append("节目数：$trackCount\n")
         append("平均播放量：${formatCount(avgPlayCount)}\n")
         append("平均时长：${formatDuration(avgDuration)}\n")
-        append("活跃度：${"%.1f".format(activeRate * 100)}%")
+        append("活跃度：${"%.1f".format(activeRate * 100)}%\n\n")
+
+        append("🔗 来源：XYZRank 榜单\n")
+        if (rssLink != null) {
+            append("✅ 可订阅：此播客提供 RSS 源，点击可订阅\n")
+        } else if (xiaoyuzhouLink != null) {
+            append("💡 提示：点击在小宇宙中查看\n")
+            append("链接：$xiaoyuzhouLink")
+        } else {
+            append("💡 提示：此播客来自榜单推荐")
+        }
     }
 }
 

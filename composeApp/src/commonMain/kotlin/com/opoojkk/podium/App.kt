@@ -320,10 +320,34 @@ fun PodiumApp(
     var previousPlaybackState by remember { mutableStateOf(playbackState) }
     var lastHandledCompletionId by remember { mutableStateOf<String?>(null) }
 
-    val playEpisode: (Episode) -> Unit = remember(controller) {
+    val playEpisode: (Episode) -> Unit = remember(controller, openUrlInBrowser, snackbarHostState, scope) {
         { episode ->
-            pendingEpisodeId = episode.id
-            controller.playEpisode(episode)
+            // Check if episode is from XYZRank (no audio URL)
+            if (episode.audioUrl.isBlank() && episode.id.startsWith("xyzrank_episode_")) {
+                // Extract web link from description
+                val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
+                val webLink = linkMatch?.groupValues?.get(1)
+
+                if (webLink != null) {
+                    // Open in browser/external app
+                    val opened = openUrlInBrowser(webLink)
+                    scope.launch {
+                        if (opened) {
+                            snackbarHostState.showSnackbar("已在小宇宙中打开")
+                        } else {
+                            snackbarHostState.showSnackbar("无法打开链接")
+                        }
+                    }
+                } else {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("此节目来自 XYZRank 榜单，仅供浏览")
+                    }
+                }
+            } else {
+                // Normal episode, play it
+                pendingEpisodeId = episode.id
+                controller.playEpisode(episode)
+            }
         }
     }
 
@@ -825,17 +849,34 @@ private fun DesktopLayout(
                                     isRefreshing = subscriptionsState.isRefreshing,
                                     onPodcastClick = { podcast ->
                                         // Handle podcast click from XYZRank
-                                        if (podcast.feedUrl.isNotBlank()) {
-                                            // Has RSS feed, try to subscribe
+                                        if (podcast.feedUrl.isNotBlank() && podcast.id.startsWith("xyzrank_podcast_")) {
+                                            // XYZRank podcast with RSS feed, try to subscribe
                                             controller.subscribe(podcast.feedUrl)
                                             scope.launch {
                                                 snackbarHostState.showSnackbar("已订阅《${podcast.title}》")
                                             }
-                                        } else {
-                                            // No RSS feed available
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("该播客来自 XYZRank 榜单，暂无 RSS 源可订阅")
+                                        } else if (podcast.id.startsWith("xyzrank_podcast_")) {
+                                            // XYZRank podcast without RSS, try to open 小宇宙 link
+                                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                            val webLink = linkMatch?.groupValues?.get(1)
+
+                                            if (webLink != null) {
+                                                val opened = openUrlInBrowser(webLink)
+                                                scope.launch {
+                                                    if (opened) {
+                                                        snackbarHostState.showSnackbar("已在小宇宙中打开")
+                                                    } else {
+                                                        snackbarHostState.showSnackbar("无法打开链接")
+                                                    }
+                                                }
+                                            } else {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("该播客来自 XYZRank 榜单，暂无可用链接")
+                                                }
                                             }
+                                        } else {
+                                            // Normal podcast, show podcast details
+                                            selectedPodcast.value = podcast
                                         }
                                     },
                                     currentPlayingEpisodeId = playbackState.episode?.id,
@@ -1279,17 +1320,34 @@ private fun MobileLayout(
                                     isRefreshing = subscriptionsState.isRefreshing,
                                     onPodcastClick = { podcast ->
                                         // Handle podcast click from XYZRank
-                                        if (podcast.feedUrl.isNotBlank()) {
-                                            // Has RSS feed, try to subscribe
+                                        if (podcast.feedUrl.isNotBlank() && podcast.id.startsWith("xyzrank_podcast_")) {
+                                            // XYZRank podcast with RSS feed, try to subscribe
                                             controller.subscribe(podcast.feedUrl)
                                             scope.launch {
                                                 snackbarHostState.showSnackbar("已订阅《${podcast.title}》")
                                             }
-                                        } else {
-                                            // No RSS feed available
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("该播客来自 XYZRank 榜单，暂无 RSS 源可订阅")
+                                        } else if (podcast.id.startsWith("xyzrank_podcast_")) {
+                                            // XYZRank podcast without RSS, try to open 小宇宙 link
+                                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
+                                            val webLink = linkMatch?.groupValues?.get(1)
+
+                                            if (webLink != null) {
+                                                val opened = openUrlInBrowser(webLink)
+                                                scope.launch {
+                                                    if (opened) {
+                                                        snackbarHostState.showSnackbar("已在小宇宙中打开")
+                                                    } else {
+                                                        snackbarHostState.showSnackbar("无法打开链接")
+                                                    }
+                                                }
+                                            } else {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("该播客来自 XYZRank 榜单，暂无可用链接")
+                                                }
                                             }
+                                        } else {
+                                            // Normal podcast, show podcast details
+                                            selectedPodcast.value = podcast
                                         }
                                     },
                                     currentPlayingEpisodeId = playbackState.episode?.id,
