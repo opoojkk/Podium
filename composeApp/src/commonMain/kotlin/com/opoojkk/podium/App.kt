@@ -319,7 +319,7 @@ fun PodiumApp(
         { url -> openUrl(platformContext, url) }
     }
 
-    // Handle XYZRank podcast click - search Apple Podcast, subscribe and open details
+    // Handle XYZRank podcast click - search Apple Podcast and open details (without subscribing)
     val handleXYZRankPodcastClick: (Podcast) -> Unit = remember(
         controller,
         applePodcastSearchRepository,
@@ -327,7 +327,8 @@ fun PodiumApp(
         snackbarHostState,
         scope,
         selectedPodcast,
-        subscriptionsState
+        selectedRecommendedPodcast,
+        showRecommendedPodcastDetail
     ) {
         { podcast ->
             println("🎯 Podcast clicked: id=${podcast.id}, title=${podcast.title}")
@@ -352,31 +353,22 @@ fun PodiumApp(
 
                             if (searchPodcasts.isNotEmpty()) {
                                 val found = searchPodcasts.first()
-                                val feedUrl = found.feedUrl
-                                println("📡 Using feed URL: $feedUrl")
+                                println("📡 Using feed URL: ${found.feedUrl}")
 
-                                // Subscribe if not already subscribed
-                                val wasSubscribed = controller.checkIfSubscribed(feedUrl)
-                                if (!wasSubscribed) {
-                                    controller.subscribe(feedUrl)
-                                    println("✅ Subscribed to: ${found.collectionName}")
-                                    // Wait a bit for subscription to be processed
-                                    delay(800)
-                                } else {
-                                    println("ℹ️ Already subscribed to this podcast")
-                                }
+                                // Convert to RecommendedPodcast to show details without subscribing
+                                val recommendedPodcast = com.opoojkk.podium.data.model.recommended.RecommendedPodcast(
+                                    id = found.collectionId.toString(),
+                                    name = found.collectionName,
+                                    author = found.artistName,
+                                    description = podcast.description, // Use XYZRank description
+                                    imageUrl = found.artworkUrl600 ?: found.artworkUrl100,
+                                    rssUrl = found.feedUrl,
+                                    genres = found.genres ?: emptyList()
+                                )
 
-                                // Find the podcast in subscriptions and open details
-                                val subscribedPodcast = subscriptionsState.subscriptions.find {
-                                    it.feedUrl == feedUrl
-                                }
-
-                                if (subscribedPodcast != null) {
-                                    println("📂 Opening podcast details: ${subscribedPodcast.title}")
-                                    selectedPodcast.value = subscribedPodcast
-                                } else {
-                                    println("⚠️ Subscribed podcast not found in state yet")
-                                }
+                                println("📂 Opening podcast details (as recommended): ${recommendedPodcast.name}")
+                                selectedRecommendedPodcast.value = recommendedPodcast
+                                showRecommendedPodcastDetail.value = true
                             } else {
                                 println("⚠️ No Apple Podcast results, trying 小宇宙 fallback")
                                 val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
