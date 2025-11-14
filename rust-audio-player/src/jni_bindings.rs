@@ -402,3 +402,191 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeRelease(
         -1
     }
 }
+
+// ============================================================================
+// Metadata Access Functions
+// ============================================================================
+
+/// Get metadata as JSON string
+/// This is the easiest way to transfer complex metadata to Java/Kotlin
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetMetadataJson(
+    env: JNIEnv,
+    _class: JClass,
+    player_id: jlong,
+) -> jstring {
+    use crate::android::AndroidAudioPlayer;
+
+    let registry = PLAYER_REGISTRY.lock();
+    if let Some(player) = registry.get(&player_id) {
+        // Downcast to AndroidAudioPlayer to access decoder
+        let android_player = player.as_any().downcast_ref::<AndroidAudioPlayer>();
+
+        if let Some(android_player) = android_player {
+            if let Some(decoder) = android_player.get_decoder() {
+                let metadata = &decoder.metadata;
+
+                // Create JSON representation of metadata
+                let json = format!(
+                    r#"{{
+                        "formatInfo": {{
+                            "durationMs": {},
+                            "sampleRate": {},
+                            "channels": {},
+                            "codec": "{}",
+                            "bitrateBps": {},
+                            "totalFrames": {}
+                        }},
+                        "quality": {{
+                            "bitDepth": {},
+                            "isVbr": {},
+                            "compressionQuality": {},
+                            "instantaneousBitrateBps": {}
+                        }},
+                        "tags": {{
+                            "title": {},
+                            "artist": {},
+                            "album": {},
+                            "albumArtist": {},
+                            "trackNumber": {},
+                            "trackTotal": {},
+                            "discNumber": {},
+                            "discTotal": {},
+                            "date": {},
+                            "genre": {},
+                            "composer": {},
+                            "comment": {},
+                            "lyrics": {},
+                            "copyright": {},
+                            "encoder": {},
+                            "publisher": {},
+                            "isrc": {},
+                            "language": {}
+                        }},
+                        "hasCoverArt": {}
+                    }}"#,
+                    metadata.format_info.duration_ms,
+                    metadata.format_info.sample_rate,
+                    metadata.format_info.channels,
+                    metadata.format_info.codec,
+                    metadata.format_info.bitrate_bps.map(|b| format!("{}", b)).unwrap_or("null".to_string()),
+                    metadata.format_info.total_frames.map(|f| format!("{}", f)).unwrap_or("null".to_string()),
+                    metadata.quality.bit_depth.map(|b| format!("{}", b)).unwrap_or("null".to_string()),
+                    metadata.quality.is_vbr,
+                    metadata.quality.compression_quality.map(|q| format!("{}", q)).unwrap_or("null".to_string()),
+                    metadata.quality.instantaneous_bitrate_bps.map(|b| format!("{}", b)).unwrap_or("null".to_string()),
+                    json_option_string(&metadata.tags.title),
+                    json_option_string(&metadata.tags.artist),
+                    json_option_string(&metadata.tags.album),
+                    json_option_string(&metadata.tags.album_artist),
+                    metadata.tags.track_number.map(|n| format!("{}", n)).unwrap_or("null".to_string()),
+                    metadata.tags.track_total.map(|n| format!("{}", n)).unwrap_or("null".to_string()),
+                    metadata.tags.disc_number.map(|n| format!("{}", n)).unwrap_or("null".to_string()),
+                    metadata.tags.disc_total.map(|n| format!("{}", n)).unwrap_or("null".to_string()),
+                    json_option_string(&metadata.tags.date),
+                    json_option_string(&metadata.tags.genre),
+                    json_option_string(&metadata.tags.composer),
+                    json_option_string(&metadata.tags.comment),
+                    json_option_string(&metadata.tags.lyrics),
+                    json_option_string(&metadata.tags.copyright),
+                    json_option_string(&metadata.tags.encoder),
+                    json_option_string(&metadata.tags.publisher),
+                    json_option_string(&metadata.tags.isrc),
+                    json_option_string(&metadata.tags.language),
+                    decoder.get_cover_art().is_some()
+                );
+
+                match string_to_jstring(&env, &json) {
+                    Ok(jstr) => jstr,
+                    Err(e) => {
+                        log::error!("Failed to create JSON string: {}", e);
+                        std::ptr::null_mut()
+                    }
+                }
+            } else {
+                log::warn!("No decoder available for player {}", player_id);
+                match string_to_jstring(&env, "{}") {
+                    Ok(jstr) => jstr,
+                    Err(_) => std::ptr::null_mut()
+                }
+            }
+        } else {
+            log::error!("Failed to downcast player to AndroidAudioPlayer");
+            std::ptr::null_mut()
+        }
+    } else {
+        log::error!("Invalid player ID: {}", player_id);
+        std::ptr::null_mut()
+    }
+}
+
+#[cfg(target_os = "android")]
+fn json_option_string(opt: &Option<String>) -> String {
+    match opt {
+        Some(s) => format!(r#""{}""#, s.replace("\\", "\\\\").replace("\"", "\\\"")),
+        None => "null".to_string()
+    }
+}
+
+/// Get cover art as byte array
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverArt(
+    env: JNIEnv,
+    _class: JClass,
+    player_id: jlong,
+) -> JByteArray {
+    use crate::android::AndroidAudioPlayer;
+
+    let registry = PLAYER_REGISTRY.lock();
+    if let Some(player) = registry.get(&player_id) {
+        let android_player = player.as_any().downcast_ref::<AndroidAudioPlayer>();
+
+        if let Some(android_player) = android_player {
+            if let Some(decoder) = android_player.get_decoder() {
+                if let Some(cover_art) = decoder.get_cover_art() {
+                    match env.byte_array_from_slice(&cover_art.data) {
+                        Ok(byte_array) => return byte_array.into_raw(),
+                        Err(e) => {
+                            log::error!("Failed to create byte array: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    std::ptr::null_mut()
+}
+
+/// Get cover art MIME type
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeGetCoverArtMimeType(
+    env: JNIEnv,
+    _class: JClass,
+    player_id: jlong,
+) -> jstring {
+    use crate::android::AndroidAudioPlayer;
+
+    let registry = PLAYER_REGISTRY.lock();
+    if let Some(player) = registry.get(&player_id) {
+        let android_player = player.as_any().downcast_ref::<AndroidAudioPlayer>();
+
+        if let Some(android_player) = android_player {
+            if let Some(decoder) = android_player.get_decoder() {
+                if let Some(cover_art) = decoder.get_cover_art() {
+                    match string_to_jstring(&env, &cover_art.mime_type) {
+                        Ok(jstr) => return jstr,
+                        Err(e) => {
+                            log::error!("Failed to create MIME type string: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    std::ptr::null_mut()
+}
