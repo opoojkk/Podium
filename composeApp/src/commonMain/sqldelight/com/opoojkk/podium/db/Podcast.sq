@@ -207,7 +207,7 @@ JOIN podcasts p ON e.podcastId = p.id
 WHERE LOWER(e.title) LIKE LOWER(?)
    OR LOWER(p.title) LIKE LOWER(?)
 ORDER BY e.publishDate DESC
-LIMIT ?;
+LIMIT ? OFFSET ?;
 
 -- Mark episode as completed
 markEpisodeCompleted:

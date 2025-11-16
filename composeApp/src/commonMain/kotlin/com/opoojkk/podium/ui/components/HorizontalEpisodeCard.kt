@@ -46,6 +46,7 @@ fun HorizontalEpisodeRow(
     episodes: List<EpisodeWithPodcast>,
     onPlayClick: (EpisodeWithPodcast) -> Unit,
     modifier: Modifier = Modifier,
+    onCardClick: ((EpisodeWithPodcast) -> Unit)? = null,
     currentPlayingEpisodeId: String? = null,
     isPlaying: Boolean = false,
     isBuffering: Boolean = false,
@@ -60,6 +61,7 @@ fun HorizontalEpisodeRow(
             HorizontalEpisodeCard(
                 episodeWithPodcast = episodeWithPodcast,
                 onPlayClick = { onPlayClick(episodeWithPodcast) },
+                onCardClick = onCardClick?.let { { it(episodeWithPodcast) } },
                 isCurrentlyPlaying = isCurrentEpisode && isPlaying,
                 isBuffering = isCurrentEpisode && isBuffering,
             )
@@ -72,6 +74,7 @@ private fun HorizontalEpisodeCard(
     episodeWithPodcast: EpisodeWithPodcast,
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onCardClick: (() -> Unit)? = null,
     isCurrentlyPlaying: Boolean = false,
     isBuffering: Boolean = false,
 ) {
@@ -79,7 +82,7 @@ private fun HorizontalEpisodeCard(
         modifier = modifier
             .width(160.dp)
             .height(236.dp)
-            .clickable { onPlayClick() },
+            .then(if (onCardClick != null) Modifier.clickable { onCardClick() } else Modifier),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {

@@ -63,7 +63,7 @@ class PodcastDao(private val database: PodcastDatabase) {
             .asFlow()
             .mapToList(Dispatchers.Default)
 
-    suspend fun searchEpisodes(query: String, limit: Int): List<EpisodeWithPodcast> =
+    suspend fun searchEpisodes(query: String, limit: Int = 30, offset: Int = 0): List<EpisodeWithPodcast> =
         withContext(Dispatchers.Default) {
             val sanitized = query.trim()
             if (sanitized.isEmpty()) {
@@ -71,7 +71,8 @@ class PodcastDao(private val database: PodcastDatabase) {
             }
             val pattern = "%$sanitized%"
             val cappedLimit = limit.coerceAtMost(50).coerceAtLeast(1)
-            queries.searchEpisodes(pattern, pattern, cappedLimit.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
+            val cappedOffset = offset.coerceAtLeast(0)
+            queries.searchEpisodes(pattern, pattern, cappedLimit.toLong(), cappedOffset.toLong()) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload ->
                 mapEpisodeWithPodcast(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload)
             }
                 .executeAsList()

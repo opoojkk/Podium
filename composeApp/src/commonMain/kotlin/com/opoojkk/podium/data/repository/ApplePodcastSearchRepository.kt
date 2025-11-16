@@ -30,6 +30,9 @@ class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
      */
     suspend fun searchPodcast(query: String, limit: Int = 5): Result<List<ApplePodcastResult>> = withContext(Dispatchers.IO) {
         try {
+            val requestUrl = "$BASE_URL?term=$query&entity=podcast&limit=$limit&country=cn"
+            println("🌐 [iTunes API] 开始请求播客搜索: query=$query, limit=$limit")
+            println("🌐 [iTunes API] 请求URL: $requestUrl")
             val responseText = httpClient.get(BASE_URL) {
                 parameter("term", query)
                 parameter("entity", "podcast")
@@ -37,15 +40,51 @@ class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
                 parameter("country", "cn") // Search in China store for better Chinese podcast results
             }.bodyAsText()
 
+            println("🌐 [iTunes API] 收到播客搜索响应: ${responseText.length} 字符")
+            println("🌐 [iTunes API] 响应内容: ${responseText.take(500)}...")
             val response = json.decodeFromString<ApplePodcastSearchResponse>(responseText)
+            println("🌐 [iTunes API] 播客搜索结果数量: ${response.results.size}")
+            if (response.results.isNotEmpty()) {
+                println("🌐 [iTunes API] 第一个结果: ${response.results.first().collectionName}")
+            }
             Result.success(response.results)
         } catch (e: Exception) {
+            println("🌐 [iTunes API] 播客搜索请求失败: ${e.message}")
             Result.failure(e)
         }
     }
 
     /**
-     * Search for podcast episodes by title
+     * Search for podcast episodes by title (generic search, not limited to specific podcast)
+     */
+    suspend fun searchEpisodes(query: String, limit: Int = 20): Result<List<ApplePodcastEpisodeResult>> = withContext(Dispatchers.IO) {
+        try {
+            val requestUrl = "$BASE_URL?term=$query&entity=podcastEpisode&limit=$limit&country=cn"
+            println("🌐 [iTunes API] 开始请求单集搜索: query=$query, limit=$limit")
+            println("🌐 [iTunes API] 请求URL: $requestUrl")
+            val responseText = httpClient.get(BASE_URL) {
+                parameter("term", query)
+                parameter("entity", "podcastEpisode")
+                parameter("limit", limit)
+                parameter("country", "cn")
+            }.bodyAsText()
+
+            println("🌐 [iTunes API] 收到单集搜索响应: ${responseText.length} 字符")
+            println("🌐 [iTunes API] 响应内容: ${responseText.take(500)}...")
+            val response = json.decodeFromString<ApplePodcastEpisodeSearchResponse>(responseText)
+            println("🌐 [iTunes API] 单集搜索结果数量: ${response.results.size}")
+            if (response.results.isNotEmpty()) {
+                println("🌐 [iTunes API] 第一个结果: ${response.results.first().trackName} - ${response.results.first().collectionName}")
+            }
+            Result.success(response.results)
+        } catch (e: Exception) {
+            println("🌐 [iTunes API] 单集搜索请求失败: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Search for podcast episodes by title (within a specific podcast)
      */
     suspend fun searchEpisode(podcastName: String, episodeTitle: String, limit: Int = 5): Result<List<ApplePodcastEpisodeResult>> = withContext(Dispatchers.IO) {
         try {

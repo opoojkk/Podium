@@ -54,9 +54,15 @@ class PodcastRepository(
     fun observePodcastEpisodes(podcastId: String): Flow<List<EpisodeWithPodcast>> = 
         dao.observeEpisodesWithPodcast(podcastId)
 
-    suspend fun searchEpisodes(query: String, limit: Int = 30): List<EpisodeWithPodcast> {
-        if (query.isBlank()) return emptyList()
-        return dao.searchEpisodes(query, limit)
+    suspend fun searchEpisodes(query: String, limit: Int = 30, offset: Int = 0): List<EpisodeWithPodcast> {
+        println("💾 [本地数据库] 开始搜索: query=$query, limit=$limit, offset=$offset")
+        if (query.isBlank()) {
+            println("💾 [本地数据库] 查询为空，返回空列表")
+            return emptyList()
+        }
+        val results = dao.searchEpisodes(query, limit, offset)
+        println("💾 [本地数据库] 搜索完成: 找到 ${results.size} 条结果")
+        return results
     }
 
     fun observeDownloads(): Flow<Map<String, DownloadStatus>> =

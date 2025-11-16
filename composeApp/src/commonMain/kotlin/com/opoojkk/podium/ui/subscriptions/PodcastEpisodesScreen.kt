@@ -81,6 +81,7 @@ fun PodcastEpisodesScreen(
     onPauseResume: () -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
     onUnsubscribe: () -> Unit = {},
+    onEpisodeClick: (Episode) -> Unit = {},
 ) {
     var sortOrder by remember { mutableStateOf(SortOrder.DESCENDING) }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -241,6 +242,7 @@ fun PodcastEpisodesScreen(
                                 onPlayEpisode(episodeWithPodcast.episode)
                             }
                         },
+                        onClick = { onEpisodeClick(episodeWithPodcast.episode) },
                         downloadStatus = downloads[episodeWithPodcast.episode.id],
                         onDownloadClick = { onDownloadEpisode(episodeWithPodcast.episode) },
                         onAddToPlaylist = { onAddToPlaylist(episodeWithPodcast.episode.id) },

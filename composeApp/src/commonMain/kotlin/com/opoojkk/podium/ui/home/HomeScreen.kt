@@ -30,12 +30,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +53,7 @@ import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.presentation.HomeUiState
+import com.opoojkk.podium.presentation.SearchFilterType
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRow
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRowSkeleton
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
@@ -72,6 +77,9 @@ fun HomeScreen(
     isBuffering: Boolean = false,
     onPauseResume: () -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
+    onEpisodeClick: (Episode) -> Unit = {},
+    onLoadMoreSearchResults: () -> Unit = {},
+    onSearchFilterTypeChange: (SearchFilterType) -> Unit = {},
 ) {
     // Debug: Print XYZRank data status
     println("🏠 HomeScreen - XYZRank data: hotEpisodes=${state.hotEpisodes.size}, hotPodcasts=${state.hotPodcasts.size}, newEpisodes=${state.newEpisodes.size}, newPodcasts=${state.newPodcasts.size}")
@@ -111,12 +119,19 @@ fun HomeScreen(
 
             if (state.isSearchActive) {
                 item {
-                    SectionHeader(
-                        title = "搜索结果",
-                        description = "快速查找你想听的节目",
-                        onViewMore = null,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        SectionHeader(
+                            title = "搜索结果",
+                            description = "快速查找你想听的节目",
+                            onViewMore = null,
+                        )
+                        // 搜索结果筛选 Tab
+                        SearchFilterTabs(
+                            selectedFilter = state.searchFilterType,
+                            onFilterChange = onSearchFilterTypeChange,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
                 }
                 when {
                     state.isSearching -> {
@@ -132,24 +147,78 @@ fun HomeScreen(
                         }
                     }
                     else -> {
-                        items(state.searchResults, key = { it.episode.id }) { item ->
-                            val isCurrentEpisode = item.episode.id == currentPlayingEpisodeId
-                            PodcastEpisodeCard(
-                                episodeWithPodcast = item,
-                                onPlayClick = {
-                                    if (isCurrentEpisode) {
-                                        // 如果是当前播放的单集，切换播放/暂停
-                                        onPauseResume()
-                                    } else {
-                                        // 如果是其他单集，播放它
-                                        onPlayEpisode(item.episode)
-                                    }
-                                },
-                                onAddToPlaylist = { onAddToPlaylist(item.episode.id) },
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                isCurrentlyPlaying = isCurrentEpisode && isPlaying,
-                                isBuffering = isCurrentEpisode && isBuffering,
-                            )
+                        // 根据筛选类型过滤结果
+                        val filteredResults = when (state.searchFilterType) {
+                            SearchFilterType.ALL -> state.searchResults
+                            SearchFilterType.PODCASTS -> state.searchResults.filter { item ->
+                                item.episode.audioUrl.isEmpty() &&
+                                item.episode.id.startsWith("itunes_ep_") &&
+                                item.podcast.id.startsWith("itunes_")
+                            }
+                            SearchFilterType.EPISODES -> state.searchResults.filter { item ->
+                                !(item.episode.audioUrl.isEmpty() &&
+                                  item.episode.id.startsWith("itunes_ep_") &&
+                                  item.podcast.id.startsWith("itunes_"))
+                            }
+                        }
+
+                        items(filteredResults, key = { it.episode.id }) { item ->
+                            // 判断是播客节目还是单集：如果 audioUrl 为空且是 iTunes 搜索结果，则认为是播客节目
+                            val isPodcast = item.episode.audioUrl.isEmpty() &&
+                                           item.episode.id.startsWith("itunes_ep_") &&
+                                           item.podcast.id.startsWith("itunes_")
+
+                            if (isPodcast) {
+                                // 显示播客卡片（类似苹果播客的搜索结果样式）
+                                SearchResultPodcastCard(
+                                    podcast = item.podcast,
+                                    description = item.episode.description,
+                                    onClick = { onPodcastClick(item.podcast) },
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                )
+                            } else {
+                                // 显示单集卡片（保持原有样式）
+                                val isCurrentEpisode = item.episode.id == currentPlayingEpisodeId
+                                PodcastEpisodeCard(
+                                    episodeWithPodcast = item,
+                                    onPlayClick = {
+                                        if (isCurrentEpisode) {
+                                            // 如果是当前播放的单集，切换播放/暂停
+                                            onPauseResume()
+                                        } else {
+                                            // 如果是其他单集，播放它
+                                            onPlayEpisode(item.episode)
+                                        }
+                                    },
+                                    onClick = { onEpisodeClick(item.episode) },
+                                    onAddToPlaylist = { onAddToPlaylist(item.episode.id) },
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    isCurrentlyPlaying = isCurrentEpisode && isPlaying,
+                                    isBuffering = isCurrentEpisode && isBuffering,
+                                )
+                            }
+
+                                            // 预加载：当滚动到倒数第3个元素时触发加载更多
+                            val index = filteredResults.indexOf(item)
+                            if (index == filteredResults.size - 3 && state.hasMoreSearchResults && !state.isLoadingMoreResults) {
+                                LaunchedEffect(Unit) {
+                                    onLoadMoreSearchResults()
+                                }
+                            }
+                        }
+
+                        // 加载更多指示器
+                        if (state.isLoadingMoreResults) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -182,6 +251,9 @@ fun HomeScreen(
                                             onPlayEpisode(episodeWithPodcast.episode)
                                         }
                                     },
+                                    onCardClick = { episodeWithPodcast ->
+                                        onEpisodeClick(episodeWithPodcast.episode)
+                                    },
                                     currentPlayingEpisodeId = currentPlayingEpisodeId,
                                     isPlaying = isPlaying,
                                     isBuffering = isBuffering,
@@ -210,6 +282,9 @@ fun HomeScreen(
                                     } else {
                                         onPlayEpisode(episodeWithPodcast.episode)
                                     }
+                                },
+                                onCardClick = { episodeWithPodcast ->
+                                    onEpisodeClick(episodeWithPodcast.episode)
                                 },
                                 currentPlayingEpisodeId = currentPlayingEpisodeId,
                                 isPlaying = isPlaying,
@@ -256,6 +331,9 @@ fun HomeScreen(
                                     } else {
                                         onPlayEpisode(episodeWithPodcast.episode)
                                     }
+                                },
+                                onCardClick = { episodeWithPodcast ->
+                                    onEpisodeClick(episodeWithPodcast.episode)
                                 },
                                 currentPlayingEpisodeId = currentPlayingEpisodeId,
                                 isPlaying = isPlaying,
@@ -317,6 +395,7 @@ fun HomeScreen(
                                                 onPlayEpisode(item.episode)
                                             }
                                         },
+                                        onClick = { onEpisodeClick(item.episode) },
                                         onAddToPlaylist = { onAddToPlaylist(item.episode.id) },
                                         modifier = Modifier.padding(horizontal = 16.dp),
                                         compact = true,
@@ -547,5 +626,164 @@ private fun PodcastCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/**
+ * 搜索结果中的播客卡片（与 PodcastEpisodeCard 风格一致）
+ */
+@Composable
+private fun SearchResultPodcastCard(
+    podcast: Podcast,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 左侧：播客封面
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                val artworkUrl = podcast.artworkUrl
+                val initials = podcast.title
+                    .trim()
+                    .split(" ", limit = 2)
+                    .mapNotNull { it.firstOrNull()?.uppercase() }
+                    .joinToString(separator = "")
+                    .takeIf { it.isNotBlank() }
+                    ?: "播客"
+
+                if (!artworkUrl.isNullOrBlank()) {
+                    SubcomposeAsyncImage(
+                        model = artworkUrl,
+                        contentDescription = podcast.title,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        },
+                        error = {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    )
+                } else {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+
+            // 右侧：播客信息
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                // 播客名称
+                Text(
+                    text = podcast.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                // 播客描述（显示类型、数量等信息）
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 搜索结果筛选 Tab
+ */
+@Composable
+private fun SearchFilterTabs(
+    selectedFilter: SearchFilterType,
+    onFilterChange: (SearchFilterType) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TabRow(
+        selectedTabIndex = when (selectedFilter) {
+            SearchFilterType.ALL -> 0
+            SearchFilterType.PODCASTS -> 1
+            SearchFilterType.EPISODES -> 2
+        },
+        modifier = modifier,
+        containerColor = Color.Transparent,
+        indicator = { tabPositions ->
+            if (tabPositions.isNotEmpty()) {
+                val currentTabPosition = when (selectedFilter) {
+                    SearchFilterType.ALL -> tabPositions[0]
+                    SearchFilterType.PODCASTS -> tabPositions[1]
+                    SearchFilterType.EPISODES -> tabPositions[2]
+                }
+                androidx.compose.material3.TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(currentTabPosition),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    ) {
+        Tab(
+            selected = selectedFilter == SearchFilterType.ALL,
+            onClick = { onFilterChange(SearchFilterType.ALL) },
+            text = {
+                Text(
+                    text = "全部",
+                    style = MaterialTheme.typography.titleSmall
+                )
+            }
+        )
+        Tab(
+            selected = selectedFilter == SearchFilterType.PODCASTS,
+            onClick = { onFilterChange(SearchFilterType.PODCASTS) },
+            text = {
+                Text(
+                    text = "播客节目",
+                    style = MaterialTheme.typography.titleSmall
+                )
+            }
+        )
+        Tab(
+            selected = selectedFilter == SearchFilterType.EPISODES,
+            onClick = { onFilterChange(SearchFilterType.EPISODES) },
+            text = {
+                Text(
+                    text = "单集",
+                    style = MaterialTheme.typography.titleSmall
+                )
+            }
+        )
     }
 }

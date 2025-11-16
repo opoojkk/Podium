@@ -14,6 +14,7 @@ import com.opoojkk.podium.player.PodcastPlayer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +29,7 @@ import kotlinx.datetime.Clock
 
 class PodiumController(
     private val repository: PodcastRepository,
+    private val applePodcastSearchRepository: com.opoojkk.podium.data.repository.ApplePodcastSearchRepository,
     private val player: PodcastPlayer,
     private val downloadManager: PodcastDownloadManager,
     private val scope: CoroutineScope,
@@ -80,6 +82,9 @@ class PodiumController(
                 searchErrorMessage = null,
                 isSearching = effectiveQuery.isNotEmpty(),
                 searchResults = if (current.searchQuery == sanitizedQuery) current.searchResults else emptyList(),
+                // 重置分页状态
+                searchOffset = 0,
+                hasMoreSearchResults = true,
             )
         }
 
@@ -89,6 +94,8 @@ class PodiumController(
                     searchResults = emptyList(),
                     isSearching = false,
                     isSearchActive = false,
+                    searchOffset = 0,
+                    hasMoreSearchResults = true,
                 )
             }
             return
@@ -97,13 +104,40 @@ class PodiumController(
         homeSearchJob = scope.launch {
             kotlinx.coroutines.delay(250)
             try {
-                val results = repository.searchEpisodes(effectiveQuery)
+                val limit = _homeState.value.searchLimit
+                println("🔍 开始搜索: \"$effectiveQuery\", limit=$limit")
+
+                // 并行搜索本地、iTunes播客和iTunes单集
+                val localResults = async {
+                    repository.searchEpisodes(effectiveQuery, limit = limit, offset = 0)
+                }
+                val remotePodcastResults = async {
+                    searchApplePodcasts(effectiveQuery, limit = 10)
+                }
+                val remoteEpisodeResults = async {
+                    searchAppleEpisodes(effectiveQuery, limit = limit)
+                }
+
+                // 等待所有搜索完成
+                val local = localResults.await()
+                val remotePodcasts = remotePodcastResults.await()
+                val remoteEpisodes = remoteEpisodeResults.await()
+
+                println("🔍 搜索完成 - 本地: ${local.size}, iTunes播客: ${remotePodcasts.size}, iTunes单集: ${remoteEpisodes.size}")
+
+                // 合并结果：iTunes播客优先，然后是iTunes单集，最后是本地结果
+                val combinedResults = (remotePodcasts + remoteEpisodes + local).distinctBy { it.episode.id }
+
+                println("🔍 合并去重后: ${combinedResults.size} 条结果 (播客: ${remotePodcasts.size}, 单集: ${remoteEpisodes.size + local.size})")
+
                 _homeState.update { current ->
                     current.copy(
-                        searchResults = results,
+                        searchResults = combinedResults,
                         isSearching = false,
                         isSearchActive = true,
                         searchErrorMessage = null,
+                        searchOffset = local.size,  // 只统计本地结果的offset
+                        hasMoreSearchResults = local.size >= limit,  // 只看本地是否还有更多
                     )
                 }
             } catch (cancellation: CancellationException) {
@@ -121,6 +155,141 @@ class PodiumController(
         }
     }
 
+    private suspend fun searchApplePodcasts(query: String, limit: Int = 20): List<EpisodeWithPodcast> {
+        println("🍎 iTunes播客搜索开始: \"$query\", limit=$limit")
+        return try {
+            val result = applePodcastSearchRepository.searchPodcast(query, limit = limit)
+            val results = result.getOrNull()?.map { applePodcast ->
+                // 将 ApplePodcast 转换为 EpisodeWithPodcast
+                // 注意：这里创建的是虚拟的 Episode，因为 iTunes API 搜索返回的是 Podcast，不是 Episode
+                val podcast = com.opoojkk.podium.data.model.Podcast(
+                    id = "itunes_${applePodcast.collectionId}",
+                    title = applePodcast.collectionName,
+                    description = applePodcast.primaryGenreName ?: "",
+                    artworkUrl = applePodcast.artworkUrl600 ?: applePodcast.artworkUrl100,
+                    feedUrl = applePodcast.feedUrl,
+                    lastUpdated = kotlinx.datetime.Clock.System.now(),
+                    autoDownload = false,
+                )
+
+                // 创建一个虚拟 episode 表示这个播客
+                val episode = Episode(
+                    id = "itunes_ep_${applePodcast.collectionId}",
+                    podcastId = podcast.id,
+                    podcastTitle = podcast.title,
+                    title = applePodcast.collectionName,
+                    description = "来自 iTunes: ${applePodcast.primaryGenreName ?: ""} · ${applePodcast.trackCount ?: 0} 集",
+                    audioUrl = "",  // iTunes 搜索结果没有单集音频
+                    publishDate = kotlinx.datetime.Clock.System.now(),
+                    duration = null,
+                    imageUrl = applePodcast.artworkUrl600 ?: applePodcast.artworkUrl100,
+                    chapters = emptyList(),
+                )
+
+                EpisodeWithPodcast(episode = episode, podcast = podcast)
+            } ?: emptyList()
+
+            println("🍎 iTunes播客搜索完成: 找到 ${results.size} 个结果")
+            results
+        } catch (e: CancellationException) {
+            println("⏸️ iTunes播客搜索被取消")
+            throw e  // 重新抛出取消异常
+        } catch (e: Exception) {
+            println("❌ iTunes播客搜索失败: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    private suspend fun searchAppleEpisodes(query: String, limit: Int = 20): List<EpisodeWithPodcast> {
+        println("🎧 iTunes单集搜索开始: \"$query\", limit=$limit")
+        return try {
+            val result = applePodcastSearchRepository.searchEpisodes(query, limit = limit)
+            val results = result.getOrNull()?.map { appleEpisode ->
+                // 将 ApplePodcastEpisodeResult 转换为 EpisodeWithPodcast
+                val podcast = com.opoojkk.podium.data.model.Podcast(
+                    id = "itunes_${appleEpisode.collectionId}",
+                    title = appleEpisode.collectionName,
+                    description = appleEpisode.artistName ?: "",
+                    artworkUrl = appleEpisode.artworkUrl600 ?: appleEpisode.artworkUrl100,
+                    feedUrl = appleEpisode.feedUrl ?: "",
+                    lastUpdated = kotlinx.datetime.Clock.System.now(),
+                    autoDownload = false,
+                )
+
+                // 创建实际的 episode
+                val episode = Episode(
+                    id = "itunes_ep_${appleEpisode.trackId}",
+                    podcastId = podcast.id,
+                    podcastTitle = podcast.title,
+                    title = appleEpisode.trackName,
+                    description = appleEpisode.description ?: "来自 iTunes",
+                    audioUrl = appleEpisode.audioUrl ?: "",  // iTunes 单集搜索可能有音频URL
+                    publishDate = try {
+                        kotlinx.datetime.Instant.parse(appleEpisode.releaseDate)
+                    } catch (e: Exception) {
+                        kotlinx.datetime.Clock.System.now()
+                    },
+                    duration = appleEpisode.durationMs,
+                    imageUrl = appleEpisode.artworkUrl600 ?: appleEpisode.artworkUrl100,
+                    chapters = emptyList(),
+                )
+
+                EpisodeWithPodcast(episode = episode, podcast = podcast)
+            } ?: emptyList()
+
+            println("🎧 iTunes单集搜索完成: 找到 ${results.size} 个结果")
+            results
+        } catch (e: CancellationException) {
+            println("⏸️ iTunes单集搜索被取消")
+            throw e  // 重新抛出取消异常
+        } catch (e: Exception) {
+            println("❌ iTunes单集搜索失败: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    fun loadMoreSearchResults() {
+        val currentState = _homeState.value
+
+        // 如果已经在加载或没有更多结果，直接返回
+        if (currentState.isLoadingMoreResults || !currentState.hasMoreSearchResults) {
+            return
+        }
+
+        val query = currentState.searchQuery.trim()
+        if (query.isEmpty()) {
+            return
+        }
+
+        _homeState.update { it.copy(isLoadingMoreResults = true) }
+
+        scope.launch {
+            try {
+                val limit = currentState.searchLimit
+                val offset = currentState.searchOffset
+                val moreResults = repository.searchEpisodes(query, limit = limit, offset = offset)
+
+                _homeState.update { current ->
+                    current.copy(
+                        searchResults = current.searchResults + moreResults,
+                        searchOffset = current.searchOffset + moreResults.size,
+                        hasMoreSearchResults = moreResults.size >= limit,
+                        isLoadingMoreResults = false,
+                    )
+                }
+            } catch (e: Exception) {
+                _homeState.update { current ->
+                    current.copy(
+                        isLoadingMoreResults = false,
+                        searchErrorMessage = e.message ?: "加载更多失败",
+                    )
+                }
+            }
+        }
+    }
+
     fun clearHomeSearch() {
         homeSearchJob?.cancel()
         _homeState.update { current ->
@@ -130,7 +299,14 @@ class PodiumController(
                 isSearchActive = false,
                 isSearching = false,
                 searchErrorMessage = null,
+                searchFilterType = SearchFilterType.ALL,
             )
+        }
+    }
+
+    fun setSearchFilterType(filterType: SearchFilterType) {
+        _homeState.update { current ->
+            current.copy(searchFilterType = filterType)
         }
     }
 

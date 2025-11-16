@@ -1,6 +1,7 @@
 package com.opoojkk.podium
 
 import com.opoojkk.podium.data.local.PodcastDao
+import com.opoojkk.podium.data.repository.ApplePodcastSearchRepository
 import com.opoojkk.podium.data.repository.PodcastRepository
 import com.opoojkk.podium.data.rss.PodcastFeedService
 import com.opoojkk.podium.data.rss.createDefaultRssParser
@@ -14,6 +15,7 @@ import kotlinx.coroutines.*
 
 class PodiumEnvironment internal constructor(
     val repository: PodcastRepository,
+    val applePodcastSearchRepository: ApplePodcastSearchRepository,
     val player: PodcastPlayer,
     val downloadManager: PodcastDownloadManager,
     val httpClient: HttpClient,
@@ -39,18 +41,20 @@ fun createPodiumEnvironment(context: PlatformContext): PodiumEnvironment {
         feedService = PodcastFeedService(httpClient, createDefaultRssParser()),
         appSettings = appSettings,
     )
+    val applePodcastSearchRepository = ApplePodcastSearchRepository(httpClient)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val player = providePodcastPlayer(context)
     val downloadManager = provideDownloadManager(context, scope) { status ->
         scope.launch { repository.saveDownloadStatus(status) }
     }
     val fileOperations = createFileOperations(context)
-    return PodiumEnvironment(repository, player, downloadManager, httpClient, scope, context, fileOperations, appSettings)
+    return PodiumEnvironment(repository, applePodcastSearchRepository, player, downloadManager, httpClient, scope, context, fileOperations, appSettings)
 }
 
 fun PodiumEnvironment.createController(): PodiumController =
     PodiumController(
         repository = repository,
+        applePodcastSearchRepository = applePodcastSearchRepository,
         player = player,
         downloadManager = downloadManager,
         scope = scope,

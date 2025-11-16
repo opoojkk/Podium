@@ -4,6 +4,15 @@ import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.Podcast
 
 /**
+ * 搜索结果筛选类型
+ */
+enum class SearchFilterType {
+    ALL,        // 全部
+    PODCASTS,   // 播客节目
+    EPISODES    // 单集
+}
+
+/**
  * UI state for the home screen containing recent listening and updates.
  */
 data class HomeUiState(
@@ -22,4 +31,10 @@ data class HomeUiState(
     val isSearchActive: Boolean = false,
     val isSearching: Boolean = false,
     val searchErrorMessage: String? = null,
+    val searchFilterType: SearchFilterType = SearchFilterType.ALL,
+    // 分页相关字段
+    val searchOffset: Int = 0,
+    val searchLimit: Int = 20,
+    val hasMoreSearchResults: Boolean = true,
+    val isLoadingMoreResults: Boolean = false,
 )

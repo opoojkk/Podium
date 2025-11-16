@@ -116,9 +116,6 @@ fun PodiumApp(
     val xyzRankRepository = remember {
         XYZRankRepository(httpClient = environment.httpClient)
     }
-    val applePodcastSearchRepository = remember {
-        com.opoojkk.podium.data.repository.ApplePodcastSearchRepository(httpClient = environment.httpClient)
-    }
     val hotEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
     val hotPodcasts = remember { mutableStateOf<List<Podcast>>(emptyList()) }
     val newEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
@@ -322,7 +319,7 @@ fun PodiumApp(
     // Handle XYZRank podcast click - search Apple Podcast and open details (without subscribing)
     val handleXYZRankPodcastClick: (Podcast) -> Unit = remember(
         controller,
-        applePodcastSearchRepository,
+        environment.applePodcastSearchRepository,
         openUrlInBrowser,
         snackbarHostState,
         scope,
@@ -339,7 +336,7 @@ fun PodiumApp(
                     try {
                         println("🔍 Searching Apple Podcast for: ${podcast.title}")
 
-                        val searchResult = applePodcastSearchRepository.searchPodcast(
+                        val searchResult = environment.applePodcastSearchRepository.searchPodcast(
                             query = podcast.title,
                             limit = 5
                         )
@@ -409,7 +406,7 @@ fun PodiumApp(
     var previousPlaybackState by remember { mutableStateOf(playbackState) }
     var lastHandledCompletionId by remember { mutableStateOf<String?>(null) }
 
-    val playEpisode: (Episode) -> Unit = remember(controller, openUrlInBrowser, snackbarHostState, scope, applePodcastSearchRepository) {
+    val playEpisode: (Episode) -> Unit = remember(controller, openUrlInBrowser, snackbarHostState, scope, environment.applePodcastSearchRepository) {
         { episode ->
             println("🎬 Episode play requested: id=${episode.id}, title=${episode.title}")
             println("📝 Episode description:\n${episode.description}")
@@ -422,7 +419,7 @@ fun PodiumApp(
                     try {
                         // Search Apple Podcast for this episode
                         println("🔍 Searching for episode: podcast='${episode.podcastTitle}', episode='${episode.title}'")
-                        val result = applePodcastSearchRepository.searchEpisode(
+                        val result = environment.applePodcastSearchRepository.searchEpisode(
                             podcastName = episode.podcastTitle,
                             episodeTitle = episode.title
                         )
@@ -468,7 +465,7 @@ fun PodiumApp(
 
                                     // Subscribe to podcast in background for future access
                                     println("🔍 Searching for podcast RSS feed in background...")
-                                    val podcastResult = applePodcastSearchRepository.searchPodcast(episode.podcastTitle, limit = 1)
+                                    val podcastResult = environment.applePodcastSearchRepository.searchPodcast(episode.podcastTitle, limit = 1)
                                     podcastResult.onSuccess { podcasts ->
                                         if (podcasts.isNotEmpty()) {
                                             val feedUrl = podcasts.first().feedUrl
@@ -969,6 +966,11 @@ private fun DesktopLayout(
                                         snackbarHostState.showSnackbar("已取消订阅《${podcast.title}》")
                                     }
                                 },
+                                onEpisodeClick = { episode ->
+                                    // 播放单集并打开播放器详情页
+                                    onPlayEpisode(episode)
+                                    showPlayerDetail.value = true
+                                },
                             )
                         }
                         showViewMore.value != null -> {
@@ -1039,6 +1041,13 @@ private fun DesktopLayout(
                                     onAddToPlaylist = { episodeId ->
                                         controller.addToPlaylist(episodeId)
                                     },
+                                    onEpisodeClick = { episode ->
+                                        // 播放单集并打开播放器详情页
+                                        onPlayEpisode(episode)
+                                        showPlayerDetail.value = true
+                                    },
+                                    onLoadMoreSearchResults = controller::loadMoreSearchResults,
+                                    onSearchFilterTypeChange = controller::setSearchFilterType,
                                 )
 
                                 PodiumDestination.Subscriptions -> SubscriptionsScreen(
@@ -1480,6 +1489,13 @@ private fun MobileLayout(
                                     onAddToPlaylist = { episodeId ->
                                         controller.addToPlaylist(episodeId)
                                     },
+                                    onEpisodeClick = { episode ->
+                                        // 播放单集并打开播放器详情页
+                                        onPlayEpisode(episode)
+                                        showPlayerDetail.value = true
+                                    },
+                                    onLoadMoreSearchResults = controller::loadMoreSearchResults,
+                                    onSearchFilterTypeChange = controller::setSearchFilterType,
                                 )
 
                                 PodiumDestination.Subscriptions -> SubscriptionsScreen(
