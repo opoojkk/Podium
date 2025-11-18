@@ -116,12 +116,12 @@ fun PodcastEpisodeCard(
                 )
                 // 显示描述
                 if (showDescription && !compact && episodeWithPodcast.episode.description.isNotBlank()) {
-                    Text(
-                        text = episodeWithPodcast.episode.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    com.opoojkk.podium.ui.components.HtmlText(
+                        html = episodeWithPodcast.episode.description,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 // 显示更新时间

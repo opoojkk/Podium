@@ -291,8 +291,8 @@ fun DesktopPlayerDetailScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
-                        com.opoojkk.podium.ui.components.TimestampText(
-                            text = episode.description,
+                        com.opoojkk.podium.ui.components.HtmlText(
+                            html = episode.description,
                             onTimestampClick = { timestampMs ->
                                 onSeekTo(timestampMs)
                             },

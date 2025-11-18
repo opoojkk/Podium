@@ -368,10 +368,11 @@ private fun SubscribedPodcastHeader(
 
         // 描述
         if (!podcast.description.isNullOrBlank()) {
-            Text(
-                text = podcast.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            com.opoojkk.podium.ui.components.HtmlText(
+                html = podcast.description,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
             )
         }
 

@@ -345,10 +345,11 @@ private fun PodcastHeader(
         }
 
         // 描述
-        Text(
-            text = feed?.description ?: podcast.description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        com.opoojkk.podium.ui.components.HtmlText(
+            html = feed?.description ?: podcast.description,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
         )
 
         // 上次更新时间
@@ -456,12 +457,12 @@ private fun EpisodeListItem(
                     )
                 }
 
-                Text(
-                    text = episode.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                com.opoojkk.podium.ui.components.HtmlText(
+                    html = episode.description,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
                 )
 
                 Row(

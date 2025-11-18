@@ -213,19 +213,25 @@ class SimpleRssParser : RssParser {
 
     private fun sanitizeRichText(raw: String): String {
         if (raw.isBlank()) return ""
-        var text = XmlUtils.decodeEntities(raw)
+        var text = raw
+
+        // Remove dangerous tags (script, style)
         text = scriptRegex.replace(text, " ")
         text = styleRegex.replace(text, " ")
-        text = breakTagRegex.replace(text, "\n")
-        text = blockTagRegex.replace(text, "\n\n")
-        text = htmlTagRegex.replace(text, " ")
 
+        // Remove other potentially dangerous or unsupported tags but keep safe formatting tags
+        // Keep: p, br, b, strong, i, em, u, a, h1-h6, ul, ol, li, div, span
+        val dangerousTagRegex = Regex(
+            "</?(?:iframe|frame|object|embed|applet|form|input|button|select|textarea|meta|link|base)[^>]*>",
+            setOf(RegexOption.IGNORE_CASE)
+        )
+        text = dangerousTagRegex.replace(text, " ")
+
+        // Normalize whitespace but preserve HTML structure
         return text
+            .replace("\r\n", "\n")
             .replace("\r", "\n")
-            .split('\n')
-            .map { line -> line.trim() }
-            .filter { it.isNotEmpty() }
-            .joinToString("\n")
+            .trim()
     }
 
     private fun firstNonBlank(vararg values: String?): String? =
