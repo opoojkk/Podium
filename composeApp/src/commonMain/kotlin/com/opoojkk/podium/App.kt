@@ -395,6 +395,23 @@ fun PodiumApp(
                         }
                     }
                 }
+            } else if (podcast.id.startsWith("itunes_")) {
+                // Handle iTunes search results - convert to RecommendedPodcast using feedUrl
+                println("📡 iTunes podcast clicked: ${podcast.title}")
+                println("🔗 Feed URL: ${podcast.feedUrl}")
+
+                val recommendedPodcast = com.opoojkk.podium.data.model.recommended.RecommendedPodcast(
+                    id = podcast.id,
+                    name = podcast.title,
+                    host = "", // iTunes results don't have host info in Podcast model
+                    description = podcast.description,
+                    artworkUrl = podcast.artworkUrl,
+                    rssUrl = podcast.feedUrl
+                )
+
+                println("📂 Opening iTunes podcast details with feedUrl: ${recommendedPodcast.rssUrl}")
+                selectedRecommendedPodcast.value = recommendedPodcast
+                showRecommendedPodcastDetail.value = true
             } else {
                 println("📂 Opening normal podcast details")
                 selectedPodcast.value = podcast
