@@ -116,12 +116,12 @@ private fun parseHtmlToAnnotatedString(
                     append("\n")
                 }
                 "p" -> {
-                    if (isClosing && isNotEmpty()) {
+                    if (isClosing && length > 0) {
                         append("\n\n")
                     }
                 }
                 "div" -> {
-                    if (isClosing && isNotEmpty()) {
+                    if (isClosing && length > 0) {
                         append("\n")
                     }
                 }
@@ -195,13 +195,13 @@ private fun parseHtmlToAnnotatedString(
                             pop()
                             styleStack.removeLastOrNull()
                         }
-                        if (isNotEmpty()) {
+                        if (length > 0) {
                             append("\n\n")
                         }
                     }
                 }
                 "ul", "ol" -> {
-                    if (isClosing && isNotEmpty()) {
+                    if (isClosing && length > 0) {
                         append("\n")
                     }
                 }
