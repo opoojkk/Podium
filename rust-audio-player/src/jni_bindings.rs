@@ -186,6 +186,43 @@ pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadBuffer
     }
 }
 
+/// Load audio from URL (streaming)
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "C" fn Java_com_opoojkk_podium_audio_RustAudioPlayer_nativeLoadUrl(
+    mut env: JNIEnv,
+    _class: JClass,
+    player_id: jlong,
+    url: JString,
+) -> jint {
+    let url_str = match jstring_to_string(&mut env, &url) {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("Failed to convert URL: {}", e);
+            return -1;
+        }
+    };
+
+    log::info!("Loading URL: {}", url_str);
+
+    let mut registry = PLAYER_REGISTRY.lock();
+    if let Some(player) = registry.get_mut(&player_id) {
+        match player.load_url(&url_str) {
+            Ok(_) => {
+                log::info!("URL loaded successfully");
+                0
+            }
+            Err(e) => {
+                log::error!("Failed to load URL: {}", e);
+                -1
+            }
+        }
+    } else {
+        log::error!("Invalid player ID: {}", player_id);
+        -1
+    }
+}
+
 /// Start playback
 #[cfg(target_os = "android")]
 #[no_mangle]

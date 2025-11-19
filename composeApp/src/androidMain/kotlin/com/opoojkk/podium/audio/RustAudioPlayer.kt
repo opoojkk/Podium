@@ -43,6 +43,9 @@ class RustAudioPlayer {
         private external fun nativeLoadFile(playerId: Long, path: String): Int
 
         @JvmStatic
+        private external fun nativeLoadUrl(playerId: Long, url: String): Int
+
+        @JvmStatic
         private external fun nativeLoadBuffer(playerId: Long, buffer: ByteArray): Int
 
         @JvmStatic
@@ -121,6 +124,21 @@ class RustAudioPlayer {
         val result = nativeLoadFile(playerId, path)
         if (result != 0) {
             throw AudioPlayerException("Failed to load file: $path")
+        }
+    }
+
+    /**
+     * Load audio from URL (HTTP/HTTPS streaming)
+     * @param url URL to audio file
+     * @throws AudioPlayerException if loading fails
+     */
+    fun loadUrl(url: String) {
+        checkNotReleased()
+        Log.d(TAG, "Loading URL: $url")
+
+        val result = nativeLoadUrl(playerId, url)
+        if (result != 0) {
+            throw AudioPlayerException("Failed to load URL: $url")
         }
     }
 

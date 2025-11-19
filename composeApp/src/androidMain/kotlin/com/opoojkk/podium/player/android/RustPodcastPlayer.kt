@@ -71,9 +71,14 @@ class RustPodcastPlayer(
                 return
             }
 
-            // Load audio file
-            Log.d(TAG, "Loading audio file: $audioPath")
-            rustPlayer.loadFile(audioPath)
+            // Load audio file or URL
+            if (audioPath.startsWith("http://") || audioPath.startsWith("https://")) {
+                Log.d(TAG, "Loading audio URL: $audioPath")
+                rustPlayer.loadUrl(audioPath)
+            } else {
+                Log.d(TAG, "Loading audio file: $audioPath")
+                rustPlayer.loadFile(audioPath)
+            }
 
             // Wait a bit for duration to be available
             delay(100)
@@ -324,8 +329,8 @@ class RustPodcastPlayer(
     }
 
     /**
-     * Get the audio file path for an episode
-     * Checks download cache first, starts background download and returns temp path for streaming
+     * Get the audio file path or URL for an episode
+     * Checks download cache first, returns HTTP URL for streaming if not cached
      */
     private suspend fun getAudioFilePath(episode: Episode): String? {
         // Check if episode is downloaded
@@ -335,9 +340,9 @@ class RustPodcastPlayer(
             return downloadedFile.absolutePath
         }
 
-        // Start background download and return path for streaming playback
-        Log.i(TAG, "Episode not cached, starting streaming download from: ${episode.audioUrl}")
-        return startStreamingDownload(episode)
+        // Return HTTP URL for streaming playback
+        Log.i(TAG, "Episode not cached, will stream from URL: ${episode.audioUrl}")
+        return episode.audioUrl
     }
 
     /**

@@ -36,6 +36,9 @@ pub enum AudioError {
     /// Decoding error
     DecodingError(String),
 
+    /// Network error (download/streaming)
+    NetworkError(String),
+
     /// Generic error
     Other(String),
 }
@@ -54,6 +57,7 @@ impl fmt::Display for AudioError {
             AudioError::JniError(msg) => write!(f, "JNI error: {}", msg),
             AudioError::IoError(msg) => write!(f, "IO error: {}", msg),
             AudioError::DecodingError(msg) => write!(f, "Decoding error: {}", msg),
+            AudioError::NetworkError(msg) => write!(f, "Network error: {}", msg),
             AudioError::Other(msg) => write!(f, "Error: {}", msg),
         }
     }
