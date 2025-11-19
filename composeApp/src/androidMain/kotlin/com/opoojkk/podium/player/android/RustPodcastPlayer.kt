@@ -325,7 +325,7 @@ class RustPodcastPlayer(
 
     /**
      * Get the audio file path for an episode
-     * Checks download cache first, downloads to temp file if needed
+     * Checks download cache first, starts background download and returns temp path for streaming
      */
     private suspend fun getAudioFilePath(episode: Episode): String? {
         // Check if episode is downloaded
@@ -335,15 +335,16 @@ class RustPodcastPlayer(
             return downloadedFile.absolutePath
         }
 
-        // Download to temporary file for streaming
-        Log.i(TAG, "Episode not cached, downloading from URL: ${episode.audioUrl}")
-        return downloadToTempFile(episode)
+        // Start background download and return path for streaming playback
+        Log.i(TAG, "Episode not cached, starting streaming download from: ${episode.audioUrl}")
+        return startStreamingDownload(episode)
     }
 
     /**
-     * Download episode to temporary cache file for playback
+     * Start background download to temporary cache file and enable streaming playback
+     * Returns the file path immediately so playback can start while download continues
      */
-    private suspend fun downloadToTempFile(episode: Episode): String? = withContext(Dispatchers.IO) {
+    private suspend fun startStreamingDownload(episode: Episode): String? = withContext(Dispatchers.IO) {
         try {
             // Create streaming cache directory
             val streamingCacheDir = File(context.cacheDir, "streaming")
@@ -360,7 +361,7 @@ class RustPodcastPlayer(
                 return@withContext tempFile.absolutePath
             }
 
-            Log.d(TAG, "Downloading to temp file: ${tempFile.absolutePath}")
+            Log.d(TAG, "Starting background download to: ${tempFile.absolutePath}")
 
             // Download from URL
             val url = URL(episode.audioUrl)
@@ -368,17 +369,76 @@ class RustPodcastPlayer(
             connection.connectTimeout = 10000 // 10 seconds
             connection.readTimeout = 30000 // 30 seconds
 
-            connection.getInputStream().use { input ->
-                tempFile.outputStream().use { output ->
-                    input.copyTo(output)
+            val contentLength = connection.contentLengthLong
+            Log.d(TAG, "Content length: $contentLength bytes")
+
+            // Pre-buffer size: 2MB or 5% of file size, whichever is larger
+            val preBufferSize = if (contentLength > 0) {
+                maxOf(2 * 1024 * 1024L, (contentLength * 0.05).toLong())
+            } else {
+                2 * 1024 * 1024L // Default 2MB
+            }
+
+            Log.d(TAG, "Pre-buffer size: $preBufferSize bytes")
+
+            // Start background download
+            coroutineScope.launch(Dispatchers.IO) {
+                try {
+                    connection.getInputStream().use { input ->
+                        tempFile.outputStream().use { output ->
+                            val buffer = ByteArray(8192)
+                            var bytesRead: Int
+                            var totalBytesRead = 0L
+
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                output.write(buffer, 0, bytesRead)
+                                totalBytesRead += bytesRead
+
+                                // Log progress periodically
+                                if (totalBytesRead % (1024 * 1024) == 0L) {
+                                    val progress = if (contentLength > 0) {
+                                        (totalBytesRead * 100 / contentLength).toInt()
+                                    } else {
+                                        0
+                                    }
+                                    Log.d(TAG, "Download progress: ${totalBytesRead / (1024 * 1024)}MB ${if (progress > 0) "($progress%)" else ""}")
+                                }
+                            }
+
+                            Log.i(TAG, "Background download complete: ${totalBytesRead} bytes")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Background download failed", e)
+                    // Don't delete the partial file - it might still be useful for playback
                 }
             }
 
-            Log.i(TAG, "Download complete: ${tempFile.length()} bytes")
-            tempFile.absolutePath
+            // Wait for pre-buffer to complete
+            var attempts = 0
+            val maxAttempts = 100 // 10 seconds max wait (100 * 100ms)
+            while (tempFile.length() < preBufferSize && attempts < maxAttempts) {
+                delay(100)
+                attempts++
+            }
+
+            val currentSize = tempFile.length()
+            if (currentSize < preBufferSize) {
+                Log.w(TAG, "Pre-buffer incomplete: $currentSize bytes (target: $preBufferSize)")
+            } else {
+                Log.d(TAG, "Pre-buffer complete: $currentSize bytes")
+            }
+
+            // Return path even if pre-buffer is incomplete - let the player handle it
+            if (currentSize > 0) {
+                tempFile.absolutePath
+            } else {
+                Log.e(TAG, "No data downloaded yet")
+                null
+            }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to download episode", e)
+            Log.e(TAG, "Failed to start streaming download", e)
             null
         }
     }
