@@ -240,6 +240,14 @@ build_android() {
     done
 
     print_success "Android libraries copied to $JNILIBS_DIR"
+
+    # Unset Android-specific environment variables to avoid affecting other builds
+    unset CC CXX AR RANLIB NDK_HOME
+    for target_config in "${ANDROID_TARGETS[@]}"; do
+        IFS=':' read -r TARGET ARCH ABI <<< "$target_config"
+        TARGET_UPPER=$(echo "$TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+        unset CARGO_TARGET_${TARGET_UPPER}_LINKER
+    done
 }
 
 # Build for Windows
@@ -275,6 +283,9 @@ build_macos() {
     fi
 
     print_info "Building for macOS..."
+
+    # Ensure we're not using Android NDK toolchain
+    unset CC CXX AR RANLIB
 
     # Fix for Xcode 15.4+ SDK _Float16 issue with coreaudio-sys bindgen
     # Map _Float16 to float (f32) - CoreAudio doesn't use these math.h functions anyway
@@ -334,6 +345,9 @@ build_ios() {
     fi
 
     print_info "Building for iOS..."
+
+    # Ensure we're not using Android NDK toolchain
+    unset CC CXX AR RANLIB
 
     # Fix for iOS SDK 18.4+ compatibility issues with coreaudio-sys bindgen
     # 1. Map _Float16 to float (f32) - CoreAudio doesn't use these math.h functions anyway
