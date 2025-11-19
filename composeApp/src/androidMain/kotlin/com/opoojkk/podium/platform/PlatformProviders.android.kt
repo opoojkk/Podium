@@ -5,7 +5,7 @@ import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.download.DefaultPodcastDownloadManager
 import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.player.PodcastPlayer
-import com.opoojkk.podium.player.android.RustPodcastPlayer
+import com.opoojkk.podium.player.android.AndroidPodcastPlayer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -22,7 +22,7 @@ actual fun createPlatformHttpClient(): HttpClient = HttpClient(OkHttp) {
 }
 
 actual fun providePodcastPlayer(context: PlatformContext): PodcastPlayer =
-    RustPodcastPlayer(context.context)
+    AndroidPodcastPlayer(context.context)
 
 actual fun provideDownloadManager(
     context: PlatformContext,
