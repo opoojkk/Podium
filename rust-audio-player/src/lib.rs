@@ -16,6 +16,7 @@ pub mod decoder;
 pub mod error;
 pub mod callback;
 pub mod metadata;
+mod http_utils;
 
 // Re-exports
 pub use player::{AudioPlayer, PlayerState, PlaybackStatus};

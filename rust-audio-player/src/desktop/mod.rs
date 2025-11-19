@@ -394,8 +394,49 @@ impl AudioPlayer for DesktopAudioPlayer {
         Ok(())
     }
 
-    fn load_url(&mut self, _url: &str) -> Result<()> {
-        Err(AudioError::Other("URL loading not yet implemented".to_string()))
+    fn load_url(&mut self, url: &str) -> Result<()> {
+        log::info!("Loading audio from URL: {}", url);
+
+        self.state_container.set_state(PlayerState::Loading);
+        self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
+            old_state: PlayerState::Idle,
+            new_state: PlayerState::Loading,
+        });
+
+        self.is_playing.store(false, Ordering::Relaxed);
+        self.stop_decoder_thread();
+        self.ring_buffer.lock().clear();
+        *self.sample_count.lock() = 0;
+
+        // Get temp cache path
+        let temp_file_path = crate::http_utils::get_temp_cache_path(url);
+        log::info!("Downloading to temp file: {}", temp_file_path);
+
+        // Download with progressive loading
+        crate::http_utils::download_with_prebuffer(url, &temp_file_path)?;
+
+        log::info!("Pre-buffer complete, loading audio");
+        let decoder = AudioDecoder::from_file(&temp_file_path)?;
+        let sample_rate = decoder.format.sample_rate;
+        let channels = decoder.format.channels;
+
+        self.initialize_audio_stream(sample_rate, channels)?;
+        *self.decoder.lock() = Some(decoder);
+
+        // Optimize buffer size based on audio duration
+        self.optimize_buffer_size();
+
+        // Pre-buffer audio to reduce playback latency
+        self.prebuffer()?;
+
+        self.state_container.set_state(PlayerState::Ready);
+        self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
+            old_state: PlayerState::Loading,
+            new_state: PlayerState::Ready,
+        });
+
+        log::info!("Audio URL loaded successfully");
+        Ok(())
     }
 
     fn load_buffer(&mut self, buffer: &[u8]) -> Result<()> {

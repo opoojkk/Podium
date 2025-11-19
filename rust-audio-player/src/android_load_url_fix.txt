@@ -1,0 +1,55 @@
+    fn load_url(&mut self, url: &str) -> Result<()> {
+        log::info!("Loading audio from URL: {}", url);
+
+        self.state_container.set_state(PlayerState::Loading);
+        self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
+            old_state: PlayerState::Idle,
+            new_state: PlayerState::Loading,
+        });
+
+        // Stop any ongoing playback
+        self.is_playing.store(false, Ordering::Relaxed);
+        self.stop_decoder_thread();
+
+        // Clear ring buffer
+        self.ring_buffer.lock().clear();
+        *self.sample_count.lock() = 0;
+
+        // Get temp cache path
+        let temp_file_path = crate::http_utils::get_temp_cache_path(url);
+        log::info!("Downloading to temp file: {}", temp_file_path);
+
+        // Download with progressive loading
+        match crate::http_utils::download_with_prebuffer(url, &temp_file_path) {
+            Ok(()) => {
+                log::info!("Pre-buffer complete, loading audio");
+                // Load the audio file (partially downloaded)
+                let decoder = AudioDecoder::from_file(&temp_file_path)?;
+                let sample_rate = decoder.format.sample_rate;
+                let channels = decoder.format.channels;
+
+                // Initialize audio stream with the correct format
+                self.initialize_audio_stream(sample_rate, channels)?;
+
+                // Store decoder
+                *self.decoder.lock() = Some(decoder);
+
+                // Optimize buffer size based on audio duration
+                self.optimize_buffer_size();
+
+                self.state_container.set_state(PlayerState::Ready);
+                self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
+                    old_state: PlayerState::Loading,
+                    new_state: PlayerState::Ready,
+                });
+
+                log::info!("Audio URL loaded successfully");
+                Ok(())
+            }
+            Err(e) => {
+                log::error!("Failed to download audio: {}", e);
+                self.state_container.set_state(PlayerState::Error);
+                Err(e)
+            }
+        }
+    }
