@@ -22,8 +22,15 @@ use oboe::{
     Stereo,
 };
 
-/// Ring buffer size (in samples, 4 seconds at 48kHz stereo)
+/// Default ring buffer size (in samples) - used at initialization
+/// Will be optimized based on audio duration when loading
 const RING_BUFFER_SIZE: usize = 48000 * 2 * 4;
+
+/// Minimum buffer duration in seconds (for short clips)
+const MIN_BUFFER_DURATION_SECS: u64 = 2;
+
+/// Maximum buffer duration in seconds (to limit memory usage)
+const MAX_BUFFER_DURATION_SECS: u64 = 8;
 
 /// Position update interval (milliseconds)
 const POSITION_UPDATE_INTERVAL_MS: u64 = 100;
@@ -187,75 +194,129 @@ impl AndroidAudioPlayer {
                     continue;
                 }
 
-                // Decode audio packets
-                let mut decoder_lock = decoder.lock();
-                if let Some(ref mut dec) = *decoder_lock {
-                    match dec.decode_next() {
-                        Ok(Some(mut samples)) => {
-                            // Apply volume
-                            let vol = *volume.lock();
-                            if vol != 1.0 {
-                                for sample in samples.iter_mut() {
-                                    *sample *= vol;
+                // Decode audio packets and get format info
+                let decode_result = {
+                    let mut decoder_lock = decoder.lock();
+                    if let Some(ref mut dec) = *decoder_lock {
+                        let sample_rate = dec.format.sample_rate;
+                        let duration_ms = dec.format.duration_ms;
+                        match dec.decode_next() {
+                            Ok(Some(mut samples)) => {
+                                // Apply volume (skip if volume is 1.0 to avoid unnecessary multiplication)
+                                let vol = *volume.lock();
+                                if (vol - 1.0).abs() > 0.001 {
+                                    for sample in samples.iter_mut() {
+                                        *sample *= vol;
+                                    }
                                 }
+                                Some((samples, sample_rate, duration_ms))
                             }
-
-                            // Write to ring buffer
-                            let mut buffer = ring_buffer.lock();
-                            let mut written = 0;
-                            while written < samples.len() {
-                                let w = buffer.write(&samples[written..]);
-                                if w == 0 {
-                                    // Buffer full, wait a bit
-                                    drop(buffer);
-                                    thread::sleep(std::time::Duration::from_millis(5));
-                                    buffer = ring_buffer.lock();
-                                } else {
-                                    written += w;
-                                }
-                            }
-                            drop(buffer);
-
-                            // Update position periodically
-                            if last_position_update.elapsed().as_millis() >= POSITION_UPDATE_INTERVAL_MS as u128 {
-                                let count = *sample_count.lock();
-                                let position_ms = (count * 1000) / dec.format.sample_rate as u64;
-                                callback_manager.dispatch_event(CallbackEvent::PositionChanged {
-                                    position_ms,
-                                    duration_ms: dec.format.duration_ms,
+                            Ok(None) => None,
+                            Err(e) => {
+                                log::error!("Decoding error: {}", e);
+                                callback_manager.dispatch_event(CallbackEvent::Error {
+                                    message: e.to_string(),
                                 });
-                                last_position_update = std::time::Instant::now();
+                                is_playing.store(false, Ordering::Relaxed);
+                                state_container.set_state(PlayerState::Error);
+                                return;  // Exit decode_result block
                             }
                         }
-                        Ok(None) => {
-                            // End of stream
-                            log::info!("Playback completed");
-                            is_playing.store(false, Ordering::Relaxed);
-                            callback_manager.dispatch_event(CallbackEvent::PlaybackCompleted);
-                            state_container.set_state(PlayerState::Stopped);
-                            break;
+                    } else {
+                        return;  // No decoder, exit decode_result block
+                    }
+                };  // decoder_lock is released here
+
+                match decode_result {
+                    Some((samples, sample_rate, duration_ms)) => {
+                        // Write to ring buffer (decoder lock already released)
+                        let mut buffer = ring_buffer.lock();
+                        let mut written = 0;
+                        while written < samples.len() {
+                            let w = buffer.write(&samples[written..]);
+                            if w == 0 {
+                                // Buffer is full - sleep based on fullness
+                                let fullness = buffer.fullness();
+                                drop(buffer);
+
+                                // Smart sleep: longer sleep when buffer is fuller
+                                let sleep_ms = if fullness > 0.9 {
+                                    15  // Buffer >90% full: long sleep
+                                } else if fullness > 0.7 {
+                                    10  // Buffer >70% full: medium sleep
+                                } else {
+                                    5   // Buffer <70% full: short sleep
+                                };
+                                thread::sleep(std::time::Duration::from_millis(sleep_ms));
+                                buffer = ring_buffer.lock();
+                            } else {
+                                written += w;
+                            }
                         }
-                        Err(e) => {
-                            log::error!("Decoding error: {}", e);
-                            callback_manager.dispatch_event(CallbackEvent::Error {
-                                message: e.to_string(),
+                        drop(buffer);
+
+                        // Update position periodically
+                        if last_position_update.elapsed().as_millis() >= POSITION_UPDATE_INTERVAL_MS as u128 {
+                            let count = *sample_count.lock();
+                            let position_ms = (count * 1000) / sample_rate as u64;
+                            callback_manager.dispatch_event(CallbackEvent::PositionChanged {
+                                position_ms,
+                                duration_ms,
                             });
-                            is_playing.store(false, Ordering::Relaxed);
-                            state_container.set_state(PlayerState::Error);
-                            break;
+                            last_position_update = std::time::Instant::now();
                         }
                     }
-                } else {
-                    break;
+                    None => {
+                        // End of stream
+                        log::info!("Playback completed");
+                        is_playing.store(false, Ordering::Relaxed);
+                        callback_manager.dispatch_event(CallbackEvent::PlaybackCompleted);
+                        state_container.set_state(PlayerState::Stopped);
+                        break;
+                    }
                 }
-
-                drop(decoder_lock);
             }
 
             log::info!("Decoder thread exited");
         });
 
         self.decoder_thread = Some(handle);
+    }
+
+    /// Optimize ring buffer size based on audio duration
+    /// Adjusts buffer to use between MIN_BUFFER_DURATION_SECS and MAX_BUFFER_DURATION_SECS
+    fn optimize_buffer_size(&mut self) {
+        let decoder_lock = self.decoder.lock();
+        if let Some(ref decoder) = *decoder_lock {
+            let sample_rate = decoder.format.sample_rate;
+            let channels = decoder.format.channels;
+            let duration_ms = decoder.format.duration_ms;
+            let duration_secs = duration_ms / 1000;
+
+            // Calculate optimal buffer duration
+            let buffer_duration_secs = duration_secs
+                .max(MIN_BUFFER_DURATION_SECS)
+                .min(MAX_BUFFER_DURATION_SECS);
+
+            // Calculate buffer size in samples
+            let optimal_size = (sample_rate as u64 * channels as u64 * buffer_duration_secs) as usize;
+
+            let current_size = self.ring_buffer.lock().size();
+
+            if optimal_size != current_size {
+                log::info!("Optimizing buffer: audio={}s, buffer={}s, size={}KB -> {}KB",
+                    duration_secs,
+                    buffer_duration_secs,
+                    current_size * std::mem::size_of::<f32>() / 1024,
+                    optimal_size * std::mem::size_of::<f32>() / 1024
+                );
+
+                drop(decoder_lock);
+                self.ring_buffer.lock().resize(optimal_size);
+            } else {
+                drop(decoder_lock);
+            }
+        }
     }
 
     fn stop_decoder_thread(&mut self) {
@@ -297,6 +358,9 @@ impl AudioPlayer for AndroidAudioPlayer {
         // Store decoder
         *self.decoder.lock() = Some(decoder);
 
+        // Optimize buffer size based on audio duration
+        self.optimize_buffer_size();
+
         self.state_container.set_state(PlayerState::Ready);
         self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
             old_state: PlayerState::Loading,
@@ -335,6 +399,9 @@ impl AudioPlayer for AndroidAudioPlayer {
 
         // Store decoder
         *self.decoder.lock() = Some(decoder);
+
+        // Optimize buffer size based on audio duration
+        self.optimize_buffer_size();
 
         self.state_container.set_state(PlayerState::Ready);
         log::info!("Audio buffer loaded successfully");

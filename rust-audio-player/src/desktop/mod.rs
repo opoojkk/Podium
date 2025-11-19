@@ -12,11 +12,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Host, Stream, StreamConfig};
 
-/// Ring buffer size (in samples)
+/// Default ring buffer size (in samples) - used at initialization
+/// Will be optimized based on audio duration when loading
 const RING_BUFFER_SIZE: usize = 48000 * 2 * 4;
+
+/// Minimum buffer duration in seconds (for short clips)
+const MIN_BUFFER_DURATION_SECS: u64 = 2;
+
+/// Maximum buffer duration in seconds (to limit memory usage)
+const MAX_BUFFER_DURATION_SECS: u64 = 8;
 
 /// Position update interval (milliseconds)
 const POSITION_UPDATE_INTERVAL_MS: u64 = 100;
+
+/// Pre-buffer target in milliseconds (amount to decode before playback starts)
+const PRE_BUFFER_MS: u64 = 100;
 
 /// Desktop audio player
 pub struct DesktopAudioPlayer {
@@ -105,9 +115,11 @@ impl DesktopAudioPlayer {
                 let mut buffer = ring_buffer.lock();
                 let read = buffer.read(data);
 
-                // Apply volume
-                for sample in data[..read].iter_mut() {
-                    *sample *= vol;
+                // Apply volume (skip if volume is 1.0 to avoid unnecessary multiplication)
+                if (vol - 1.0).abs() > 0.001 {
+                    for sample in data[..read].iter_mut() {
+                        *sample *= vol;
+                    }
                 }
 
                 // Fill remaining with silence
@@ -160,58 +172,78 @@ impl DesktopAudioPlayer {
                     continue;
                 }
 
-                let mut decoder_lock = decoder.lock();
-                if let Some(ref mut dec) = *decoder_lock {
-                    match dec.decode_next() {
-                        Ok(Some(samples)) => {
-                            // Write to ring buffer
-                            let mut buffer = ring_buffer.lock();
-                            let mut written = 0;
-                            while written < samples.len() {
-                                let w = buffer.write(&samples[written..]);
-                                if w == 0 {
-                                    drop(buffer);
-                                    thread::sleep(std::time::Duration::from_millis(5));
-                                    buffer = ring_buffer.lock();
-                                } else {
-                                    written += w;
-                                }
-                            }
-                            drop(buffer);
-
-                            // Update position periodically
-                            if last_position_update.elapsed().as_millis() >= POSITION_UPDATE_INTERVAL_MS as u128 {
-                                let count = *sample_count.lock();
-                                let position_ms = (count * 1000) / dec.format.sample_rate as u64;
-                                callback_manager.dispatch_event(CallbackEvent::PositionChanged {
-                                    position_ms,
-                                    duration_ms: dec.format.duration_ms,
+                // Decode next packet and get format info
+                let decode_result = {
+                    let mut decoder_lock = decoder.lock();
+                    if let Some(ref mut dec) = *decoder_lock {
+                        let sample_rate = dec.format.sample_rate;
+                        let duration_ms = dec.format.duration_ms;
+                        match dec.decode_next() {
+                            Ok(Some(samples)) => Some((samples, sample_rate, duration_ms)),
+                            Ok(None) => None,
+                            Err(e) => {
+                                log::error!("Decoding error: {}", e);
+                                callback_manager.dispatch_event(CallbackEvent::Error {
+                                    message: e.to_string(),
                                 });
-                                last_position_update = std::time::Instant::now();
+                                is_playing.store(false, Ordering::Relaxed);
+                                state_container.set_state(PlayerState::Error);
+                                return;  // Exit decode_result block with implicit None
                             }
                         }
-                        Ok(None) => {
-                            log::info!("Playback completed");
-                            is_playing.store(false, Ordering::Relaxed);
-                            callback_manager.dispatch_event(CallbackEvent::PlaybackCompleted);
-                            state_container.set_state(PlayerState::Stopped);
-                            break;
+                    } else {
+                        return;  // No decoder, exit decode_result block
+                    }
+                };  // decoder_lock is released here
+
+                match decode_result {
+                    Some((samples, sample_rate, duration_ms)) => {
+                        // Write to ring buffer (decoder lock already released)
+                        let mut buffer = ring_buffer.lock();
+                        let mut written = 0;
+                        while written < samples.len() {
+                            let w = buffer.write(&samples[written..]);
+                            if w == 0 {
+                                // Buffer is full - sleep based on fullness
+                                let fullness = buffer.fullness();
+                                drop(buffer);
+
+                                // Smart sleep: longer sleep when buffer is fuller
+                                let sleep_ms = if fullness > 0.9 {
+                                    15  // Buffer >90% full: long sleep
+                                } else if fullness > 0.7 {
+                                    10  // Buffer >70% full: medium sleep
+                                } else {
+                                    5   // Buffer <70% full: short sleep
+                                };
+                                thread::sleep(std::time::Duration::from_millis(sleep_ms));
+                                buffer = ring_buffer.lock();
+                            } else {
+                                written += w;
+                            }
                         }
-                        Err(e) => {
-                            log::error!("Decoding error: {}", e);
-                            callback_manager.dispatch_event(CallbackEvent::Error {
-                                message: e.to_string(),
+                        drop(buffer);
+
+                        // Update position periodically
+                        if last_position_update.elapsed().as_millis() >= POSITION_UPDATE_INTERVAL_MS as u128 {
+                            let count = *sample_count.lock();
+                            let position_ms = (count * 1000) / sample_rate as u64;
+                            callback_manager.dispatch_event(CallbackEvent::PositionChanged {
+                                position_ms,
+                                duration_ms,
                             });
-                            is_playing.store(false, Ordering::Relaxed);
-                            state_container.set_state(PlayerState::Error);
-                            break;
+                            last_position_update = std::time::Instant::now();
                         }
                     }
-                } else {
-                    break;
+                    None => {
+                        // Playback completed
+                        log::info!("Playback completed");
+                        is_playing.store(false, Ordering::Relaxed);
+                        callback_manager.dispatch_event(CallbackEvent::PlaybackCompleted);
+                        state_container.set_state(PlayerState::Stopped);
+                        break;
+                    }
                 }
-
-                drop(decoder_lock);
             }
 
             log::info!("Decoder thread exited");
@@ -227,6 +259,89 @@ impl DesktopAudioPlayer {
                 let _ = handle.join();
             }
         }
+    }
+
+    /// Optimize ring buffer size based on audio duration
+    /// Adjusts buffer to use between MIN_BUFFER_DURATION_SECS and MAX_BUFFER_DURATION_SECS
+    fn optimize_buffer_size(&mut self) {
+        let decoder_lock = self.decoder.lock();
+        if let Some(ref decoder) = *decoder_lock {
+            let sample_rate = decoder.format.sample_rate;
+            let channels = decoder.format.channels;
+            let duration_ms = decoder.format.duration_ms;
+            let duration_secs = duration_ms / 1000;
+
+            // Calculate optimal buffer duration
+            let buffer_duration_secs = duration_secs
+                .max(MIN_BUFFER_DURATION_SECS)
+                .min(MAX_BUFFER_DURATION_SECS);
+
+            // Calculate buffer size in samples
+            let optimal_size = (sample_rate as u64 * channels as u64 * buffer_duration_secs) as usize;
+
+            let current_size = self.ring_buffer.lock().size();
+
+            if optimal_size != current_size {
+                log::info!("Optimizing buffer: audio={}s, buffer={}s, size={}KB -> {}KB",
+                    duration_secs,
+                    buffer_duration_secs,
+                    current_size * std::mem::size_of::<f32>() / 1024,
+                    optimal_size * std::mem::size_of::<f32>() / 1024
+                );
+
+                drop(decoder_lock);
+                self.ring_buffer.lock().resize(optimal_size);
+            } else {
+                drop(decoder_lock);
+            }
+        }
+    }
+
+    /// Pre-buffer audio data to reduce initial playback latency
+    fn prebuffer(&mut self) -> Result<()> {
+        let mut decoder_lock = self.decoder.lock();
+        if let Some(ref mut decoder) = *decoder_lock {
+            let sample_rate = decoder.format.sample_rate;
+            let channels = decoder.format.channels;
+
+            // Calculate target samples for pre-buffering
+            let target_samples = ((PRE_BUFFER_MS * sample_rate as u64) / 1000) as usize * channels as usize;
+            let mut total_buffered = 0;
+
+            log::debug!("Pre-buffering {}ms ({} samples)...", PRE_BUFFER_MS, target_samples);
+
+            // Decode and buffer data
+            while total_buffered < target_samples {
+                match decoder.decode_next() {
+                    Ok(Some(samples)) => {
+                        let mut buffer = self.ring_buffer.lock();
+                        let written = buffer.write(&samples);
+                        total_buffered += written;
+                        drop(buffer);
+
+                        if written < samples.len() {
+                            // Ring buffer full, we have enough
+                            break;
+                        }
+                    }
+                    Ok(None) => {
+                        // End of audio (very short file)
+                        log::debug!("Pre-buffer: reached end of audio after {} samples", total_buffered);
+                        break;
+                    }
+                    Err(e) => {
+                        log::warn!("Pre-buffer decode error: {}", e);
+                        break;
+                    }
+                }
+            }
+
+            log::debug!("Pre-buffered {} samples ({}ms)",
+                       total_buffered,
+                       (total_buffered / channels as usize) * 1000 / sample_rate as usize);
+        }
+        drop(decoder_lock);
+        Ok(())
     }
 }
 
@@ -263,6 +378,12 @@ impl AudioPlayer for DesktopAudioPlayer {
         self.initialize_audio_stream(sample_rate, channels)?;
         *self.decoder.lock() = Some(decoder);
 
+        // Optimize buffer size based on audio duration
+        self.optimize_buffer_size();
+
+        // Pre-buffer audio to reduce playback latency
+        self.prebuffer()?;
+
         self.state_container.set_state(PlayerState::Ready);
         self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
             old_state: PlayerState::Loading,
@@ -294,6 +415,12 @@ impl AudioPlayer for DesktopAudioPlayer {
         self.initialize_audio_stream(sample_rate, channels)?;
         *self.decoder.lock() = Some(decoder);
 
+        // Optimize buffer size based on audio duration
+        self.optimize_buffer_size();
+
+        // Pre-buffer audio to reduce playback latency
+        self.prebuffer()?;
+
         self.state_container.set_state(PlayerState::Ready);
         log::info!("Audio buffer loaded successfully");
         Ok(())
@@ -309,6 +436,16 @@ impl AudioPlayer for DesktopAudioPlayer {
             ));
         }
 
+        // Start decoder thread first (if not already running)
+        if self.decoder_thread.is_none() {
+            self.start_decoder_thread();
+        }
+
+        // Enable playback flag before starting stream
+        // This ensures decoder thread can fill ring buffer immediately
+        self.is_playing.store(true, Ordering::Relaxed);
+
+        // Start audio stream
         let stream_guard = self.audio_stream.lock();
         if let Some(ref stream) = *stream_guard {
             stream.play()
@@ -318,11 +455,6 @@ impl AudioPlayer for DesktopAudioPlayer {
         }
         drop(stream_guard);
 
-        if self.decoder_thread.is_none() {
-            self.start_decoder_thread();
-        }
-
-        self.is_playing.store(true, Ordering::Relaxed);
         self.state_container.set_state(PlayerState::Playing);
         self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
             old_state: current_state,

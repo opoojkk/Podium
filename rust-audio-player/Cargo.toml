@@ -27,16 +27,11 @@ oboe = { version = "0.6", features = ["java-interface"] }
 jni = "0.21"
 android_logger = "0.14"
 
-# For iOS/macOS, we use cpal instead of coreaudio-rs to avoid Xcode 15+ bindgen issues
-# coreaudio-rs has compatibility issues with Xcode SDK 15.4 (_Float16 not supported)
-# Since we're using stub implementations for now, cpal is sufficient
-#[target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
-#core-foundation = "0.9"
-#core-foundation-sys = "0.8"
-#coreaudio-rs = "0.11"
-
-[target.'cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))'.dependencies]
-cpal = "0.15"
+# Using cpal for iOS/macOS/Windows/Linux
+# cpal 0.16+ supports iOS and macOS via CoreAudio backend
+# Version 0.16 is required for iOS SDK 18.4+ compatibility (removed AudioSession API)
+[target.'cfg(any(target_os = "windows", target_os = "linux", target_os = "macos", target_os = "ios"))'.dependencies]
+cpal = "0.16"
 
 # Feature flags for conditional compilation
 [features]

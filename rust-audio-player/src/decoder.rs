@@ -122,122 +122,126 @@ impl AudioDecoder {
         // Extract cover art if available
         let cover_art = Self::extract_cover_art(&mut probe_result.metadata);
 
-        log::info!("Loaded audio: {}Hz, {} channels, {} ms",
-                   format.sample_rate, format.channels, format.duration_ms);
+        // Log essential information only
+        log::info!("Loaded audio: {}Hz, {} ch, {}ms, codec={}",
+                   format.sample_rate, format.channels, format.duration_ms,
+                   codec_params.codec.to_string().to_uppercase());
 
-        // Print detailed metadata information
-        log::info!("=== Audio Metadata ===");
-        log::info!("Format: codec={}, duration={}ms, sample_rate={}Hz, channels={}",
-                   metadata.format_info.codec,
-                   metadata.format_info.duration_ms,
-                   metadata.format_info.sample_rate,
-                   metadata.format_info.channels);
+        // Detailed metadata logging - only in debug builds
+        #[cfg(debug_assertions)]
+        {
+            log::debug!("=== Audio Metadata ===");
+            log::debug!("Format: codec={}, duration={}ms, sample_rate={}Hz, channels={}",
+                       metadata.format_info.codec,
+                       metadata.format_info.duration_ms,
+                       metadata.format_info.sample_rate,
+                       metadata.format_info.channels);
 
-        if let Some(bitrate) = metadata.format_info.bitrate_bps {
-            log::info!("Bitrate: {} kbps", bitrate / 1000);
-        }
-
-        if let Some(frames) = metadata.format_info.total_frames {
-            log::info!("Total frames: {}", frames);
-        }
-
-        // Quality parameters
-        if let Some(bit_depth) = metadata.quality.bit_depth {
-            log::info!("Bit depth: {} bit", bit_depth);
-        }
-
-        if metadata.quality.is_vbr {
-            log::info!("VBR: true");
-            if let Some(instant_bitrate) = metadata.quality.instantaneous_bitrate_bps {
-                log::info!("Instantaneous bitrate: {} kbps", instant_bitrate / 1000);
+            if let Some(bitrate) = metadata.format_info.bitrate_bps {
+                log::debug!("Bitrate: {} kbps", bitrate / 1000);
             }
-        }
 
-        if let Some(quality) = metadata.quality.compression_quality {
-            log::info!("Compression quality: {}", quality);
-        }
+            if let Some(frames) = metadata.format_info.total_frames {
+                log::debug!("Total frames: {}", frames);
+            }
 
-        // Tags
-        if metadata.tags.title.is_some() || metadata.tags.artist.is_some() || metadata.tags.album.is_some() {
-            log::info!("=== Tags ===");
-            if let Some(ref title) = metadata.tags.title {
-                log::info!("Title: {}", title);
+            // Quality parameters
+            if let Some(bit_depth) = metadata.quality.bit_depth {
+                log::debug!("Bit depth: {} bit", bit_depth);
             }
-            if let Some(ref artist) = metadata.tags.artist {
-                log::info!("Artist: {}", artist);
-            }
-            if let Some(ref album) = metadata.tags.album {
-                log::info!("Album: {}", album);
-            }
-            if let Some(ref album_artist) = metadata.tags.album_artist {
-                log::info!("Album Artist: {}", album_artist);
-            }
-            if let Some(track_num) = metadata.tags.track_number {
-                if let Some(track_total) = metadata.tags.track_total {
-                    log::info!("Track: {}/{}", track_num, track_total);
-                } else {
-                    log::info!("Track: {}", track_num);
+
+            if metadata.quality.is_vbr {
+                log::debug!("VBR: true");
+                if let Some(instant_bitrate) = metadata.quality.instantaneous_bitrate_bps {
+                    log::debug!("Instantaneous bitrate: {} kbps", instant_bitrate / 1000);
                 }
             }
-            if let Some(disc_num) = metadata.tags.disc_number {
-                if let Some(disc_total) = metadata.tags.disc_total {
-                    log::info!("Disc: {}/{}", disc_num, disc_total);
-                } else {
-                    log::info!("Disc: {}", disc_num);
+
+            if let Some(quality) = metadata.quality.compression_quality {
+                log::debug!("Compression quality: {}", quality);
+            }
+
+            // Tags
+            if metadata.tags.title.is_some() || metadata.tags.artist.is_some() || metadata.tags.album.is_some() {
+                log::debug!("=== Tags ===");
+                if let Some(ref title) = metadata.tags.title {
+                    log::debug!("Title: {}", title);
+                }
+                if let Some(ref artist) = metadata.tags.artist {
+                    log::debug!("Artist: {}", artist);
+                }
+                if let Some(ref album) = metadata.tags.album {
+                    log::debug!("Album: {}", album);
+                }
+                if let Some(ref album_artist) = metadata.tags.album_artist {
+                    log::debug!("Album Artist: {}", album_artist);
+                }
+                if let Some(track_num) = metadata.tags.track_number {
+                    if let Some(track_total) = metadata.tags.track_total {
+                        log::debug!("Track: {}/{}", track_num, track_total);
+                    } else {
+                        log::debug!("Track: {}", track_num);
+                    }
+                }
+                if let Some(disc_num) = metadata.tags.disc_number {
+                    if let Some(disc_total) = metadata.tags.disc_total {
+                        log::debug!("Disc: {}/{}", disc_num, disc_total);
+                    } else {
+                        log::debug!("Disc: {}", disc_num);
+                    }
+                }
+                if let Some(ref date) = metadata.tags.date {
+                    log::debug!("Date: {}", date);
+                }
+                if let Some(ref genre) = metadata.tags.genre {
+                    log::debug!("Genre: {}", genre);
+                }
+                if let Some(ref composer) = metadata.tags.composer {
+                    log::debug!("Composer: {}", composer);
+                }
+                if let Some(ref comment) = metadata.tags.comment {
+                    log::debug!("Comment: {}", comment);
+                }
+                if let Some(ref copyright) = metadata.tags.copyright {
+                    log::debug!("Copyright: {}", copyright);
+                }
+                if let Some(ref encoder) = metadata.tags.encoder {
+                    log::debug!("Encoder: {}", encoder);
+                }
+                if let Some(ref publisher) = metadata.tags.publisher {
+                    log::debug!("Publisher: {}", publisher);
+                }
+                if let Some(ref isrc) = metadata.tags.isrc {
+                    log::debug!("ISRC: {}", isrc);
+                }
+                if let Some(ref language) = metadata.tags.language {
+                    log::debug!("Language: {}", language);
+                }
+                if let Some(ref lyrics) = metadata.tags.lyrics {
+                    log::debug!("Lyrics: {} characters", lyrics.len());
+                }
+
+                if !metadata.tags.custom_tags.is_empty() {
+                    log::debug!("Custom tags: {} entries", metadata.tags.custom_tags.len());
+                    for (key, value) in &metadata.tags.custom_tags {
+                        log::debug!("  {}: {}", key, value);
+                    }
                 }
             }
-            if let Some(ref date) = metadata.tags.date {
-                log::info!("Date: {}", date);
-            }
-            if let Some(ref genre) = metadata.tags.genre {
-                log::info!("Genre: {}", genre);
-            }
-            if let Some(ref composer) = metadata.tags.composer {
-                log::info!("Composer: {}", composer);
-            }
-            if let Some(ref comment) = metadata.tags.comment {
-                log::info!("Comment: {}", comment);
-            }
-            if let Some(ref copyright) = metadata.tags.copyright {
-                log::info!("Copyright: {}", copyright);
-            }
-            if let Some(ref encoder) = metadata.tags.encoder {
-                log::info!("Encoder: {}", encoder);
-            }
-            if let Some(ref publisher) = metadata.tags.publisher {
-                log::info!("Publisher: {}", publisher);
-            }
-            if let Some(ref isrc) = metadata.tags.isrc {
-                log::info!("ISRC: {}", isrc);
-            }
-            if let Some(ref language) = metadata.tags.language {
-                log::info!("Language: {}", language);
-            }
-            if let Some(ref lyrics) = metadata.tags.lyrics {
-                log::info!("Lyrics: {} characters", lyrics.len());
-            }
 
-            if !metadata.tags.custom_tags.is_empty() {
-                log::info!("Custom tags: {} entries", metadata.tags.custom_tags.len());
-                for (key, value) in &metadata.tags.custom_tags {
-                    log::debug!("  {}: {}", key, value);
+            // Cover art
+            if let Some(ref art) = cover_art {
+                log::debug!("=== Cover Art ===");
+                log::debug!("MIME type: {}", art.mime_type);
+                log::debug!("Size: {} bytes", art.data.len());
+                if let Some(ref desc) = art.description {
+                    log::debug!("Description: {}", desc);
                 }
+                log::debug!("Picture type: {}", art.picture_type);
             }
-        }
 
-        // Cover art
-        if cover_art.is_some() {
-            let art = cover_art.as_ref().unwrap();
-            log::info!("=== Cover Art ===");
-            log::info!("MIME type: {}", art.mime_type);
-            log::info!("Size: {} bytes", art.data.len());
-            if let Some(ref desc) = art.description {
-                log::info!("Description: {}", desc);
-            }
-            log::info!("Picture type: {}", art.picture_type);
+            log::debug!("==================");
         }
-
-        log::info!("==================");
 
         Ok(Self {
             format_reader,
@@ -654,9 +658,25 @@ impl AudioRingBuffer {
         let available = self.available_write();
         let to_write = data.len().min(available);
 
-        for i in 0..to_write {
-            self.buffer[self.write_pos] = data[i];
-            self.write_pos = (self.write_pos + 1) % self.size;
+        if to_write == 0 {
+            return 0;
+        }
+
+        // Optimize: use slice copy instead of element-by-element
+        // Handle wrap-around in two chunks if necessary
+        let write_end = self.write_pos + to_write;
+        if write_end <= self.size {
+            // No wrap-around: single contiguous copy
+            self.buffer[self.write_pos..write_end].copy_from_slice(&data[..to_write]);
+            self.write_pos = write_end % self.size;
+        } else {
+            // Wrap-around: copy in two chunks
+            let first_chunk = self.size - self.write_pos;
+            let second_chunk = to_write - first_chunk;
+
+            self.buffer[self.write_pos..self.size].copy_from_slice(&data[..first_chunk]);
+            self.buffer[..second_chunk].copy_from_slice(&data[first_chunk..to_write]);
+            self.write_pos = second_chunk;
         }
 
         to_write
@@ -666,9 +686,25 @@ impl AudioRingBuffer {
         let available = self.available_read();
         let to_read = output.len().min(available);
 
-        for i in 0..to_read {
-            output[i] = self.buffer[self.read_pos];
-            self.read_pos = (self.read_pos + 1) % self.size;
+        if to_read == 0 {
+            return 0;
+        }
+
+        // Optimize: use slice copy instead of element-by-element
+        // Handle wrap-around in two chunks if necessary
+        let read_end = self.read_pos + to_read;
+        if read_end <= self.size {
+            // No wrap-around: single contiguous copy
+            output[..to_read].copy_from_slice(&self.buffer[self.read_pos..read_end]);
+            self.read_pos = read_end % self.size;
+        } else {
+            // Wrap-around: copy in two chunks
+            let first_chunk = self.size - self.read_pos;
+            let second_chunk = to_read - first_chunk;
+
+            output[..first_chunk].copy_from_slice(&self.buffer[self.read_pos..self.size]);
+            output[first_chunk..to_read].copy_from_slice(&self.buffer[..second_chunk]);
+            self.read_pos = second_chunk;
         }
 
         to_read
@@ -693,5 +729,29 @@ impl AudioRingBuffer {
     pub fn clear(&mut self) {
         self.write_pos = 0;
         self.read_pos = 0;
+    }
+
+    /// Resize the ring buffer to a new size
+    /// This clears all existing data and resets positions
+    pub fn resize(&mut self, new_size: usize) {
+        if new_size != self.size {
+            self.buffer = vec![0.0; new_size];
+            self.size = new_size;
+            self.write_pos = 0;
+            self.read_pos = 0;
+            log::debug!("Ring buffer resized to {} samples ({:.2} MB)",
+                new_size, (new_size * std::mem::size_of::<f32>()) as f32 / (1024.0 * 1024.0));
+        }
+    }
+
+    /// Get current buffer size
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
+    /// Get buffer fullness as a percentage (0.0 to 1.0)
+    pub fn fullness(&self) -> f32 {
+        let used = self.available_read();
+        used as f32 / self.size as f32
     }
 }

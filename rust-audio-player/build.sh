@@ -274,15 +274,11 @@ build_macos() {
         return 0
     fi
 
-    # TEMPORARY: Skip macOS build due to coreaudio-sys bindgen issues with Xcode 15+
-    # cpal depends on coreaudio-sys which uses bindgen that doesn't support _Float16
-    # See: https://github.com/RustAudio/coreaudio-sys/issues/
-    print_warning "Skipping macOS build - coreaudio-sys incompatible with Xcode 15.4+ SDK"
-    print_warning "macOS build requires Xcode 14 or older, or wait for coreaudio-sys update"
-    print_info "Android and Windows builds completed successfully"
-    return 0
-
     print_info "Building for macOS..."
+
+    # Fix for Xcode 15.4+ SDK _Float16 issue with coreaudio-sys bindgen
+    # Map _Float16 to float (f32) - CoreAudio doesn't use these math.h functions anyway
+    export BINDGEN_EXTRA_CLANG_ARGS="-D_Float16=float"
 
     # Build for x86_64 (Intel)
     cargo build --release --target x86_64-apple-darwin --features desktop
@@ -337,12 +333,15 @@ build_ios() {
         return 0
     fi
 
-    # TEMPORARY: Skip iOS build due to same coreaudio-sys issues as macOS
-    print_warning "Skipping iOS build - coreaudio-sys incompatible with Xcode 15.4+ SDK"
-    print_warning "iOS implementation is currently a stub - use Android build for testing"
-    return 0
-
     print_info "Building for iOS..."
+
+    # Fix for iOS SDK 18.4+ compatibility issues with coreaudio-sys bindgen
+    # 1. Map _Float16 to float (f32) - CoreAudio doesn't use these math.h functions anyway
+    # 2. Define legacy Carbon types that were removed from iOS SDK
+    #    - ItemCount: used in CoreMIDI headers (map to size_t which is unsigned long on 64-bit)
+    #    - ByteCount: used in CoreMIDI headers (map to size_t which is unsigned long on 64-bit)
+    # 3. Add iOS platform detection flags to help skip macOS-only headers
+    export BINDGEN_EXTRA_CLANG_ARGS="-D_Float16=float -DItemCount=size_t -DByteCount=size_t -DTARGET_OS_IPHONE=1"
 
     # Build for aarch64 (iOS devices - arm64)
     cargo build --release --target aarch64-apple-ios --features ios
