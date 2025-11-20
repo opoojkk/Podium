@@ -94,8 +94,8 @@ class JvmRustPodcastPlayer : PodcastPlayer {
         }
     }
 
-    override suspend fun pause() {
-        withContext(Dispatchers.IO) {
+    override fun pause() {
+        coroutineScope.launch(Dispatchers.IO) {
             try {
                 println("$TAG: Pausing playback")
                 rustPlayer.pause()
@@ -107,8 +107,8 @@ class JvmRustPodcastPlayer : PodcastPlayer {
         }
     }
 
-    override suspend fun resume() {
-        withContext(Dispatchers.IO) {
+    override fun resume() {
+        coroutineScope.launch(Dispatchers.IO) {
             try {
                 println("$TAG: Resuming playback")
                 rustPlayer.play()
@@ -120,8 +120,8 @@ class JvmRustPodcastPlayer : PodcastPlayer {
         }
     }
 
-    override suspend fun stop() {
-        withContext(Dispatchers.IO) {
+    override fun stop() {
+        coroutineScope.launch(Dispatchers.IO) {
             try {
                 println("$TAG: Stopping playback")
                 rustPlayer.stop()
@@ -139,8 +139,8 @@ class JvmRustPodcastPlayer : PodcastPlayer {
         }
     }
 
-    override suspend fun seekTo(positionMs: Long) {
-        withContext(Dispatchers.IO) {
+    override fun seekTo(positionMs: Long) {
+        coroutineScope.launch(Dispatchers.IO) {
             try {
                 println("$TAG: Seeking to: $positionMs ms")
                 rustPlayer.seek(positionMs)
@@ -151,16 +151,72 @@ class JvmRustPodcastPlayer : PodcastPlayer {
         }
     }
 
-    override suspend fun seekBy(deltaMs: Long) {
+    override fun seekBy(deltaMs: Long) {
         val currentPosition = _state.value.positionMs
         val newPosition = (currentPosition + deltaMs).coerceAtLeast(0)
         seekTo(newPosition)
     }
 
-    override suspend fun setPlaybackSpeed(speed: Float) {
+    override fun setPlaybackSpeed(speed: Float) {
         playbackSpeed = speed
         updateState(playbackSpeed = speed)
         println("$TAG: Playback speed set to: $speed (note: not implemented in Rust player yet)")
+    }
+
+    override fun restorePlaybackState(episode: Episode, positionMs: Long) {
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                println("$TAG: Restoring playback state for episode: ${episode.title} at position: $positionMs ms")
+                currentEpisode = episode
+
+                updateState(episode = episode, isBuffering = true, isPlaying = false)
+
+                // Get audio path (URL or local file)
+                val audioPath = getAudioFilePath(episode)
+                if (audioPath == null) {
+                    println("$TAG: No valid audio path for episode")
+                    updateState(episode = null, isBuffering = false, isPlaying = false)
+                    return@launch
+                }
+
+                // Load audio file or URL
+                if (audioPath.startsWith("http://") || audioPath.startsWith("https://")) {
+                    println("$TAG: Loading audio URL: $audioPath")
+                    rustPlayer.loadUrl(audioPath)
+                } else {
+                    println("$TAG: Loading audio file: $audioPath")
+                    rustPlayer.loadFile(audioPath)
+                }
+
+                // Wait a bit for duration to be available
+                delay(100)
+
+                val duration = rustPlayer.getDuration()
+                println("$TAG: Audio loaded, duration: $duration ms")
+
+                // Seek to the restore position
+                if (positionMs > 0) {
+                    println("$TAG: Seeking to restore position: $positionMs ms")
+                    rustPlayer.seek(positionMs)
+                }
+
+                // Update state but don't start playing
+                updateState(
+                    episode = episode,
+                    positionMs = positionMs,
+                    durationMs = if (duration > 0) duration else null,
+                    isPlaying = false,
+                    isBuffering = false
+                )
+
+                println("$TAG: Playback state restored successfully (not playing)")
+
+            } catch (e: Exception) {
+                println("$TAG: Failed to restore playback state: ${e.message}")
+                e.printStackTrace()
+                updateState(episode = null, isPlaying = false, isBuffering = false)
+            }
+        }
     }
 
     private fun startPositionUpdates() {
@@ -210,7 +266,6 @@ class JvmRustPodcastPlayer : PodcastPlayer {
             positionMs = positionMs,
             durationMs = durationMs,
             isPlaying = isPlaying,
-            durationMs = durationMs,
             isBuffering = isBuffering,
             playbackSpeed = playbackSpeed
         )
