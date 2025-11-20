@@ -2,9 +2,8 @@
 // Provides C-compatible interface to the audio player
 
 use crate::player::AudioPlayer;
-use crate::error::AudioError;
 use std::collections::HashMap;
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::Mutex;
 
@@ -182,10 +181,15 @@ pub extern "C" fn rust_audio_player_stop(player_id: i64) -> i32 {
 /// Returns: 0 on success, -1 on error
 #[no_mangle]
 pub extern "C" fn rust_audio_player_seek(player_id: i64, position_ms: i64) -> i32 {
+    if position_ms < 0 {
+        log::error!("Invalid position: {}", position_ms);
+        return -1;
+    }
+
     let mut registry = PLAYER_REGISTRY.lock().unwrap();
     match registry.get_mut(&player_id) {
         Some(player) => {
-            match player.seek(position_ms) {
+            match player.seek(position_ms as u64) {
                 Ok(_) => 0,
                 Err(e) => {
                     log::error!("Failed to seek: {}", e);
@@ -206,7 +210,10 @@ pub extern "C" fn rust_audio_player_seek(player_id: i64, position_ms: i64) -> i3
 pub extern "C" fn rust_audio_player_get_position(player_id: i64) -> i64 {
     let registry = PLAYER_REGISTRY.lock().unwrap();
     match registry.get(&player_id) {
-        Some(player) => player.get_position(),
+        Some(player) => {
+            let status = player.get_status();
+            status.position_ms as i64
+        }
         None => {
             log::error!("Invalid player ID: {}", player_id);
             -1
@@ -220,7 +227,10 @@ pub extern "C" fn rust_audio_player_get_position(player_id: i64) -> i64 {
 pub extern "C" fn rust_audio_player_get_duration(player_id: i64) -> i64 {
     let registry = PLAYER_REGISTRY.lock().unwrap();
     match registry.get(&player_id) {
-        Some(player) => player.get_duration(),
+        Some(player) => {
+            let status = player.get_status();
+            status.duration_ms as i64
+        }
         None => {
             log::error!("Invalid player ID: {}", player_id);
             -1
@@ -229,7 +239,7 @@ pub extern "C" fn rust_audio_player_get_duration(player_id: i64) -> i64 {
 }
 
 /// Get player state
-/// Returns: 0=Idle, 1=Playing, 2=Paused, 3=Stopped, -1=Error
+/// Returns: 0=Idle, 1=Loading, 2=Ready, 3=Playing, 4=Paused, 5=Stopped, 6=Error, -1=Invalid player ID
 #[no_mangle]
 pub extern "C" fn rust_audio_player_get_state(player_id: i64) -> i32 {
     let registry = PLAYER_REGISTRY.lock().unwrap();
@@ -238,9 +248,12 @@ pub extern "C" fn rust_audio_player_get_state(player_id: i64) -> i32 {
             use crate::player::PlayerState;
             match player.get_state() {
                 PlayerState::Idle => 0,
-                PlayerState::Playing => 1,
-                PlayerState::Paused => 2,
-                PlayerState::Stopped => 3,
+                PlayerState::Loading => 1,
+                PlayerState::Ready => 2,
+                PlayerState::Playing => 3,
+                PlayerState::Paused => 4,
+                PlayerState::Stopped => 5,
+                PlayerState::Error => 6,
             }
         }
         None => {

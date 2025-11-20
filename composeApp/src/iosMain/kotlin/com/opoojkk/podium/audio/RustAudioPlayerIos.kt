@@ -14,16 +14,22 @@ class RustAudioPlayerIos {
 
     enum class PlayerState {
         IDLE,
+        LOADING,
+        READY,
         PLAYING,
         PAUSED,
-        STOPPED;
+        STOPPED,
+        ERROR;
 
         companion object {
             fun fromInt(value: Int): PlayerState = when (value) {
                 0 -> IDLE
-                1 -> PLAYING
-                2 -> PAUSED
-                3 -> STOPPED
+                1 -> LOADING
+                2 -> READY
+                3 -> PLAYING
+                4 -> PAUSED
+                5 -> STOPPED
+                6 -> ERROR
                 else -> IDLE
             }
         }
