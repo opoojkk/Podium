@@ -23,7 +23,7 @@ pub extern "system" fn Java_com_opoojkk_podium_audio_RustAudioPlayerJvm_nativeCr
 /// JNI signature: (JLjava/lang/String;)I
 #[no_mangle]
 pub extern "system" fn Java_com_opoojkk_podium_audio_RustAudioPlayerJvm_nativeLoadFile(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     player_id: jlong,
     path: jstring,
@@ -54,7 +54,7 @@ pub extern "system" fn Java_com_opoojkk_podium_audio_RustAudioPlayerJvm_nativeLo
 /// JNI signature: (JLjava/lang/String;)I
 #[no_mangle]
 pub extern "system" fn Java_com_opoojkk_podium_audio_RustAudioPlayerJvm_nativeLoadUrl(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     player_id: jlong,
     url: jstring,
