@@ -11,8 +11,8 @@ crate-type = ["cdylib", "staticlib"]
 log = "0.4"
 android_logger = { version = "0.14", optional = true }
 
-# JNI for Android
-jni = { version = "0.21", optional = true }
+# JNI for Android and JVM desktop
+jni = "0.21"
 
 # Thread synchronization and safety
 parking_lot = "0.12"
@@ -40,7 +40,7 @@ cpal = "0.16"
 # Feature flags for conditional compilation
 [features]
 default = []
-android = ["jni", "android_logger"]
+android = ["android_logger"]
 ios = []
 desktop = []
 
