@@ -28,6 +28,10 @@ pub use metadata::{AudioMetadata, AudioTags, FormatInfo, QualityParams, CoverArt
 #[cfg(target_os = "android")]
 pub mod jni_bindings;
 
+// C FFI bindings for iOS/macOS
+#[cfg(any(target_os = "ios", target_os = "macos"))]
+pub mod ffi_bindings;
+
 // Initialize logging based on platform
 pub fn init_logging() {
     #[cfg(target_os = "android")]

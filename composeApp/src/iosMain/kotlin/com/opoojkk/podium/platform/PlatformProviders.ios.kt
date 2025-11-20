@@ -5,7 +5,7 @@ import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.download.DefaultPodcastDownloadManager
 import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.player.PodcastPlayer
-import com.opoojkk.podium.player.IosPodcastPlayer
+import com.opoojkk.podium.player.IosRustPodcastPlayer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -21,7 +21,7 @@ actual fun createPlatformHttpClient(): HttpClient = HttpClient(Darwin) {
     install(Logging)
 }
 
-actual fun providePodcastPlayer(context: PlatformContext): PodcastPlayer = IosPodcastPlayer()
+actual fun providePodcastPlayer(context: PlatformContext): PodcastPlayer = IosRustPodcastPlayer()
 
 actual fun provideDownloadManager(
     context: PlatformContext,

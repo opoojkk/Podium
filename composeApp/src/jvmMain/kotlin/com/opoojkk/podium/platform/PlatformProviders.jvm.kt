@@ -4,7 +4,7 @@ import com.opoojkk.podium.data.local.DatabaseDriverFactory
 import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.download.DefaultPodcastDownloadManager
 import com.opoojkk.podium.download.PodcastDownloadManager
-import com.opoojkk.podium.player.DesktopPodcastPlayer
+import com.opoojkk.podium.player.JvmRustPodcastPlayer
 import com.opoojkk.podium.player.PodcastPlayer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -21,7 +21,7 @@ actual fun createPlatformHttpClient(): HttpClient = HttpClient(CIO) {
     install(Logging)
 }
 
-actual fun providePodcastPlayer(context: PlatformContext): PodcastPlayer = DesktopPodcastPlayer()
+actual fun providePodcastPlayer(context: PlatformContext): PodcastPlayer = JvmRustPodcastPlayer()
 
 actual fun provideDownloadManager(
     context: PlatformContext,

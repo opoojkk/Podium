@@ -54,6 +54,8 @@ val buildRustAudioPlayer by tasks.registering(Exec::class) {
     outputs.dir("src/androidMain/jniLibs")
     outputs.dir("src/jvmMain/resources/darwin-aarch64")
     outputs.dir("src/jvmMain/resources/darwin-x86_64")
+    outputs.dir("../rust-audio-player/target/aarch64-apple-ios/release")
+    outputs.dir("../rust-audio-player/target/aarch64-apple-ios-sim/release")
 }
 
 // Make Kotlin compilation depend on Rust builds
@@ -84,6 +86,31 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+        }
+
+        // Link Rust audio player library
+        iosTarget.compilations.getByName("main") {
+            val rustAudioPlayer by cinterops.creating {
+                defFile(project.file("src/nativeInterop/cinterop/rustAudioPlayer.def"))
+                packageName("com.opoojkk.podium.rust")
+            }
+
+            // Add linker options to link the Rust static library
+            kotlinOptions {
+                val targetName = when (iosTarget.name) {
+                    "iosArm64" -> "aarch64-apple-ios"
+                    "iosSimulatorArm64" -> "aarch64-apple-ios-sim"
+                    else -> "aarch64-apple-ios"
+                }
+                val libPath = project.file("../rust-audio-player/target/$targetName/release").absolutePath
+                freeCompilerArgs += listOf(
+                    "-linker-option", "-L$libPath",
+                    "-linker-option", "-lrust_audio_player",
+                    "-linker-option", "-framework", "-linker-option", "CoreAudio",
+                    "-linker-option", "-framework", "-linker-option", "AudioToolbox",
+                    "-linker-option", "-framework", "-linker-option", "Security"
+                )
+            }
         }
     }
     

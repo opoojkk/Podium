@@ -17,6 +17,7 @@ jni = { version = "0.21", optional = true }
 # Thread synchronization and safety
 parking_lot = "0.12"
 once_cell = "1.19"
+lazy_static = "1.4"
 
 # Audio decoding
 symphonia = { version = "0.5", features = ["all"] }

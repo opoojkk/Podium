@@ -1,0 +1,40 @@
+headers = rustAudioPlayer.h
+package = com.opoojkk.podium.rust
+
+---
+
+// C FFI declarations for Rust audio player
+
+#ifndef RUST_AUDIO_PLAYER_H
+#define RUST_AUDIO_PLAYER_H
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Player management
+int64_t rust_audio_player_create(void);
+int32_t rust_audio_player_release(int64_t player_id);
+
+// Audio loading
+int32_t rust_audio_player_load_file(int64_t player_id, const char* path);
+int32_t rust_audio_player_load_url(int64_t player_id, const char* url);
+
+// Playback control
+int32_t rust_audio_player_play(int64_t player_id);
+int32_t rust_audio_player_pause(int64_t player_id);
+int32_t rust_audio_player_stop(int64_t player_id);
+int32_t rust_audio_player_seek(int64_t player_id, int64_t position_ms);
+
+// State queries
+int64_t rust_audio_player_get_position(int64_t player_id);
+int64_t rust_audio_player_get_duration(int64_t player_id);
+int32_t rust_audio_player_get_state(int64_t player_id);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // RUST_AUDIO_PLAYER_H
