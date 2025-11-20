@@ -2,10 +2,9 @@
 // Provides JNI-compatible interface to the audio player
 
 use jni::JNIEnv;
-use jni::objects::JClass;
+use jni::objects::{JClass, JObject, JString};
 use jni::sys::{jlong, jint, jstring};
 use std::ffi::CString;
-use std::os::raw::c_char;
 
 // Import the C FFI functions
 use crate::ffi_bindings::*;
@@ -29,7 +28,10 @@ pub extern "system" fn Java_com_opoojkk_podium_audio_RustAudioPlayerJvm_nativeLo
     player_id: jlong,
     path: jstring,
 ) -> jint {
-    let path_str = match env.get_string(path.into()) {
+    let path_obj = unsafe { JObject::from_raw(path) };
+    let path_jstring = JString::from(path_obj);
+
+    let path_str = match env.get_string(&path_jstring) {
         Ok(s) => s,
         Err(e) => {
             log::error!("Failed to get path string: {}", e);
@@ -57,7 +59,10 @@ pub extern "system" fn Java_com_opoojkk_podium_audio_RustAudioPlayerJvm_nativeLo
     player_id: jlong,
     url: jstring,
 ) -> jint {
-    let url_str = match env.get_string(url.into()) {
+    let url_obj = unsafe { JObject::from_raw(url) };
+    let url_jstring = JString::from(url_obj);
+
+    let url_str = match env.get_string(&url_jstring) {
         Ok(s) => s,
         Err(e) => {
             log::error!("Failed to get URL string: {}", e);
