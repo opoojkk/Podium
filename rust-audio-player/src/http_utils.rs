@@ -18,11 +18,24 @@ fn create_http_agent() -> ureq::Agent {
         .build()
 }
 
+/// Check if URL is for M4A/MP4 format (needs full download)
+fn is_m4a_format(url: &str) -> bool {
+    let url_lower = url.to_lowercase();
+    url_lower.contains(".m4a") || url_lower.contains(".mp4") || url_lower.contains(".m4b")
+}
+
 /// Download audio from URL with progressive buffering
-/// Downloads enough data to start playback, then continues in background
+/// For M4A/MP4 files, downloads the complete file since metadata may be at the end
+/// For other formats, downloads enough to start playback then continues in background
 /// Returns the path to the temporary file
 pub fn download_with_prebuffer(url: &str, dest_path: &str) -> Result<()> {
     log::info!("Starting download from: {}", url);
+
+    // Check if this is M4A format
+    let needs_full_download = is_m4a_format(url);
+    if needs_full_download {
+        log::info!("M4A format detected - will download complete file");
+    }
 
     // Create HTTP agent with proper configuration
     let agent = create_http_agent();
@@ -36,18 +49,22 @@ pub fn download_with_prebuffer(url: &str, dest_path: &str) -> Result<()> {
 
     log::info!("Content length: {} bytes", content_length);
 
-    // Calculate prebuffer size: min 5MB or 30% of file, max 15MB
-    let prebuffer_size = if content_length > 0 {
+    // Calculate prebuffer size for non-M4A formats: min 5MB or 30% of file, max 15MB
+    let prebuffer_size = if !needs_full_download && content_length > 0 {
         let thirty_percent = (content_length as f64 * 0.3) as u64;
         thirty_percent.max(5 * 1024 * 1024).min(15 * 1024 * 1024)
+    } else if !needs_full_download {
+        5 * 1024 * 1024 // Default 5MB for unknown size
     } else {
-        5 * 1024 * 1024 // Default 5MB
+        u64::MAX // M4A needs full download
     };
 
-    log::info!("Prebuffer target: {} bytes ({:.1}%)",
-        prebuffer_size,
-        if content_length > 0 { (prebuffer_size as f64 / content_length as f64) * 100.0 } else { 0.0 }
-    );
+    if !needs_full_download {
+        log::info!("Prebuffer target: {} bytes ({:.1}%)",
+            prebuffer_size,
+            if content_length > 0 { (prebuffer_size as f64 / content_length as f64) * 100.0 } else { 0.0 }
+        );
+    }
 
     // Open destination file
     let mut file = File::create(dest_path)
@@ -55,8 +72,9 @@ pub fn download_with_prebuffer(url: &str, dest_path: &str) -> Result<()> {
 
     // Read and write data
     let mut reader = response.into_reader();
-    let mut buffer = vec![0u8; 8192];
+    let mut buffer = vec![0u8; 65536]; // 64KB buffer
     let mut total_downloaded = 0u64;
+    let mut last_log_mb = 0u64;
 
     loop {
         let bytes_read = std::io::Read::read(&mut reader, &mut buffer)
@@ -72,13 +90,24 @@ pub fn download_with_prebuffer(url: &str, dest_path: &str) -> Result<()> {
         total_downloaded += bytes_read as u64;
 
         // Log progress every MB
-        if total_downloaded % (1024 * 1024) == 0 || total_downloaded >= prebuffer_size {
-            log::info!("Downloaded: {} MB", total_downloaded / (1024 * 1024));
+        let current_mb = total_downloaded / (1024 * 1024);
+        if current_mb > last_log_mb {
+            let progress = if content_length > 0 {
+                format!("{:.1}%", (total_downloaded as f64 / content_length as f64) * 100.0)
+            } else {
+                "unknown".to_string()
+            };
+            log::info!("Downloaded: {} MB ({})", current_mb, progress);
+            last_log_mb = current_mb;
         }
 
-        // Return when prebuffer is complete
-        if total_downloaded >= prebuffer_size {
+        // For non-M4A formats: return when prebuffer is complete and spawn background download
+        if !needs_full_download && total_downloaded >= prebuffer_size {
             log::info!("Prebuffer complete: {} bytes downloaded", total_downloaded);
+
+            // Flush before spawning background thread
+            file.flush()
+                .map_err(|e| AudioError::IoError(format!("Failed to flush file: {}", e)))?;
 
             // Spawn background thread to continue downloading
             let url_owned = url.to_string();
@@ -103,7 +132,7 @@ pub fn download_with_prebuffer(url: &str, dest_path: &str) -> Result<()> {
                             .open(&dest_owned)
                         {
                             Ok(mut file) => {
-                                let mut buffer = vec![0u8; 8192];
+                                let mut buffer = vec![0u8; 65536];
                                 let mut bg_downloaded = already_downloaded;
                                 loop {
                                     match std::io::Read::read(&mut reader, &mut buffer) {
@@ -113,8 +142,9 @@ pub fn download_with_prebuffer(url: &str, dest_path: &str) -> Result<()> {
                                                 break;
                                             }
                                             bg_downloaded += bytes_read as u64;
-                                            if bg_downloaded % (1024 * 1024) == 0 {
-                                                log::info!("Background download: {} MB total", bg_downloaded / (1024 * 1024));
+                                            let bg_mb = bg_downloaded / (1024 * 1024);
+                                            if bg_mb % 5 == 0 && bg_mb * 1024 * 1024 <= bg_downloaded && bg_downloaded < bg_mb * 1024 * 1024 + 65536 {
+                                                log::info!("Background download: {} MB total", bg_mb);
                                             }
                                         }
                                         Err(_) => break,
@@ -133,8 +163,22 @@ pub fn download_with_prebuffer(url: &str, dest_path: &str) -> Result<()> {
         }
     }
 
-    // If file is smaller than prebuffer size, download is complete
-    log::info!("Download complete (file smaller than prebuffer): {} bytes", total_downloaded);
+    // Flush to ensure all data is written
+    file.flush()
+        .map_err(|e| AudioError::IoError(format!("Failed to flush file: {}", e)))?;
+
+    // Full download complete (either M4A or file smaller than prebuffer)
+    log::info!("Download complete: {} bytes ({})",
+        total_downloaded,
+        if content_length > 0 && total_downloaded == content_length {
+            "verified"
+        } else if content_length > 0 {
+            "size mismatch!"
+        } else {
+            "no size check"
+        }
+    );
+
     Ok(())
 }
 
