@@ -96,30 +96,32 @@ kotlin {
             }
 
             // Add linker options to link the Rust static library
-            kotlinOptions {
-                val targetName = when (iosTarget.name) {
-                    "iosArm64" -> "aarch64-apple-ios"
-                    "iosSimulatorArm64" -> "aarch64-apple-ios-sim"
-                    else -> "aarch64-apple-ios"
+            compileTaskProvider.configure {
+                compilerOptions {
+                    val targetName = when (iosTarget.name) {
+                        "iosArm64" -> "aarch64-apple-ios"
+                        "iosSimulatorArm64" -> "aarch64-apple-ios-sim"
+                        else -> "aarch64-apple-ios"
+                    }
+                    val libPath = project.file("../rust-audio-player/target/$targetName/release").absolutePath
+                    freeCompilerArgs.addAll(
+                        "-linker-option", "-L$libPath",
+                        "-linker-option", "-lrust_audio_player",
+                        "-linker-option", "-framework", "-linker-option", "CoreAudio",
+                        "-linker-option", "-framework", "-linker-option", "AudioToolbox",
+                        "-linker-option", "-framework", "-linker-option", "Security"
+                    )
                 }
-                val libPath = project.file("../rust-audio-player/target/$targetName/release").absolutePath
-                freeCompilerArgs += listOf(
-                    "-linker-option", "-L$libPath",
-                    "-linker-option", "-lrust_audio_player",
-                    "-linker-option", "-framework", "-linker-option", "CoreAudio",
-                    "-linker-option", "-framework", "-linker-option", "AudioToolbox",
-                    "-linker-option", "-framework", "-linker-option", "Security"
-                )
             }
         }
     }
     
     // Set iOS deployment target
     targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
-        compilations.configureEach {
-            compilerOptions.configure {
-                freeCompilerArgs.add("-Xoverride-konan-properties=osVersionMin.ios_simulator_arm64=15.0;osVersionMin.ios_arm64=15.0")
-            }
+        binaries.all {
+            freeCompilerArgs += listOf(
+                "-Xoverride-konan-properties=osVersionMin.ios_simulator_arm64=15.0;osVersionMin.ios_arm64=15.0"
+            )
         }
     }
 
