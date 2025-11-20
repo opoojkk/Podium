@@ -479,20 +479,6 @@ fun PodiumApp(
                                     println("▶️ Playing converted episode")
                                     pendingEpisodeId = playableEpisode.id
                                     controller.playEpisode(playableEpisode)
-
-                                    // Subscribe to podcast in background for future access
-                                    println("🔍 Searching for podcast RSS feed in background...")
-                                    val podcastResult = environment.applePodcastSearchRepository.searchPodcast(episode.podcastTitle, limit = 1)
-                                    podcastResult.onSuccess { podcasts ->
-                                        if (podcasts.isNotEmpty()) {
-                                            val feedUrl = podcasts.first().feedUrl
-                                            println("📡 Background subscribing to: $feedUrl")
-                                            if (!controller.checkIfSubscribed(feedUrl)) {
-                                                controller.subscribe(feedUrl)
-                                                println("✅ Subscribed successfully")
-                                            }
-                                        }
-                                    }
                                 } else {
                                     println("⚠️ No valid audio URL in search result")
                                     val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
