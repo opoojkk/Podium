@@ -16,7 +16,7 @@
 
 Podium is a **universal podcast player** built with Kotlin Multiplatform and Compose Multiplatform. It uses a single codebase to deliver consistent, native user experiences across multiple platforms.
 
-**Platform Status**: ✅ Android Production | 🚧 iOS In Development | 🚧 Desktop In Development
+**Platform Status**: ✅ Android Production | ✅ iOS Available | ✅ Desktop Available
 
 ### ✨ Key Features
 
@@ -67,12 +67,12 @@ Recently done
 - [x] Search (global podcast & episode search)
 - [x] Podcast discovery (recommendations & trending)
 - [x] Favorites (episode bookmarking)
+- [x] Chapter support (RSS chapter parsing and navigation)
+- [x] OPML import/export (subscription migration)
 
 In progress / Next
 
-- [ ] **Multi-Device Sync** - Cloud data synchronization (optional)
-- [ ] **Chapter Support** - RSS chapter parsing and navigation
-- [ ] **OPML Import/Export** - Subscription data migration
+ - [ ] ~~Multi-Device Sync (cloud sync, optional)~~
 - [ ] **Theme Switching** - Light/dark/auto themes
 - [ ] **Audio Equalizer** - Sound effect adjustments
 
