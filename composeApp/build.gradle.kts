@@ -58,9 +58,14 @@ val buildRustAudioPlayer by tasks.registering(Exec::class) {
     outputs.dir("../rust-audio-player/target/aarch64-apple-ios-sim/release")
 }
 
-// Make Kotlin compilation depend on Rust builds
+// Make Kotlin compilation and cinterop depend on Rust builds
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     dependsOn(buildRustRssParser)
+    dependsOn(buildRustAudioPlayer)
+}
+
+// Make cinterop tasks depend on Rust audio player build
+tasks.matching { it.name.contains("cinterop") && it.name.contains("RustAudioPlayer") }.configureEach {
     dependsOn(buildRustAudioPlayer)
 }
 
