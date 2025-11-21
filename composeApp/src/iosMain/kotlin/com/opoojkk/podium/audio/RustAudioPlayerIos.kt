@@ -1,12 +1,12 @@
 package com.opoojkk.podium.audio
 
-import kotlinx.cinterop.*
-import platform.posix.free
-import platform.posix.malloc
+import com.opoojkk.podium.rust.*
+import kotlinx.cinterop.ExperimentalForeignApi
 
 /**
  * iOS wrapper for Rust audio player using C FFI
  */
+@OptIn(ExperimentalForeignApi::class)
 class RustAudioPlayerIos {
 
     private var playerId: Long = -1
@@ -48,9 +48,7 @@ class RustAudioPlayerIos {
     fun loadFile(path: String) {
         checkNotReleased()
 
-        val result = path.useCString { cPath ->
-            rust_audio_player_load_file(playerId, cPath)
-        }
+        val result = rust_audio_player_load_file(playerId, path)
 
         if (result != 0) {
             throw AudioPlayerException("Failed to load file: $path")
@@ -63,9 +61,7 @@ class RustAudioPlayerIos {
     fun loadUrl(url: String) {
         checkNotReleased()
 
-        val result = url.useCString { cUrl ->
-            rust_audio_player_load_url(playerId, cUrl)
-        }
+        val result = rust_audio_player_load_url(playerId, url)
 
         if (result != 0) {
             throw AudioPlayerException("Failed to load URL: $url")
@@ -161,40 +157,6 @@ class RustAudioPlayerIos {
             throw IllegalStateException("Audio player has been released")
         }
     }
-
-    // C FFI declarations
-    @CName("rust_audio_player_create")
-    private external fun rust_audio_player_create(): Long
-
-    @CName("rust_audio_player_load_file")
-    private external fun rust_audio_player_load_file(playerId: Long, path: CPointer<ByteVar>): Int
-
-    @CName("rust_audio_player_load_url")
-    private external fun rust_audio_player_load_url(playerId: Long, url: CPointer<ByteVar>): Int
-
-    @CName("rust_audio_player_play")
-    private external fun rust_audio_player_play(playerId: Long): Int
-
-    @CName("rust_audio_player_pause")
-    private external fun rust_audio_player_pause(playerId: Long): Int
-
-    @CName("rust_audio_player_stop")
-    private external fun rust_audio_player_stop(playerId: Long): Int
-
-    @CName("rust_audio_player_seek")
-    private external fun rust_audio_player_seek(playerId: Long, positionMs: Long): Int
-
-    @CName("rust_audio_player_get_position")
-    private external fun rust_audio_player_get_position(playerId: Long): Long
-
-    @CName("rust_audio_player_get_duration")
-    private external fun rust_audio_player_get_duration(playerId: Long): Long
-
-    @CName("rust_audio_player_get_state")
-    private external fun rust_audio_player_get_state(playerId: Long): Int
-
-    @CName("rust_audio_player_release")
-    private external fun rust_audio_player_release(playerId: Long): Int
 }
 
 /**

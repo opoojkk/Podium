@@ -11,6 +11,26 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
+// Default iOS resource sync settings when not launched from Xcode
+if (!project.hasProperty("compose.ios.resources.platform")) {
+    project.extensions.extraProperties["compose.ios.resources.platform"] = "iphonesimulator"
+}
+if (!project.hasProperty("compose.ios.resources.archs")) {
+    project.extensions.extraProperties["compose.ios.resources.archs"] = "arm64"
+}
+
+// Ensure Compose iOS resource sync has a target output directory even when not invoked from Xcode
+afterEvaluate {
+    tasks.named("syncComposeResourcesForIos").configure {
+        val dir = layout.buildDirectory.dir("compose/ios/$name")
+        // Task type is internal, set its DirectoryProperty via reflection
+        val outputDirProp = javaClass.methods
+            .firstOrNull { it.name == "getOutputDir" && it.parameterCount == 0 }
+            ?.invoke(this) as? org.gradle.api.file.DirectoryProperty
+        outputDirProp?.set(dir)
+    }
+}
+
 // Task to build Rust RSS parser
 val buildRustRssParser by tasks.registering(Exec::class) {
     val scriptFile = project.file("../rust-rss-parser/build.sh")
@@ -58,9 +78,14 @@ val buildRustAudioPlayer by tasks.registering(Exec::class) {
     outputs.dir("../rust-audio-player/target/aarch64-apple-ios-sim/release")
 }
 
-// Make Kotlin compilation depend on Rust builds
+// Make Kotlin compilation and cinterop depend on Rust builds
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     dependsOn(buildRustRssParser)
+    dependsOn(buildRustAudioPlayer)
+}
+
+// Make cinterop tasks depend on Rust audio player build
+tasks.matching { it.name.contains("cinterop") && it.name.contains("RustAudioPlayer") }.configureEach {
     dependsOn(buildRustAudioPlayer)
 }
 
@@ -85,8 +110,15 @@ kotlin {
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
-            isStatic = true
+            isStatic = false
         }
+
+        val targetName = when (iosTarget.name) {
+            "iosArm64" -> "aarch64-apple-ios"
+            "iosSimulatorArm64" -> "aarch64-apple-ios-sim"
+            else -> "aarch64-apple-ios"
+        }
+        val libPath = project.file("../rust-audio-player/target/$targetName/release").absolutePath
 
         // Link Rust audio player library
         iosTarget.compilations.getByName("main") {
@@ -94,25 +126,20 @@ kotlin {
                 defFile(project.file("src/nativeInterop/cinterop/rustAudioPlayer.def"))
                 packageName("com.opoojkk.podium.rust")
             }
+        }
 
-            // Add linker options to link the Rust static library
-            compileTaskProvider.configure {
-                compilerOptions {
-                    val targetName = when (iosTarget.name) {
-                        "iosArm64" -> "aarch64-apple-ios"
-                        "iosSimulatorArm64" -> "aarch64-apple-ios-sim"
-                        else -> "aarch64-apple-ios"
-                    }
-                    val libPath = project.file("../rust-audio-player/target/$targetName/release").absolutePath
-                    freeCompilerArgs.addAll(
-                        "-linker-option", "-L$libPath",
-                        "-linker-option", "-lrust_audio_player",
-                        "-linker-option", "-framework", "-linker-option", "CoreAudio",
-                        "-linker-option", "-framework", "-linker-option", "AudioToolbox",
-                        "-linker-option", "-framework", "-linker-option", "Security"
-                    )
-                }
-            }
+        // Ensure rust audio player and sqlite are linked into the K/N framework
+        iosTarget.binaries.all {
+            linkerOpts(
+                "-L$libPath",
+                "-lrust_audio_player",
+                // Force load to avoid stripping unused symbols in static framework
+                "-force_load", "$libPath/librust_audio_player.a",
+                "-framework", "CoreAudio",
+                "-framework", "AudioToolbox",
+                "-framework", "Security",
+                "-lsqlite3"
+            )
         }
     }
     

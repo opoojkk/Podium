@@ -1,4 +1,3 @@
-headers = rustAudioPlayer.h
 package = com.opoojkk.podium.rust
 
 ---

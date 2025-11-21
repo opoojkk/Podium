@@ -28,7 +28,7 @@ class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
     /**
      * Search for podcasts by name
      */
-    suspend fun searchPodcast(query: String, limit: Int = 5): Result<List<ApplePodcastResult>> = withContext(Dispatchers.IO) {
+    suspend fun searchPodcast(query: String, limit: Int = 5): Result<List<ApplePodcastResult>> = withContext(Dispatchers.Default) {
         try {
             val requestUrl = "$BASE_URL?term=$query&entity=podcast&limit=$limit&country=cn"
             println("🌐 [iTunes API] 开始请求播客搜索: query=$query, limit=$limit")
@@ -57,7 +57,7 @@ class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
     /**
      * Search for podcast episodes by title (generic search, not limited to specific podcast)
      */
-    suspend fun searchEpisodes(query: String, limit: Int = 20): Result<List<ApplePodcastEpisodeResult>> = withContext(Dispatchers.IO) {
+    suspend fun searchEpisodes(query: String, limit: Int = 20): Result<List<ApplePodcastEpisodeResult>> = withContext(Dispatchers.Default) {
         try {
             val requestUrl = "$BASE_URL?term=$query&entity=podcastEpisode&limit=$limit&country=cn"
             println("🌐 [iTunes API] 开始请求单集搜索: query=$query, limit=$limit")
@@ -86,7 +86,7 @@ class ApplePodcastSearchRepository(private val httpClient: HttpClient) {
     /**
      * Search for podcast episodes by title (within a specific podcast)
      */
-    suspend fun searchEpisode(podcastName: String, episodeTitle: String, limit: Int = 5): Result<List<ApplePodcastEpisodeResult>> = withContext(Dispatchers.IO) {
+    suspend fun searchEpisode(podcastName: String, episodeTitle: String, limit: Int = 5): Result<List<ApplePodcastEpisodeResult>> = withContext(Dispatchers.Default) {
         try {
             // Search for the podcast first to get its collection ID
             val podcastResponseText = httpClient.get(BASE_URL) {
