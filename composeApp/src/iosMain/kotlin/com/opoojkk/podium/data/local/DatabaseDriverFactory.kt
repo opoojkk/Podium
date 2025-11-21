@@ -82,28 +82,12 @@ actual class DatabaseDriverFactory {
         println("  → Migrating to V2: Adding durationMs to playback_state...")
 
         try {
-            val hasColumn = driver.executeQuery(
-                identifier = null,
-                sql = "SELECT COUNT(*) FROM pragma_table_info('playback_state') WHERE name='durationMs'",
-                mapper = { cursor ->
-                    val count = cursor.getLong(0)?.toInt() ?: 0
-                    QueryResult.Value(count > 0)
-                },
-                parameters = 0,
-                binders = null
-            ).value ?: false
-
-            if (!hasColumn) {
-                driver.execute(
-                    identifier = null,
-                    sql = "ALTER TABLE playback_state ADD COLUMN durationMs INTEGER",
-                    parameters = 0,
-                    binders = null
-                )
-                println("  ✓ Added durationMs column to playback_state")
-            } else {
-                println("  ✓ durationMs column already exists")
-            }
+            addColumnIfMissing(
+                driver = driver,
+                table = "playback_state",
+                column = "durationMs",
+                alterSql = "ALTER TABLE playback_state ADD COLUMN durationMs INTEGER"
+            )
         } catch (e: Exception) {
             println("  ✗ Error migrating to V2: ${e.message}")
             throw e
@@ -115,28 +99,12 @@ actual class DatabaseDriverFactory {
         println("  → Migrating to V3: Adding chapters to episodes...")
 
         try {
-            val hasColumn = driver.executeQuery(
-                identifier = null,
-                sql = "SELECT COUNT(*) FROM pragma_table_info('episodes') WHERE name='chapters'",
-                mapper = { cursor ->
-                    val count = cursor.getLong(0)?.toInt() ?: 0
-                    QueryResult.Value(count > 0)
-                },
-                parameters = 0,
-                binders = null
-            ).value ?: false
-
-            if (!hasColumn) {
-                driver.execute(
-                    identifier = null,
-                    sql = "ALTER TABLE episodes ADD COLUMN chapters TEXT",
-                    parameters = 0,
-                    binders = null
-                )
-                println("  ✓ Added chapters column to episodes")
-            } else {
-                println("  ✓ chapters column already exists")
-            }
+            addColumnIfMissing(
+                driver = driver,
+                table = "episodes",
+                column = "chapters",
+                alterSql = "ALTER TABLE episodes ADD COLUMN chapters TEXT"
+            )
         } catch (e: Exception) {
             println("  ✗ Error migrating to V3: ${e.message}")
             throw e
@@ -160,18 +128,27 @@ actual class DatabaseDriverFactory {
             ).value ?: false
 
             if (!tableExists) {
-                driver.execute(
-                    identifier = null,
-                    sql = """
-                        CREATE TABLE app_settings (
-                            key TEXT NOT NULL PRIMARY KEY,
-                            value TEXT NOT NULL
-                        )
-                    """.trimIndent(),
-                    parameters = 0,
-                    binders = null
-                )
-                println("  ✓ Created app_settings table")
+                try {
+                    driver.execute(
+                        identifier = null,
+                        sql = """
+                            CREATE TABLE app_settings (
+                                key TEXT NOT NULL PRIMARY KEY,
+                                value TEXT NOT NULL
+                            )
+                        """.trimIndent(),
+                        parameters = 0,
+                        binders = null
+                    )
+                    println("  ✓ Created app_settings table")
+                } catch (e: Exception) {
+                    val msg = e.message?.lowercase() ?: ""
+                    if ("already exists" in msg || "duplicate" in msg) {
+                        println("  → app_settings table already present, continuing")
+                    } else {
+                        throw e
+                    }
+                }
             } else {
                 println("  ✓ app_settings table already exists")
             }
@@ -186,54 +163,62 @@ actual class DatabaseDriverFactory {
         println("  → Migrating to V5: Adding isCompleted and addedToPlaylist to playback_state...")
 
         try {
-            val hasIsCompleted = driver.executeQuery(
-                identifier = null,
-                sql = "SELECT COUNT(*) FROM pragma_table_info('playback_state') WHERE name='isCompleted'",
-                mapper = { cursor ->
-                    val count = cursor.getLong(0)?.toInt() ?: 0
-                    QueryResult.Value(count > 0)
-                },
-                parameters = 0,
-                binders = null
-            ).value ?: false
+            addColumnIfMissing(
+                driver = driver,
+                table = "playback_state",
+                column = "isCompleted",
+                alterSql = "ALTER TABLE playback_state ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0"
+            )
 
-            if (!hasIsCompleted) {
-                driver.execute(
-                    identifier = null,
-                    sql = "ALTER TABLE playback_state ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0",
-                    parameters = 0,
-                    binders = null
-                )
-                println("  ✓ Added isCompleted column to playback_state")
-            } else {
-                println("  ✓ isCompleted column already exists")
-            }
-
-            val hasAddedToPlaylist = driver.executeQuery(
-                identifier = null,
-                sql = "SELECT COUNT(*) FROM pragma_table_info('playback_state') WHERE name='addedToPlaylist'",
-                mapper = { cursor ->
-                    val count = cursor.getLong(0)?.toInt() ?: 0
-                    QueryResult.Value(count > 0)
-                },
-                parameters = 0,
-                binders = null
-            ).value ?: false
-
-            if (!hasAddedToPlaylist) {
-                driver.execute(
-                    identifier = null,
-                    sql = "ALTER TABLE playback_state ADD COLUMN addedToPlaylist INTEGER NOT NULL DEFAULT 1",
-                    parameters = 0,
-                    binders = null
-                )
-                println("  ✓ Added addedToPlaylist column to playback_state")
-            } else {
-                println("  ✓ addedToPlaylist column already exists")
-            }
+            addColumnIfMissing(
+                driver = driver,
+                table = "playback_state",
+                column = "addedToPlaylist",
+                alterSql = "ALTER TABLE playback_state ADD COLUMN addedToPlaylist INTEGER NOT NULL DEFAULT 1"
+            )
         } catch (e: Exception) {
             println("  ✗ Error migrating to V5: ${e.message}")
             throw e
+        }
+    }
+
+    private fun addColumnIfMissing(
+        driver: SqlDriver,
+        table: String,
+        column: String,
+        alterSql: String
+    ) {
+        val hasColumn = driver.executeQuery(
+            identifier = null,
+            sql = "SELECT COUNT(*) FROM pragma_table_info('$table') WHERE name='$column'",
+            mapper = { cursor ->
+                val count = cursor.getLong(0)?.toInt() ?: 0
+                QueryResult.Value(count > 0)
+            },
+            parameters = 0,
+            binders = null
+        ).value ?: false
+
+        if (hasColumn) {
+            println("  ✓ $column column already exists in $table")
+            return
+        }
+
+        try {
+            driver.execute(
+                identifier = null,
+                sql = alterSql,
+                parameters = 0,
+                binders = null
+            )
+            println("  ✓ Added $column column to $table")
+        } catch (e: Exception) {
+            val msg = e.message?.lowercase() ?: ""
+            if ("duplicate column name" in msg || "already exists" in msg) {
+                println("  → $column already present, continuing")
+            } else {
+                throw e
+            }
         }
     }
 }

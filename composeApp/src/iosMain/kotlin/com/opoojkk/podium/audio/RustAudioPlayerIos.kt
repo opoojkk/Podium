@@ -1,7 +1,7 @@
 package com.opoojkk.podium.audio
 
 import com.opoojkk.podium.rust.*
-import kotlinx.cinterop.*
+import kotlinx.cinterop.ExperimentalForeignApi
 
 /**
  * iOS wrapper for Rust audio player using C FFI
@@ -48,9 +48,7 @@ class RustAudioPlayerIos {
     fun loadFile(path: String) {
         checkNotReleased()
 
-        val result = memScoped {
-            rust_audio_player_load_file(playerId, path.cstr.ptr)
-        }
+        val result = rust_audio_player_load_file(playerId, path)
 
         if (result != 0) {
             throw AudioPlayerException("Failed to load file: $path")
@@ -63,9 +61,7 @@ class RustAudioPlayerIos {
     fun loadUrl(url: String) {
         checkNotReleased()
 
-        val result = memScoped {
-            rust_audio_player_load_url(playerId, url.cstr.ptr)
-        }
+        val result = rust_audio_player_load_url(playerId, url)
 
         if (result != 0) {
             throw AudioPlayerException("Failed to load URL: $url")
