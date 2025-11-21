@@ -244,8 +244,8 @@ object TimeUtils {
         val seconds = totalSeconds % 60
 
         return when {
-            hours > 0 -> String.format("%d:%02d:%02d", hours, minutes, seconds)
-            else -> String.format("%d:%02d", minutes, seconds)
+            hours > 0 -> "$hours:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+            else -> "$minutes:${seconds.toString().padStart(2, '0')}"
         }
     }
 }

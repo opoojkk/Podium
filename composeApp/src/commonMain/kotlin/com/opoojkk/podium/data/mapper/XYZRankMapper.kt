@@ -97,7 +97,7 @@ private fun buildEpisodeDescription(
         append("播放量：${formatCount(playCount)} · ")
         append("评论：${formatCount(commentCount)} · ")
         append("订阅：${formatCount(subscription)} · ")
-        append("打开率：${"%.1f".format(openRate * 100)}%\n\n")
+        append("打开率：${formatDecimal(openRate * 100, 1)}%\n\n")
         append("🔗 来源：XYZRank 榜单\n")
         append("💡 提示：此节目来自榜单推荐，点击可在小宇宙中收听\n")
         append("链接：$webLink")
@@ -124,7 +124,7 @@ private fun buildPodcastDescription(
         append("节目数：$trackCount\n")
         append("平均播放量：${formatCount(avgPlayCount)}\n")
         append("平均时长：${formatDuration(avgDuration)}\n")
-        append("活跃度：${"%.1f".format(activeRate * 100)}%\n\n")
+        append("活跃度：${formatDecimal(activeRate * 100, 1)}%\n\n")
 
         append("🔗 来源：XYZRank 榜单\n")
         if (rssLink != null) {
@@ -184,10 +184,23 @@ private fun parseLastReleaseDate(lastReleaseDate: String): Instant {
  */
 private fun formatCount(count: Int): String {
     return when {
-        count >= 1_000_000 -> "${"%.1f".format(count / 1_000_000.0)}M"
-        count >= 1_000 -> "${"%.1f".format(count / 1_000.0)}K"
+        count >= 1_000_000 -> "${formatDecimal(count / 1_000_000.0, 1)}M"
+        count >= 1_000 -> "${formatDecimal(count / 1_000.0, 1)}K"
         else -> count.toString()
     }
+}
+
+/**
+ * Format a decimal number to specified decimal places (multiplatform compatible)
+ */
+private fun formatDecimal(value: Double, decimalPlaces: Int): String {
+    val multiplier = when (decimalPlaces) {
+        1 -> 10.0
+        2 -> 100.0
+        else -> 1.0
+    }
+    val rounded = kotlin.math.round(value * multiplier) / multiplier
+    return rounded.toString()
 }
 
 /**

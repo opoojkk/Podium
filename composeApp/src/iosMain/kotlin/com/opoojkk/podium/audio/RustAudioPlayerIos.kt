@@ -1,12 +1,12 @@
 package com.opoojkk.podium.audio
 
+import com.opoojkk.podium.rust.*
 import kotlinx.cinterop.*
-import platform.posix.free
-import platform.posix.malloc
 
 /**
  * iOS wrapper for Rust audio player using C FFI
  */
+@OptIn(ExperimentalForeignApi::class)
 class RustAudioPlayerIos {
 
     private var playerId: Long = -1
@@ -161,40 +161,6 @@ class RustAudioPlayerIos {
             throw IllegalStateException("Audio player has been released")
         }
     }
-
-    // C FFI declarations
-    @CName("rust_audio_player_create")
-    private external fun rust_audio_player_create(): Long
-
-    @CName("rust_audio_player_load_file")
-    private external fun rust_audio_player_load_file(playerId: Long, path: CPointer<ByteVar>): Int
-
-    @CName("rust_audio_player_load_url")
-    private external fun rust_audio_player_load_url(playerId: Long, url: CPointer<ByteVar>): Int
-
-    @CName("rust_audio_player_play")
-    private external fun rust_audio_player_play(playerId: Long): Int
-
-    @CName("rust_audio_player_pause")
-    private external fun rust_audio_player_pause(playerId: Long): Int
-
-    @CName("rust_audio_player_stop")
-    private external fun rust_audio_player_stop(playerId: Long): Int
-
-    @CName("rust_audio_player_seek")
-    private external fun rust_audio_player_seek(playerId: Long, positionMs: Long): Int
-
-    @CName("rust_audio_player_get_position")
-    private external fun rust_audio_player_get_position(playerId: Long): Long
-
-    @CName("rust_audio_player_get_duration")
-    private external fun rust_audio_player_get_duration(playerId: Long): Long
-
-    @CName("rust_audio_player_get_state")
-    private external fun rust_audio_player_get_state(playerId: Long): Int
-
-    @CName("rust_audio_player_release")
-    private external fun rust_audio_player_release(playerId: Long): Int
 }
 
 /**
