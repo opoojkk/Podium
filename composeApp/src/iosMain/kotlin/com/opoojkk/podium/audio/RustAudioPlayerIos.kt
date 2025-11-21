@@ -48,8 +48,8 @@ class RustAudioPlayerIos {
     fun loadFile(path: String) {
         checkNotReleased()
 
-        val result = path.useCString { cPath ->
-            rust_audio_player_load_file(playerId, cPath)
+        val result = memScoped {
+            rust_audio_player_load_file(playerId, path.cstr.ptr)
         }
 
         if (result != 0) {
@@ -63,8 +63,8 @@ class RustAudioPlayerIos {
     fun loadUrl(url: String) {
         checkNotReleased()
 
-        val result = url.useCString { cUrl ->
-            rust_audio_player_load_url(playerId, cUrl)
+        val result = memScoped {
+            rust_audio_player_load_url(playerId, url.cstr.ptr)
         }
 
         if (result != 0) {
