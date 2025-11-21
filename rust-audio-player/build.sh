@@ -378,31 +378,12 @@ build_ios() {
     cp "target/x86_64-apple-ios/release/librust_audio_player.a" "$IOS_SIM_X86_OUTPUT_DIR/" || true
     print_success "Built for iOS Simulator x86_64"
 
-    # Create XCFramework if xcodebuild is available
-    if command -v xcodebuild &> /dev/null; then
-        print_info "Creating XCFramework..."
-        XCFRAMEWORK_DIR="$OUTPUT_DIR/ios/RustAudioPlayer.xcframework"
-        rm -rf "$XCFRAMEWORK_DIR"
-
-        # Create universal simulator library
-        print_info "Creating universal iOS simulator library..."
-        SIM_UNIVERSAL="$OUTPUT_DIR/ios/librust_audio_player_sim.a"
-        lipo -create \
-            "target/aarch64-apple-ios-sim/release/librust_audio_player.a" \
-            "target/x86_64-apple-ios/release/librust_audio_player.a" \
-            -output "$SIM_UNIVERSAL"
-
-        # Create XCFramework with static libraries
-        xcodebuild -create-xcframework \
-            -library "target/aarch64-apple-ios/release/librust_audio_player.a" \
-            -library "$SIM_UNIVERSAL" \
-            -output "$XCFRAMEWORK_DIR"
-
-        print_success "Created XCFramework"
-
-        # Clean up temporary file
-        rm -f "$SIM_UNIVERSAL"
-    fi
+    # Note: XCFramework creation is skipped as Kotlin/Native links directly to static libraries
+    # If you need an XCFramework for native iOS projects, you can create it manually with:
+    # xcodebuild -create-xcframework \
+    #     -library target/aarch64-apple-ios/release/librust_audio_player.a -headers <path> \
+    #     -library target/aarch64-apple-ios-sim/release/librust_audio_player.a -headers <path> \
+    #     -output RustAudioPlayer.xcframework
 }
 
 # Main build process
