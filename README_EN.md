@@ -61,10 +61,15 @@ Podium is a **universal podcast player** built with Kotlin Multiplatform and Com
 
 ## 🚧 Roadmap
 
-- [ ] **Play Queue & Playlists** - Queue management and custom playlists
-- [ ] **Search** - Global search for podcasts and episodes
-- [ ] **Podcast Discovery** - Recommended and trending podcasts
-- [ ] **Favorites** - Bookmark favorite episodes
+Recently done
+
+- [x] Play queue & playlists (queue management and custom playlists)
+- [x] Search (global podcast & episode search)
+- [x] Podcast discovery (recommendations & trending)
+- [x] Favorites (episode bookmarking)
+
+In progress / Next
+
 - [ ] **Multi-Device Sync** - Cloud data synchronization (optional)
 - [ ] **Chapter Support** - RSS chapter parsing and navigation
 - [ ] **OPML Import/Export** - Subscription data migration
