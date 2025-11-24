@@ -39,6 +39,7 @@ import com.opoojkk.podium.data.repository.XYZRankRepository
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.mapper.toEpisodeWithPodcast
 import com.opoojkk.podium.data.mapper.toPodcast
+import com.opoojkk.podium.util.Logger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
@@ -86,7 +87,7 @@ fun PodiumApp(
     // 监听从通知栏打开的请求
     LaunchedEffect(showPlayerDetailFromNotification?.value) {
         if (showPlayerDetailFromNotification?.value == true) {
-            println("🎵 PodiumApp: 收到从通知栏打开播放详情页的请求")
+            Logger.d("App") { "收到从通知栏打开播放详情页的请求" }
             showPlayerDetail.value = true
             showPlayerDetailFromNotification.value = false // 重置标志
         }
@@ -123,7 +124,7 @@ fun PodiumApp(
 
     // Load categories and XYZRank data on app start (parallel loading for better performance)
     LaunchedEffect(Unit) {
-        println("🚀 LaunchedEffect started - loading data in parallel...")
+        Logger.d("App") { "LaunchedEffect started - loading data in parallel..." }
 
         categoriesLoading.value = true
 
@@ -157,48 +158,44 @@ fun PodiumApp(
             // Process categories result
             results[0].getOrNull()?.onSuccess { categories ->
                 categoriesState.value = categories
-                println("✅ Loaded ${categories.size} categories")
+                Logger.i("App") { "Loaded ${categories.size} categories" }
             }
 
             // Process hot episodes result
             results[1].getOrNull()?.onSuccess { episodes ->
                 hotEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
-                println("🔥 Loaded ${episodes.size} hot episodes")
+                Logger.i("App") { "Loaded ${episodes.size} hot episodes" }
             }?.onFailure { error ->
-                println("❌ Failed to load hot episodes: ${error.message}")
-                error.printStackTrace()
+                Logger.e("App", "Failed to load hot episodes: ${error.message}", error)
             }
 
             // Process hot podcasts result
             results[2].getOrNull()?.onSuccess { podcasts ->
                 hotPodcasts.value = podcasts.take(10).map { it.toPodcast() }
-                println("🔥 Loaded ${podcasts.size} hot podcasts")
+                Logger.i("App") { "Loaded ${podcasts.size} hot podcasts" }
             }?.onFailure { error ->
-                println("❌ Failed to load hot podcasts: ${error.message}")
-                error.printStackTrace()
+                Logger.e("App", "Failed to load hot podcasts: ${error.message}", error)
             }
 
             // Process new episodes result
             results[3].getOrNull()?.onSuccess { episodes ->
                 newEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
-                println("✨ Loaded ${episodes.size} new episodes")
+                Logger.i("App") { "Loaded ${episodes.size} new episodes" }
             }?.onFailure { error ->
-                println("❌ Failed to load new episodes: ${error.message}")
-                error.printStackTrace()
+                Logger.e("App", "Failed to load new episodes: ${error.message}", error)
             }
 
             // Process new podcasts result
             results[4].getOrNull()?.onSuccess { podcasts ->
                 newPodcasts.value = podcasts.take(10).map { it.toPodcast() }
-                println("✨ Loaded ${podcasts.size} new podcasts")
+                Logger.i("App") { "Loaded ${podcasts.size} new podcasts" }
             }?.onFailure { error ->
-                println("❌ Failed to load new podcasts: ${error.message}")
-                error.printStackTrace()
+                Logger.e("App", "Failed to load new podcasts: ${error.message}", error)
             }
         }
 
         categoriesLoading.value = false
-        println("🏁 All requests completed in parallel")
+        Logger.i("App") { "All requests completed in parallel" }
     }
     val showImportDialog = remember { mutableStateOf(false) }
     val showExportDialog = remember { mutableStateOf(false) }
@@ -291,9 +288,9 @@ fun PodiumApp(
             }
             val success = fileOperations.saveToFile(content, fileName, mimeType)
             if (success) {
-                println("✅ File saved successfully")
+                Logger.i("App") { "File saved successfully: $fileName" }
             } else {
-                println("❌ Failed to save file")
+                Logger.e("App", "Failed to save file: $fileName")
             }
         }
     }
@@ -350,13 +347,13 @@ fun PodiumApp(
         showRecommendedPodcastDetail
     ) {
         { podcast ->
-            println("🎯 Podcast clicked: id=${podcast.id}, title=${podcast.title}")
-            println("📝 Podcast description:\n${podcast.description}")
+            Logger.d("App") { "Podcast clicked: id=${podcast.id}, title=${podcast.title}" }
+            Logger.d("App") { "Podcast description: ${podcast.description}" }
 
             if (podcast.id.startsWith("xyzrank_podcast_")) {
                 scope.launch {
                     try {
-                        println("🔍 Searching Apple Podcast for: ${podcast.title}")
+                        Logger.d("App") { "Searching Apple Podcast for: ${podcast.title}" }
 
                         val searchResult = environment.applePodcastSearchRepository.searchPodcast(
                             query = podcast.title,
@@ -364,15 +361,14 @@ fun PodiumApp(
                         )
 
                         searchResult.onSuccess { searchPodcasts ->
-                            println("✅ Apple Podcast search results: ${searchPodcasts.size} found")
+                            Logger.i("App") { "Apple Podcast search results: ${searchPodcasts.size} found" }
                             searchPodcasts.forEachIndexed { index, result ->
-                                println("  [$index] ${result.collectionName}")
-                                println("      feedUrl: ${result.feedUrl}")
+                                Logger.d("App") { "  [$index] ${result.collectionName}, feedUrl: ${result.feedUrl}" }
                             }
 
                             if (searchPodcasts.isNotEmpty()) {
                                 val found = searchPodcasts.first()
-                                println("📡 Using feed URL: ${found.feedUrl}")
+                                Logger.i("App") { "Using feed URL: ${found.feedUrl}" }
 
                                 // Convert to RecommendedPodcast to show details without subscribing
                                 val recommendedPodcast = com.opoojkk.podium.data.model.recommended.RecommendedPodcast(
@@ -384,34 +380,32 @@ fun PodiumApp(
                                     rssUrl = found.feedUrl
                                 )
 
-                                println("📂 Opening podcast details (as recommended): ${recommendedPodcast.name}")
+                                Logger.i("App") { "Opening podcast details (as recommended): ${recommendedPodcast.name}" }
                                 selectedRecommendedPodcast.value = recommendedPodcast
                                 showRecommendedPodcastDetail.value = true
                             } else {
-                                println("⚠️ No Apple Podcast results, trying 小宇宙 fallback")
+                                Logger.w("App") { "No Apple Podcast results, trying 小宇宙 fallback" }
                                 val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
                                 val webLink = linkMatch?.groupValues?.get(1)
-                                println("🔗 Extracted link: $webLink")
+                                Logger.d("App") { "Extracted link: $webLink" }
                                 if (webLink != null) {
                                     openUrlInBrowser(webLink)
                                 }
                             }
                         }.onFailure { error ->
-                            println("❌ Apple Podcast search failed: ${error.message}")
-                            error.printStackTrace()
+                            Logger.e("App", "Apple Podcast search failed: ${error.message}", error)
                             val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
                             val webLink = linkMatch?.groupValues?.get(1)
-                            println("🔗 Fallback link: $webLink")
+                            Logger.d("App") { "Fallback link: $webLink" }
                             if (webLink != null) {
                                 openUrlInBrowser(webLink)
                             }
                         }
                     } catch (e: Exception) {
-                        println("💥 Exception: ${e.message}")
-                        e.printStackTrace()
+                        Logger.e("App", "Exception: ${e.message}", e)
                         val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
                         val webLink = linkMatch?.groupValues?.get(1)
-                        println("🔗 Exception fallback link: $webLink")
+                        Logger.d("App") { "Exception fallback link: $webLink" }
                         if (webLink != null) {
                             openUrlInBrowser(webLink)
                         }
@@ -419,8 +413,8 @@ fun PodiumApp(
                 }
             } else if (podcast.id.startsWith("itunes_")) {
                 // Handle iTunes search results - convert to RecommendedPodcast using feedUrl
-                println("📡 iTunes podcast clicked: ${podcast.title}")
-                println("🔗 Feed URL: ${podcast.feedUrl}")
+                Logger.i("App") { "iTunes podcast clicked: ${podcast.title}" }
+                Logger.d("App") { "Feed URL: ${podcast.feedUrl}" }
 
                 val recommendedPodcast = com.opoojkk.podium.data.model.recommended.RecommendedPodcast(
                     id = podcast.id,
@@ -431,11 +425,11 @@ fun PodiumApp(
                     rssUrl = podcast.feedUrl
                 )
 
-                println("📂 Opening iTunes podcast details with feedUrl: ${recommendedPodcast.rssUrl}")
+                Logger.i("App") { "Opening iTunes podcast details with feedUrl: ${recommendedPodcast.rssUrl}" }
                 selectedRecommendedPodcast.value = recommendedPodcast
                 showRecommendedPodcastDetail.value = true
             } else {
-                println("📂 Opening normal podcast details")
+                Logger.d("App") { "Opening normal podcast details" }
                 selectedPodcast.value = podcast
             }
         }
@@ -447,32 +441,31 @@ fun PodiumApp(
 
     val playEpisode: (Episode) -> Unit = remember(controller, openUrlInBrowser, snackbarHostState, scope, environment.applePodcastSearchRepository) {
         { episode ->
-            println("🎬 Episode play requested: id=${episode.id}, title=${episode.title}")
-            println("📝 Episode description:\n${episode.description}")
-            println("🎵 Audio URL: '${episode.audioUrl}'")
+            Logger.d("App") { "Episode play requested: id=${episode.id}, title=${episode.title}" }
+            Logger.d("App") { "Episode description: ${episode.description}" }
+            Logger.d("App") { "Audio URL: '${episode.audioUrl}'" }
 
             // Check if episode is from XYZRank (no audio URL)
             if (episode.audioUrl.isBlank() && episode.id.startsWith("xyzrank_episode_")) {
-                println("🔍 XYZRank episode detected, searching Apple Podcast...")
+                Logger.i("App") { "XYZRank episode detected, searching Apple Podcast..." }
                 scope.launch {
                     try {
                         // Search Apple Podcast for this episode
-                        println("🔍 Searching for episode: podcast='${episode.podcastTitle}', episode='${episode.title}'")
+                        Logger.d("App") { "Searching for episode: podcast='${episode.podcastTitle}', episode='${episode.title}'" }
                         val result = environment.applePodcastSearchRepository.searchEpisode(
                             podcastName = episode.podcastTitle,
                             episodeTitle = episode.title
                         )
 
                         result.onSuccess { episodes ->
-                            println("✅ Episode search results: ${episodes.size} found")
+                            Logger.i("App") { "Episode search results: ${episodes.size} found" }
                             episodes.forEachIndexed { index, ep ->
-                                println("  [$index] ${ep.trackName}")
-                                println("      audioUrl: ${ep.audioUrl}")
+                                Logger.d("App") { "  [$index] ${ep.trackName}, audioUrl: ${ep.audioUrl}" }
                             }
 
                             if (episodes.isNotEmpty()) {
                                 val found = episodes.first()
-                                println("🎵 Found episode with audioUrl: ${found.audioUrl}")
+                                Logger.i("App") { "Found episode with audioUrl: ${found.audioUrl}" }
 
                                 // Check if we have a valid audio URL
                                 val validAudioUrl = found.audioUrl?.takeIf { it.isNotBlank() }
@@ -481,7 +474,7 @@ fun PodiumApp(
                                     val publishDate = try {
                                         kotlinx.datetime.Instant.parse(found.releaseDate)
                                     } catch (e: Exception) {
-                                        println("⚠️ Failed to parse date: ${found.releaseDate}, using current time")
+                                        Logger.w("App") { "Failed to parse date: ${found.releaseDate}, using current time" }
                                         kotlinx.datetime.Clock.System.now()
                                     }
 
@@ -498,11 +491,11 @@ fun PodiumApp(
                                         imageUrl = found.artworkUrl600 ?: found.artworkUrl100 ?: episode.imageUrl
                                     )
 
-                                    println("▶️ Playing converted episode")
+                                    Logger.i("App") { "Playing converted episode" }
                                     pendingEpisodeId = playableEpisode.id
                                     controller.playEpisode(playableEpisode)
                                 } else {
-                                    println("⚠️ No valid audio URL in search result")
+                                    Logger.w("App") { "No valid audio URL in search result" }
                                     val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                                     val webLink = linkMatch?.groupValues?.get(1)
                                     if (webLink != null) {
@@ -510,37 +503,35 @@ fun PodiumApp(
                                     }
                                 }
                             } else {
-                                println("⚠️ No episodes found, fallback to 小宇宙")
+                                Logger.w("App") { "No episodes found, fallback to 小宇宙" }
                                 val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                                 val webLink = linkMatch?.groupValues?.get(1)
-                                println("🔗 Extracted link: $webLink")
+                                Logger.d("App") { "Extracted link: $webLink" }
                                 if (webLink != null) {
                                     openUrlInBrowser(webLink)
                                 }
                             }
                         }.onFailure { error ->
-                            println("❌ Episode search failed: ${error.message}")
-                            error.printStackTrace()
+                            Logger.e("App", "Episode search failed: ${error.message}", error)
                             val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                             val webLink = linkMatch?.groupValues?.get(1)
-                            println("🔗 Fallback link: $webLink")
+                            Logger.d("App") { "Fallback link: $webLink" }
                             if (webLink != null) {
                                 openUrlInBrowser(webLink)
                             }
                         }
                     } catch (e: Exception) {
-                        println("💥 Exception: ${e.message}")
-                        e.printStackTrace()
+                        Logger.e("App", "Exception: ${e.message}", e)
                         val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
                         val webLink = linkMatch?.groupValues?.get(1)
-                        println("🔗 Exception fallback link: $webLink")
+                        Logger.d("App") { "Exception fallback link: $webLink" }
                         if (webLink != null) {
                             openUrlInBrowser(webLink)
                         }
                     }
                 }
             } else {
-                println("▶️ Playing normal episode")
+                Logger.i("App") { "Playing normal episode" }
                 // Normal episode, play it
                 pendingEpisodeId = episode.id
                 controller.playEpisode(episode)
@@ -607,8 +598,8 @@ fun PodiumApp(
         val isDesktopPlatform = platform.name.contains("JVM", ignoreCase = true) ||
                 platform.name.contains("Desktop", ignoreCase = true) ||
                 platform.name.contains("Java", ignoreCase = true)
-        println("🖥️ Platform detected: ${platform.name}")
-        println("🎨 Using ${if (isDesktopPlatform) "Desktop" else "Mobile"} Layout")
+        Logger.i("App") { "Platform detected: ${platform.name}" }
+        Logger.i("App") { "Using ${if (isDesktopPlatform) "Desktop" else "Mobile"} Layout" }
         isDesktopPlatform
     }
 
