@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.SubcomposeAsyncImage
+import com.opoojkk.podium.ui.components.OptimizedAsyncImage
+import com.opoojkk.podium.util.Logger
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -368,14 +370,15 @@ private fun AddSubscriptionDialog(
 private fun PodcastArtwork(
     artworkUrl: String?,
     title: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    displaySize: androidx.compose.ui.unit.Dp = 64.dp
 ) {
     val initials = title.trim().split(" ", limit = 2)
         .mapNotNull { it.firstOrNull()?.uppercase() }
         .joinToString(separator = "")
         .takeIf { it.isNotBlank() }
         ?: "播客"
-    
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
@@ -383,12 +386,12 @@ private fun PodcastArtwork(
         contentAlignment = Alignment.Center,
     ) {
         if (!artworkUrl.isNullOrBlank()) {
-            // 调试日志
-            println("🖼️ Loading podcast artwork: $artworkUrl")
-            
-            SubcomposeAsyncImage(
+            Logger.d("SubscriptionsScreen") { "Loading podcast artwork: $artworkUrl" }
+
+            OptimizedAsyncImage(
                 model = artworkUrl,
                 contentDescription = title,
+                displaySize = displaySize,
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
                 loading = {
@@ -399,9 +402,9 @@ private fun PodcastArtwork(
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 },
-                error = { error ->
+                error = {
                     // 加载失败显示占位符
-                    println("❌ Failed to load image: $artworkUrl, error: ${error.result.throwable?.message}")
+                    Logger.w("SubscriptionsScreen") { "Failed to load image: $artworkUrl" }
                     Text(
                         text = initials,
                         style = MaterialTheme.typography.titleLarge,
@@ -411,7 +414,7 @@ private fun PodcastArtwork(
             )
         } else {
             // 没有图片URL时显示占位符
-            println("⚠️ No artwork URL for podcast: $title")
+            Logger.d("SubscriptionsScreen") { "No artwork URL for podcast: $title" }
             Text(
                 text = initials,
                 style = MaterialTheme.typography.titleLarge,

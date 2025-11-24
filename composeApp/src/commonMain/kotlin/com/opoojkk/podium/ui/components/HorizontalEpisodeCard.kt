@@ -110,9 +110,10 @@ private fun HorizontalEpisodeCard(
 
                 // 加载图片或显示占位符
                 if (!artworkUrl.isNullOrBlank()) {
-                    SubcomposeAsyncImage(
+                    OptimizedAsyncImage(
                         model = artworkUrl,
                         contentDescription = episodeWithPodcast.podcast.title,
+                        displaySize = 136.dp,
                         modifier = Modifier
                             .matchParentSize()
                             .clip(RoundedCornerShape(12.dp)),

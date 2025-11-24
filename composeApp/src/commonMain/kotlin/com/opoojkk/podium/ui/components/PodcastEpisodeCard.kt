@@ -96,6 +96,7 @@ fun PodcastEpisodeCard(
                 artworkUrl = episodeWithPodcast.podcast.artworkUrl,
                 title = episodeWithPodcast.podcast.title,
                 modifier = Modifier.size(if (compact) 56.dp else 80.dp),
+                displaySize = if (compact) 56.dp else 80.dp
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -239,7 +240,8 @@ fun PodcastEpisodeCard(
 private fun ArtworkPlaceholder(
     artworkUrl: String?,
     title: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    displaySize: androidx.compose.ui.unit.Dp = 80.dp
 ) {
     val initials = title.trim().split(" ", limit = 2)
         .mapNotNull { it.firstOrNull()?.uppercase() }
@@ -254,9 +256,10 @@ private fun ArtworkPlaceholder(
         contentAlignment = Alignment.Center,
     ) {
         if (!artworkUrl.isNullOrBlank()) {
-            SubcomposeAsyncImage(
+            OptimizedAsyncImage(
                 model = artworkUrl,
                 contentDescription = title,
+                displaySize = displaySize,
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
                 loading = {
