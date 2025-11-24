@@ -215,7 +215,10 @@ private fun CacheOverviewContent(
                 )
             }
         } else {
-            items(subscribedPodcasts) { podcast ->
+            items(
+                items = subscribedPodcasts,
+                key = { it.id }
+            ) { podcast ->
                 PodcastAutoDownloadCard(
                     podcast = podcast,
                     onToggleAutoDownload = { enabled -> onTogglePodcastAutoDownload(podcast.id, enabled) },
@@ -248,7 +251,10 @@ private fun CachedDetailContent(
                 )
             }
         } else {
-            items(cached) { item ->
+            items(
+                items = cached,
+                key = { it.episodeId }
+            ) { item ->
                 CachedItemCard(item)
             }
         }
@@ -295,7 +301,10 @@ private fun DownloadDetailContent(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
-                items(inProgress) { item ->
+                items(
+                    items = inProgress,
+                    key = { it.episodeId }
+                ) { item ->
                     DownloadItemCard(item)
                 }
             }
@@ -309,7 +318,10 @@ private fun DownloadDetailContent(
                         modifier = Modifier.padding(top = if (inProgress.isNotEmpty()) 8.dp else 0.dp),
                     )
                 }
-                items(queued) { item ->
+                items(
+                    items = queued,
+                    key = { it.episodeId }
+                ) { item ->
                     DownloadItemCard(item)
                 }
             }

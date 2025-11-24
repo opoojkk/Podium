@@ -121,62 +121,84 @@ fun PodiumApp(
     val newEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
     val newPodcasts = remember { mutableStateOf<List<Podcast>>(emptyList()) }
 
-    // Load categories and XYZRank data on app start
+    // Load categories and XYZRank data on app start (parallel loading for better performance)
     LaunchedEffect(Unit) {
-        println("🚀 LaunchedEffect started - loading data...")
+        println("🚀 LaunchedEffect started - loading data in parallel...")
 
         categoriesLoading.value = true
-        val result = recommendedPodcastRepository.getAllCategories()
-        result.onSuccess { categories ->
-            categoriesState.value = categories
-            println("✅ Loaded ${categories.size} categories")
-        }
-        categoriesLoading.value = false
 
-        // Load XYZRank data
-        println("🔥 Starting to load XYZRank data...")
-
-        xyzRankRepository.getHotEpisodes()
-            .onSuccess { episodes ->
-                hotEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
-                println("🔥 Loaded ${episodes.size} hot episodes, set to state")
+        // Execute all network requests in parallel using coroutineScope
+        coroutineScope {
+            val categoriesDeferred = async {
+                runCatching { recommendedPodcastRepository.getAllCategories() }
             }
-            .onFailure { error ->
+            val hotEpisodesDeferred = async {
+                runCatching { xyzRankRepository.getHotEpisodes() }
+            }
+            val hotPodcastsDeferred = async {
+                runCatching { xyzRankRepository.getHotPodcasts() }
+            }
+            val newEpisodesDeferred = async {
+                runCatching { xyzRankRepository.getNewEpisodes() }
+            }
+            val newPodcastsDeferred = async {
+                runCatching { xyzRankRepository.getNewPodcasts() }
+            }
+
+            // Wait for all requests to complete
+            val results = awaitAll(
+                categoriesDeferred,
+                hotEpisodesDeferred,
+                hotPodcastsDeferred,
+                newEpisodesDeferred,
+                newPodcastsDeferred
+            )
+
+            // Process categories result
+            results[0].getOrNull()?.onSuccess { categories ->
+                categoriesState.value = categories
+                println("✅ Loaded ${categories.size} categories")
+            }
+
+            // Process hot episodes result
+            results[1].getOrNull()?.onSuccess { episodes ->
+                hotEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
+                println("🔥 Loaded ${episodes.size} hot episodes")
+            }?.onFailure { error ->
                 println("❌ Failed to load hot episodes: ${error.message}")
                 error.printStackTrace()
             }
 
-        xyzRankRepository.getHotPodcasts()
-            .onSuccess { podcasts ->
+            // Process hot podcasts result
+            results[2].getOrNull()?.onSuccess { podcasts ->
                 hotPodcasts.value = podcasts.take(10).map { it.toPodcast() }
-                println("🔥 Loaded ${podcasts.size} hot podcasts, set to state")
-            }
-            .onFailure { error ->
+                println("🔥 Loaded ${podcasts.size} hot podcasts")
+            }?.onFailure { error ->
                 println("❌ Failed to load hot podcasts: ${error.message}")
                 error.printStackTrace()
             }
 
-        xyzRankRepository.getNewEpisodes()
-            .onSuccess { episodes ->
+            // Process new episodes result
+            results[3].getOrNull()?.onSuccess { episodes ->
                 newEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
-                println("✨ Loaded ${episodes.size} new episodes, set to state")
-            }
-            .onFailure { error ->
+                println("✨ Loaded ${episodes.size} new episodes")
+            }?.onFailure { error ->
                 println("❌ Failed to load new episodes: ${error.message}")
                 error.printStackTrace()
             }
 
-        xyzRankRepository.getNewPodcasts()
-            .onSuccess { podcasts ->
+            // Process new podcasts result
+            results[4].getOrNull()?.onSuccess { podcasts ->
                 newPodcasts.value = podcasts.take(10).map { it.toPodcast() }
-                println("✨ Loaded ${podcasts.size} new podcasts, set to state")
-            }
-            .onFailure { error ->
+                println("✨ Loaded ${podcasts.size} new podcasts")
+            }?.onFailure { error ->
                 println("❌ Failed to load new podcasts: ${error.message}")
                 error.printStackTrace()
             }
+        }
 
-        println("🏁 LaunchedEffect completed all requests")
+        categoriesLoading.value = false
+        println("🏁 All requests completed in parallel")
     }
     val showImportDialog = remember { mutableStateOf(false) }
     val showExportDialog = remember { mutableStateOf(false) }
