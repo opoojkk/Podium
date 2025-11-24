@@ -27,6 +27,7 @@ import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
 import com.opoojkk.podium.data.rss.PodcastFeed
 import com.opoojkk.podium.data.rss.RssEpisode
+import com.opoojkk.podium.platform.BackHandler
 import com.opoojkk.podium.ui.components.PodcastEpisodeCardSkeleton
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
@@ -80,6 +81,9 @@ fun RecommendedPodcastDetailScreen(
         feedState = FeedState.Loading
         loadFeed()
     }
+
+    // 处理系统返回按钮
+    BackHandler(onBack = onBack)
 
     Scaffold(
         topBar = {

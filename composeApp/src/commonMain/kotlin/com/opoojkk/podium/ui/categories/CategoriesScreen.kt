@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
+import com.opoojkk.podium.platform.BackHandler
 
 @Composable
 fun CategoriesScreen(
@@ -131,6 +132,9 @@ fun CategoryDetailScreen(
         }
         isLoadingArtwork = false
     }
+
+    // 处理系统返回按钮
+    BackHandler(onBack = onBack)
 
     Scaffold(
         topBar = {
