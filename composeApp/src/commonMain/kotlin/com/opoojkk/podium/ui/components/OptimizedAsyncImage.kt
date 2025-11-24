@@ -3,8 +3,10 @@ package com.opoojkk.podium.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil3.compose.LocalPlatformContext
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Size
@@ -35,12 +37,15 @@ fun OptimizedAsyncImage(
     loading: @Composable (() -> Unit)? = null,
     error: @Composable (() -> Unit)? = null,
 ) {
-    // Convert Dp to pixels (approximate, density will be handled by Coil)
-    // Using 2.5 as a rough multiplier for common screen densities (between mdpi and xxxhdpi)
-    val pixelSize = (displaySize.value * 2.5f).toInt()
+    val context = LocalPlatformContext.current
+    val density = LocalDensity.current
+
+    // Convert Dp to pixels using actual density
+    val pixelSize = with(density) { displaySize.roundToPx() }
 
     SubcomposeAsyncImage(
-        model = ImageRequest.Builder(model ?: "")
+        model = ImageRequest.Builder(context)
+            .data(model ?: "")
             .size(Size(pixelSize, pixelSize))
             .build(),
         contentDescription = contentDescription,

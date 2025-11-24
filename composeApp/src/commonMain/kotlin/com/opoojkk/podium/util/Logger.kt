@@ -7,7 +7,7 @@ package com.opoojkk.podium.util
 object Logger {
     // TODO: Replace with BuildConfig.DEBUG when build configuration is set up
     // For now, set this to false in production builds
-    private const val DEBUG = true
+    internal const val DEBUG = true
 
     /**
      * Debug log - only executed in debug builds

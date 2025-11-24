@@ -146,47 +146,34 @@ fun PodiumApp(
                 runCatching { xyzRankRepository.getNewPodcasts() }
             }
 
-            // Wait for all requests to complete
-            val results = awaitAll(
-                categoriesDeferred,
-                hotEpisodesDeferred,
-                hotPodcastsDeferred,
-                newEpisodesDeferred,
-                newPodcastsDeferred
-            )
-
-            // Process categories result
-            results[0].getOrNull()?.onSuccess { categories ->
+            // Wait for all requests to complete and process results
+            categoriesDeferred.await().getOrNull()?.onSuccess { categories ->
                 categoriesState.value = categories
                 Logger.i("App") { "Loaded ${categories.size} categories" }
             }
 
-            // Process hot episodes result
-            results[1].getOrNull()?.onSuccess { episodes ->
+            hotEpisodesDeferred.await().getOrNull()?.onSuccess { episodes ->
                 hotEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
                 Logger.i("App") { "Loaded ${episodes.size} hot episodes" }
             }?.onFailure { error ->
                 Logger.e("App", "Failed to load hot episodes: ${error.message}", error)
             }
 
-            // Process hot podcasts result
-            results[2].getOrNull()?.onSuccess { podcasts ->
+            hotPodcastsDeferred.await().getOrNull()?.onSuccess { podcasts ->
                 hotPodcasts.value = podcasts.take(10).map { it.toPodcast() }
                 Logger.i("App") { "Loaded ${podcasts.size} hot podcasts" }
             }?.onFailure { error ->
                 Logger.e("App", "Failed to load hot podcasts: ${error.message}", error)
             }
 
-            // Process new episodes result
-            results[3].getOrNull()?.onSuccess { episodes ->
+            newEpisodesDeferred.await().getOrNull()?.onSuccess { episodes ->
                 newEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
                 Logger.i("App") { "Loaded ${episodes.size} new episodes" }
             }?.onFailure { error ->
                 Logger.e("App", "Failed to load new episodes: ${error.message}", error)
             }
 
-            // Process new podcasts result
-            results[4].getOrNull()?.onSuccess { podcasts ->
+            newPodcastsDeferred.await().getOrNull()?.onSuccess { podcasts ->
                 newPodcasts.value = podcasts.take(10).map { it.toPodcast() }
                 Logger.i("App") { "Loaded ${podcasts.size} new podcasts" }
             }?.onFailure { error ->

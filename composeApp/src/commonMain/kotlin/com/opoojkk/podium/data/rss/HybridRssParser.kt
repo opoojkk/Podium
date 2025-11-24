@@ -1,5 +1,7 @@
 package com.opoojkk.podium.data.rss
 
+import com.opoojkk.podium.util.Logger
+
 /**
  * Hybrid RSS parser.
  * Tries Rust parser first (high performance), falls back to Kotlin parser (maximum compatibility).
