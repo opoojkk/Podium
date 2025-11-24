@@ -5,6 +5,7 @@ import com.opoojkk.podium.data.util.TimeUtils
 import com.opoojkk.podium.data.util.XmlUtils
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import com.opoojkk.podium.util.Logger
 
 /**
  * A lightweight RSS parser that extracts the information required for the UI while remaining
@@ -279,26 +280,26 @@ class SimpleRssParser : RssParser {
         val chaptersBlock = extractTag(itemBlock, "psc:chapters")
 
         if (chaptersBlock == null) {
-            println("⚠️ RSS Parser: psc:chapters tag not found in item block")
+            Logger.w("SimpleRssParser") { "⚠️ RSS Parser: psc:chapters tag not found in item block" }
             // Debug: check if the tag exists at all
             if (itemBlock.contains("<psc:chapters")) {
-                println("⚠️ RSS Parser: Found <psc:chapters in block but extractTag failed")
-                println("First 500 chars of itemBlock: ${itemBlock.take(500)}")
+                Logger.w("SimpleRssParser") { "⚠️ RSS Parser: Found <psc:chapters in block but extractTag failed" }
+                Logger.d("SimpleRssParser") { "First 500 chars of itemBlock: ${itemBlock.take(500)}" }
             }
             return emptyList()
         }
 
-        println("✓ RSS Parser: Found psc:chapters block, length: ${chaptersBlock.length}")
+        Logger.d("SimpleRssParser") { "✓ RSS Parser: Found psc:chapters block, length: ${chaptersBlock.length}" }
 
         // Find all psc:chapter tags
         val chapterMatches = pscChapterRegex.findAll(chaptersBlock).toList()
         if (chapterMatches.isEmpty()) {
-            println("⚠️ RSS Parser: No psc:chapter tags found in chapters block")
-            println("Chapters block content: $chaptersBlock")
+            Logger.w("SimpleRssParser") { "⚠️ RSS Parser: No psc:chapter tags found in chapters block" }
+            Logger.d("SimpleRssParser") { "Chapters block content: $chaptersBlock" }
             return emptyList()
         }
 
-        println("✓ RSS Parser: Found ${chapterMatches.size} chapter tags")
+        Logger.d("SimpleRssParser") { "✓ RSS Parser: Found ${chapterMatches.size} chapter tags" }
 
         return chapterMatches.mapNotNull { match ->
             val chapterTag = match.value
@@ -306,20 +307,20 @@ class SimpleRssParser : RssParser {
             // Extract start time (required)
             val startTimeStr = extractAttribute(chapterTag, "psc:chapter", "start")
             if (startTimeStr == null) {
-                println("⚠️ RSS Parser: Failed to extract start time from: $chapterTag")
+                Logger.w("SimpleRssParser") { "⚠️ RSS Parser: Failed to extract start time from: $chapterTag" }
                 return@mapNotNull null
             }
 
             val startTimeMs = TimeUtils.parsePodloveTimeToMillis(startTimeStr)
             if (startTimeMs == null) {
-                println("⚠️ RSS Parser: Failed to parse time: $startTimeStr")
+                Logger.w("SimpleRssParser") { "⚠️ RSS Parser: Failed to parse time: $startTimeStr" }
                 return@mapNotNull null
             }
 
             // Extract title (required)
             val title = extractAttribute(chapterTag, "psc:chapter", "title")
             if (title == null) {
-                println("⚠️ RSS Parser: Failed to extract title from: $chapterTag")
+                Logger.w("SimpleRssParser") { "⚠️ RSS Parser: Failed to extract title from: $chapterTag" }
                 return@mapNotNull null
             }
 
@@ -327,7 +328,7 @@ class SimpleRssParser : RssParser {
             val imageUrl = extractAttribute(chapterTag, "psc:chapter", "image")
             val url = extractAttribute(chapterTag, "psc:chapter", "href")
 
-            println("✓ RSS Parser: Parsed chapter - $startTimeMs ms: $title")
+            Logger.d("SimpleRssParser") { "✓ RSS Parser: Parsed chapter - $startTimeMs ms: $title" }
 
             Chapter(
                 startTimeMs = startTimeMs,

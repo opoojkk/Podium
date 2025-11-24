@@ -3,6 +3,7 @@ package com.opoojkk.podium.data.util
 import com.opoojkk.podium.data.model.Chapter
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.builtins.ListSerializer
+import com.opoojkk.podium.util.Logger
 
 /**
  * Utility object for serializing and deserializing Chapter lists to/from JSON.
@@ -31,7 +32,7 @@ object ChapterSerializer {
         return try {
             json.decodeFromString(listSerializer, chaptersJson)
         } catch (e: Exception) {
-            println("⚠️ ChapterSerializer: Failed to deserialize chapters: ${e.message}")
+            Logger.w("ChapterSerializer") { "⚠️ ChapterSerializer: Failed to deserialize chapters: ${e.message}" }
             emptyList()
         }
     }

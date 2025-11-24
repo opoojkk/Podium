@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 import podium.composeapp.generated.resources.Res
+import com.opoojkk.podium.util.Logger
 
 class RecommendedPodcastRepository(
     private val feedService: PodcastFeedService,
@@ -115,12 +116,12 @@ class RecommendedPodcastRepository(
                             val artworkUrl = artworkCache.getOrPut(podcast.id) {
                                 podcast.rssUrl?.let { rssUrl ->
                                     runCatching {
-                                        println("Repository: Fetching RSS for ${podcast.name} from $rssUrl")
+                                        Logger.d("RecommendedPodcastRepository") { "Repository: Fetching RSS for ${podcast.name} from $rssUrl" }
                                         feedService.fetch(rssUrl).artworkUrl
                                     }.onSuccess { url ->
-                                        println("Repository: Got artwork for ${podcast.name}: $url")
+                                        Logger.d("RecommendedPodcastRepository") { "Repository: Got artwork for ${podcast.name}: $url" }
                                     }.onFailure { e ->
-                                        println("Repository: Failed to fetch RSS for ${podcast.name}: ${e.message}")
+                                        Logger.d("RecommendedPodcastRepository") { "Repository: Failed to fetch RSS for ${podcast.name}: ${e.message}" }
                                     }.getOrNull()
                                 }
                             }

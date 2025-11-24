@@ -15,6 +15,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.PlaybackState
+import com.opoojkk.podium.util.Logger
 
 @Composable
 fun PlaybackBar(
@@ -24,7 +25,7 @@ fun PlaybackBar(
     modifier: Modifier = Modifier,
 ) {
     // Debug: Always show the playback bar to see the state
-    println("PlaybackBar: episode=${playbackState.episode?.title}, isPlaying=${playbackState.isPlaying}, position=${playbackState.positionMs}")
+    Logger.d("PlaybackBar") { "PlaybackBar: episode=${playbackState.episode?.title}, isPlaying=${playbackState.isPlaying}, position=${playbackState.positionMs}" }
 
     if (playbackState.episode == null) {
         return

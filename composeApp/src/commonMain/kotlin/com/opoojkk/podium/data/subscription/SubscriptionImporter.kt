@@ -2,6 +2,7 @@ package com.opoojkk.podium.data.subscription
 
 import com.opoojkk.podium.data.util.JsonUtils
 import com.opoojkk.podium.data.util.XmlUtils
+import com.opoojkk.podium.util.Logger
 
 /**
  * Service for importing podcast subscriptions from various standard formats.
@@ -126,7 +127,7 @@ class SubscriptionImporter {
                 }
             }
         } catch (e: Exception) {
-            println("Failed to parse JSON: ${e.message}")
+            Logger.d("SubscriptionImporter") { "Failed to parse JSON: ${e.message}" }
             return emptyList()
         }
 

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
+import com.opoojkk.podium.util.Logger
 
 class PodcastDao(private val database: PodcastDatabase) {
 
@@ -242,7 +243,7 @@ class PodcastDao(private val database: PodcastDatabase) {
     }
 
     suspend fun getPodcastByFeedUrl(feedUrl: String): Podcast? {
-        println("🔍 DAO: Looking up podcast by feedUrl: $feedUrl")
+        Logger.d("PodcastDao") { "🔍 DAO: Looking up podcast by feedUrl: $feedUrl" }
         val result = queries.selectPodcastByFeedUrl(feedUrl) { id, title, description, artworkUrl, feedUrl_, lastUpdated, autoDownload ->
             mapPodcast(id, title, description, artworkUrl, feedUrl_, lastUpdated, autoDownload)
         }

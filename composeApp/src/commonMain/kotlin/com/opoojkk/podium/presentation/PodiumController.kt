@@ -11,6 +11,7 @@ import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.platform.fileLastModifiedMillis
 import com.opoojkk.podium.platform.fileSizeInBytes
 import com.opoojkk.podium.player.PodcastPlayer
+import com.opoojkk.podium.util.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -105,7 +106,7 @@ class PodiumController(
             kotlinx.coroutines.delay(250)
             try {
                 val limit = _homeState.value.searchLimit
-                println("🔍 开始搜索: \"$effectiveQuery\", limit=$limit")
+                Logger.d("PodiumController") { "开始搜索: \"$effectiveQuery\", limit=$limit" }
 
                 // 并行搜索本地、iTunes播客和iTunes单集
                 val localResults = async {
@@ -123,12 +124,12 @@ class PodiumController(
                 val remotePodcasts = remotePodcastResults.await()
                 val remoteEpisodes = remoteEpisodeResults.await()
 
-                println("🔍 搜索完成 - 本地: ${local.size}, iTunes播客: ${remotePodcasts.size}, iTunes单集: ${remoteEpisodes.size}")
+                Logger.i("PodiumController") { "搜索完成 - 本地: ${local.size}, iTunes播客: ${remotePodcasts.size}, iTunes单集: ${remoteEpisodes.size}" }
 
                 // 合并结果：iTunes播客优先，然后是iTunes单集，最后是本地结果
                 val combinedResults = (remotePodcasts + remoteEpisodes + local).distinctBy { it.episode.id }
 
-                println("🔍 合并去重后: ${combinedResults.size} 条结果 (播客: ${remotePodcasts.size}, 单集: ${remoteEpisodes.size + local.size})")
+                Logger.i("PodiumController") { "合并去重后: ${combinedResults.size} 条结果 (播客: ${remotePodcasts.size}, 单集: ${remoteEpisodes.size + local.size})" }
 
                 _homeState.update { current ->
                     current.copy(
@@ -156,7 +157,7 @@ class PodiumController(
     }
 
     private suspend fun searchApplePodcasts(query: String, limit: Int = 20): List<EpisodeWithPodcast> {
-        println("🍎 iTunes播客搜索开始: \"$query\", limit=$limit")
+        Logger.d("PodiumController") { "iTunes播客搜索开始: \"$query\", limit=$limit" }
         return try {
             val result = applePodcastSearchRepository.searchPodcast(query, limit = limit)
             val results = result.getOrNull()?.map { applePodcast ->
@@ -189,21 +190,21 @@ class PodiumController(
                 EpisodeWithPodcast(episode = episode, podcast = podcast)
             } ?: emptyList()
 
-            println("🍎 iTunes播客搜索完成: 找到 ${results.size} 个结果")
+            Logger.d("PodiumController") { "🍎 iTunes播客搜索完成: 找到 ${results.size} 个结果" }
             results
         } catch (e: CancellationException) {
-            println("⏸️ iTunes播客搜索被取消")
+            Logger.w("PodiumController") { "⏸️ iTunes播客搜索被取消" }
             throw e  // 重新抛出取消异常
         } catch (e: Exception) {
-            println("❌ iTunes播客搜索失败: ${e.message}")
+            Logger.e("PodiumController", "❌ iTunes播客搜索失败: ${e.message}")
             e.printStackTrace()
             emptyList()
         }
     }
 
     private suspend fun searchAppleEpisodes(query: String, limit: Int = 20): List<EpisodeWithPodcast> {
-        println("🎧 iTunes单集搜索开始: \"$query\", limit=$limit")
-        return try {
+        Logger.d("PodiumController") { "iTunes单集搜索开始: \"$query\", limit=$limit" }
+        return try{
             val result = applePodcastSearchRepository.searchEpisodes(query, limit = limit)
             val results = result.getOrNull()?.map { appleEpisode ->
                 // 将 ApplePodcastEpisodeResult 转换为 EpisodeWithPodcast
@@ -238,13 +239,13 @@ class PodiumController(
                 EpisodeWithPodcast(episode = episode, podcast = podcast)
             } ?: emptyList()
 
-            println("🎧 iTunes单集搜索完成: 找到 ${results.size} 个结果")
+            Logger.d("PodiumController") { "🎧 iTunes单集搜索完成: 找到 ${results.size} 个结果" }
             results
         } catch (e: CancellationException) {
-            println("⏸️ iTunes单集搜索被取消")
+            Logger.w("PodiumController") { "⏸️ iTunes单集搜索被取消" }
             throw e  // 重新抛出取消异常
         } catch (e: Exception) {
-            println("❌ iTunes单集搜索失败: ${e.message}")
+            Logger.e("PodiumController", "❌ iTunes单集搜索失败: ${e.message}")
             e.printStackTrace()
             emptyList()
         }
@@ -319,7 +320,7 @@ class PodiumController(
             val lastPlayed = repository.getLastPlayedEpisode()
             if (lastPlayed != null) {
                 val (episode, progress) = lastPlayed
-                println("🎵 PodiumController: Restoring last played episode: ${episode.title} at ${progress.positionMs}ms")
+                Logger.d("PodiumController") { "🎵 PodiumController: Restoring last played episode: ${episode.title} at ${progress.positionMs}ms" }
                 player.restorePlaybackState(episode, progress.positionMs)
             }
         }
@@ -327,10 +328,10 @@ class PodiumController(
         // 检查是否需要自动更新播客订阅
         scope.launch {
             if (repository.shouldAutoUpdate()) {
-                println("🔄 PodiumController: Auto-updating podcasts based on user settings")
+                Logger.d("PodiumController") { "🔄 PodiumController: Auto-updating podcasts based on user settings" }
                 refreshSubscriptions()
             } else {
-                println("⏸️ PodiumController: Skipping auto-update (user preference or too soon)")
+                Logger.w("PodiumController") { "⏸️ PodiumController: Skipping auto-update (user preference or too soon)" }
             }
         }
 
@@ -353,7 +354,7 @@ class PodiumController(
                                             updatedAt = Clock.System.now(),
                                         ),
                                     )
-                                    println("🎵 PodiumController: Auto-saved playback progress: ${currentState.positionMs}ms")
+                                    Logger.d("PodiumController") { "🎵 PodiumController: Auto-saved playback progress: ${currentState.positionMs}ms" }
                                 }
                             }
                         }
@@ -381,7 +382,7 @@ class PodiumController(
 
         scope.launch {
             repository.observePlaylist().collect { playlistItems ->
-                println("📋 Playlist updated: ${playlistItems.size} items")
+                Logger.d("PodiumController") { "📋 Playlist updated: ${playlistItems.size} items" }
                 _playlistState.value = _playlistState.value.copy(
                     items = playlistItems,
                     isLoading = false,
@@ -485,16 +486,16 @@ class PodiumController(
     }
 
     fun playEpisode(episode: Episode) {
-        println("🎵 PodiumController: playEpisode called for: ${episode.title}")
-        println("🎵 PodiumController: Audio URL: ${episode.audioUrl}")
+        Logger.d("PodiumController") { "🎵 PodiumController: playEpisode called for: ${episode.title}" }
+        Logger.d("PodiumController") { "🎵 PodiumController: Audio URL: ${episode.audioUrl}" }
         scope.launch {
             val (episodeToPlay, cachePath) = resolvePlaybackEpisode(episode)
             if (cachePath != null) {
-                println("🎵 PodiumController: Playing cached file at $cachePath")
+                Logger.d("PodiumController") { "🎵 PodiumController: Playing cached file at $cachePath" }
             }
             val progress = repository.playbackForEpisode(episode.id)
             val startPosition = progress?.positionMs ?: 0L
-            println("🎵 PodiumController: Starting playback at position: $startPosition")
+            Logger.d("PodiumController") { "🎵 PodiumController: Starting playback at position: $startPosition" }
             player.play(episodeToPlay, startPosition)
             repository.savePlayback(
                 PlaybackProgress(
@@ -572,9 +573,9 @@ class PodiumController(
             _subscriptionsState.value = _subscriptionsState.value.copy(isAdding = true)
 
             try {
-                println("🎧 Controller: Starting subscription process for: $feedUrl")
+                Logger.d("PodiumController") { "🎧 Controller: Starting subscription process for: $feedUrl" }
                 val result = repository.subscribe(feedUrl)
-                println("🎧 Controller: Subscription completed, got ${result.episodes.size} episodes")
+                Logger.d("PodiumController") { "🎧 Controller: Subscription completed, got ${result.episodes.size} episodes" }
 
                 // 如果启用自动下载，下载该播客的所有节目
                 if (result.podcast.autoDownload) {
@@ -584,18 +585,18 @@ class PodiumController(
                 }
 
                 repository.setAutoDownload(result.podcast.id, result.podcast.autoDownload)
-                println("🎧 Controller: Subscription process finished successfully")
+                Logger.d("PodiumController") { "🎧 Controller: Subscription process finished successfully" }
             } catch (e: com.opoojkk.podium.data.repository.DuplicateSubscriptionException) {
                 // 捕获重复订阅异常，显示提示
-                println("⚠️ Controller: Duplicate subscription detected: ${e.podcastTitle}")
-                println("⚠️ Controller: Setting duplicateSubscriptionTitle in state")
+                Logger.w("PodiumController") { "⚠️ Controller: Duplicate subscription detected: ${e.podcastTitle}" }
+                Logger.w("PodiumController") { "⚠️ Controller: Setting duplicateSubscriptionTitle in state" }
                 _subscriptionsState.value = _subscriptionsState.value.copy(
                     duplicateSubscriptionTitle = e.podcastTitle
                 )
-                println("⚠️ Controller: State updated, duplicateSubscriptionTitle = ${_subscriptionsState.value.duplicateSubscriptionTitle}")
+                Logger.w("PodiumController") { "⚠️ Controller: State updated, duplicateSubscriptionTitle = ${_subscriptionsState.value.duplicateSubscriptionTitle}" }
             } catch (e: Exception) {
-                println("❌ Controller: Subscription failed: ${e.message}")
-                println("❌ Controller: Exception type: ${e::class.simpleName}")
+                Logger.e("PodiumController", "❌ Controller: Subscription failed: ${e.message}")
+                Logger.e("PodiumController", "❌ Controller: Exception type: ${e::class.simpleName}")
                 e.printStackTrace()
             } finally {
                 // 无论成功或失败，都清除加载状态
@@ -706,21 +707,21 @@ class PodiumController(
     fun markEpisodeCompleted(episodeId: String) {
         scope.launch {
             repository.markEpisodeCompleted(episodeId)
-            println("✅ Marked episode $episodeId as completed")
+            Logger.i("PodiumController") { "✅ Marked episode $episodeId as completed" }
         }
     }
 
     fun removeFromPlaylist(episodeId: String) {
         scope.launch {
             repository.removeFromPlaylist(episodeId)
-            println("🗑️ Removed episode $episodeId from playlist")
+            Logger.d("PodiumController") { "🗑️ Removed episode $episodeId from playlist" }
         }
     }
 
     fun addToPlaylist(episodeId: String) {
         scope.launch {
             repository.addToPlaylist(episodeId)
-            println("➕ Added episode $episodeId to playlist")
+            Logger.d("PodiumController") { "➕ Added episode $episodeId to playlist" }
         }
     }
 
@@ -745,7 +746,7 @@ class PodiumController(
 
     // Sleep timer methods
     fun startSleepTimer(duration: SleepTimerDuration) {
-        println("⏰ Starting sleep timer for ${duration.displayName}")
+        Logger.d("PodiumController") { "⏰ Starting sleep timer for ${duration.displayName}" }
         cancelSleepTimer() // Cancel any existing timer
 
         _sleepTimerState.value = SleepTimerState(
@@ -768,7 +769,7 @@ class PodiumController(
                 )
 
                 if (remaining <= 0) {
-                    println("⏰ Sleep timer completed")
+                    Logger.d("PodiumController") { "⏰ Sleep timer completed" }
                     onTimerComplete()
                     break
                 }
@@ -777,7 +778,7 @@ class PodiumController(
     }
 
     fun cancelSleepTimer() {
-        println("⏰ Cancelling sleep timer")
+        Logger.d("PodiumController") { "⏰ Cancelling sleep timer" }
         sleepTimerJob?.cancel()
         sleepTimerJob = null
         _sleepTimerState.value = SleepTimerState()

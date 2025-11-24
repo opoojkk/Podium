@@ -12,6 +12,7 @@ import com.opoojkk.podium.data.rss.RssEpisode
 import com.opoojkk.podium.data.subscription.SubscriptionExporter
 import com.opoojkk.podium.data.subscription.SubscriptionImporter
 import com.opoojkk.podium.presentation.HomeUiState
+import com.opoojkk.podium.util.Logger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -55,13 +56,13 @@ class PodcastRepository(
         dao.observeEpisodesWithPodcast(podcastId)
 
     suspend fun searchEpisodes(query: String, limit: Int = 30, offset: Int = 0): List<EpisodeWithPodcast> {
-        println("💾 [本地数据库] 开始搜索: query=$query, limit=$limit, offset=$offset")
+        Logger.d("PodcastRepository") { "[本地数据库] 开始搜索: query=$query, limit=$limit, offset=$offset" }
         if (query.isBlank()) {
-            println("💾 [本地数据库] 查询为空，返回空列表")
+            Logger.d("PodcastRepository") { "[本地数据库] 查询为空，返回空列表" }
             return emptyList()
         }
         val results = dao.searchEpisodes(query, limit, offset)
-        println("💾 [本地数据库] 搜索完成: 找到 ${results.size} 条结果")
+        Logger.d("PodcastRepository") { "[本地数据库] 搜索完成: 找到 ${results.size} 条结果" }
         return results
     }
 
@@ -109,19 +110,19 @@ class PodcastRepository(
     suspend fun subscribe(feedUrl: String, autoDownload: Boolean = false): SubscriptionResult {
         try {
             // Check if a podcast with this feedUrl already exists
-            println("🔍 Repository: Checking for existing podcast with feedUrl: $feedUrl")
+            Logger.d("PodcastRepository") { "Repository: Checking for existing podcast with feedUrl: $feedUrl" }
             val existingPodcast = dao.getPodcastByFeedUrl(feedUrl)
             
             // If already subscribed, throw DuplicateSubscriptionException
             if (existingPodcast != null) {
-                println("⚠️ Repository: Found existing podcast: ${existingPodcast.title}")
+                Logger.w("PodcastRepository") { "Repository: Found existing podcast: ${existingPodcast.title}" }
                 throw DuplicateSubscriptionException(
                     podcastTitle = existingPodcast.title,
                     feedUrl = feedUrl
                 )
             }
             
-            println("✅ Repository: No existing podcast found, proceeding with subscription")
+            Logger.i("PodcastRepository") { "Repository: No existing podcast found, proceeding with subscription" }
             // Fetch the feed data
             val feed = feedService.fetch(feedUrl)
             
@@ -134,10 +135,10 @@ class PodcastRepository(
             return SubscriptionResult(podcast, episodes)
         } catch (e: DuplicateSubscriptionException) {
             // Re-throw duplicate subscription exception
-            println("⚠️ Repository: Re-throwing DuplicateSubscriptionException")
+            Logger.w("PodcastRepository") { "Repository: Re-throwing DuplicateSubscriptionException" }
             throw e
         } catch (e: Exception) {
-            println("❌ Repository: Subscription failed with exception: ${e.message}")
+            Logger.e("PodcastRepository", "Repository: Subscription failed with exception: ${e.message}")
             e.printStackTrace()
             throw e
         }

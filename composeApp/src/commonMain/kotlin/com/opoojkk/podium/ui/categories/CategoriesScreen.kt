@@ -24,6 +24,7 @@ import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
 import com.opoojkk.podium.platform.BackHandler
+import com.opoojkk.podium.util.Logger
 
 @Composable
 fun CategoriesScreen(
@@ -121,14 +122,14 @@ fun CategoryDetailScreen(
 
     LaunchedEffect(category.id) {
         isLoadingArtwork = true
-        println("CategoryDetail: Loading artwork for ${category.podcasts.size} podcasts")
+        Logger.d("CategoriesScreen") { "CategoryDetail: Loading artwork for ${category.podcasts.size} podcasts" }
         category.podcasts.forEach { podcast ->
-            println("CategoryDetail: Podcast ${podcast.name} - RSS: ${podcast.rssUrl}")
+            Logger.d("CategoriesScreen") { "CategoryDetail: Podcast ${podcast.name} - RSS: ${podcast.rssUrl}" }
         }
         podcastsWithArtwork = loadPodcastArtwork(category.podcasts)
-        println("CategoryDetail: Loaded artwork")
+        Logger.d("CategoriesScreen") { "CategoryDetail: Loaded artwork" }
         podcastsWithArtwork.forEach { podcast ->
-            println("CategoryDetail: Podcast ${podcast.name} - Artwork: ${podcast.artworkUrl}")
+            Logger.d("CategoriesScreen") { "CategoryDetail: Podcast ${podcast.name} - Artwork: ${podcast.artworkUrl}" }
         }
         isLoadingArtwork = false
     }
@@ -199,7 +200,7 @@ private fun PodcastItemCard(
                 contentAlignment = Alignment.Center,
             ) {
                 val artworkUrl = podcast.artworkUrl
-                println("PodcastItemCard: ${podcast.name} - artworkUrl: $artworkUrl")
+                Logger.d("CategoriesScreen") { "PodcastItemCard: ${podcast.name} - artworkUrl: $artworkUrl" }
                 val initials = podcast.name
                     .trim()
                     .split(" ", limit = 2)

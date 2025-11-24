@@ -58,6 +58,7 @@ import com.opoojkk.podium.ui.components.HorizontalEpisodeRow
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRowSkeleton
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
 import com.opoojkk.podium.ui.components.PodcastEpisodeCardSkeleton
+import com.opoojkk.podium.util.Logger
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,7 +83,7 @@ fun HomeScreen(
     onSearchFilterTypeChange: (SearchFilterType) -> Unit = {},
 ) {
     // Debug: Print XYZRank data status
-    println("🏠 HomeScreen - XYZRank data: hotEpisodes=${state.hotEpisodes.size}, hotPodcasts=${state.hotPodcasts.size}, newEpisodes=${state.newEpisodes.size}, newPodcasts=${state.newPodcasts.size}")
+    Logger.d("HomeScreen") { "🏠 HomeScreen - XYZRank data: hotEpisodes=${state.hotEpisodes.size}, hotPodcasts=${state.hotPodcasts.size}, newEpisodes=${state.newEpisodes.size}, newPodcasts=${state.newPodcasts.size}" }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,

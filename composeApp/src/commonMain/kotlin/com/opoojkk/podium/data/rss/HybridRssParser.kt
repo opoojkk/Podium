@@ -23,12 +23,12 @@ internal class HybridRssParser(
 
         // If Rust parser succeeded, use its result
         if (rustResult != null) {
-            println("✓ RSS parsed with Rust parser (high-performance)")
+            Logger.d("HybridRssParser") { "✓ RSS parsed with Rust parser (high-performance)" }
             return rustResult
         }
 
         // Fall back to Kotlin parser for maximum compatibility
-        println("⟲ Falling back to Kotlin parser for this feed")
+        Logger.d("HybridRssParser") { "⟲ Falling back to Kotlin parser for this feed" }
         return kotlinParser.parse(feedUrl, xml)
     }
 }
