@@ -1,10 +1,5 @@
 package com.opoojkk.podium.util
 
-import kotlinx.io.IOException
-import java.net.ConnectException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
-
 /**
  * User-friendly error representation with localized messages.
  */
@@ -26,43 +21,46 @@ object ErrorHandler {
     fun handle(error: Throwable): UserFriendlyError {
         Logger.e("ErrorHandler", "Handling error: ${error.message}", error)
 
-        return when (error) {
-            is UnknownHostException -> UserFriendlyError(
+        // Use class name matching for platform-agnostic exception handling
+        val errorClassName = error::class.simpleName ?: ""
+
+        return when {
+            errorClassName.contains("UnknownHost") -> UserFriendlyError(
                 title = "网络连接失败",
                 message = "无法连接到服务器，请检查您的网络连接。",
                 originalException = error,
                 isRecoverable = true
             )
 
-            is SocketTimeoutException -> UserFriendlyError(
+            errorClassName.contains("Timeout") -> UserFriendlyError(
                 title = "请求超时",
                 message = "网络请求超时，请稍后重试。",
                 originalException = error,
                 isRecoverable = true
             )
 
-            is ConnectException -> UserFriendlyError(
+            errorClassName.contains("Connect") -> UserFriendlyError(
                 title = "连接失败",
                 message = "无法建立网络连接，请检查您的网络设置。",
                 originalException = error,
                 isRecoverable = true
             )
 
-            is IOException -> UserFriendlyError(
+            errorClassName.contains("IO") || errorClassName.contains("Network") -> UserFriendlyError(
                 title = "网络错误",
                 message = "网络通信出现问题，请检查您的网络连接后重试。",
                 originalException = error,
                 isRecoverable = true
             )
 
-            is IllegalArgumentException -> UserFriendlyError(
+            error is IllegalArgumentException -> UserFriendlyError(
                 title = "参数错误",
                 message = error.message ?: "提供的参数无效，请检查输入。",
                 originalException = error,
                 isRecoverable = true
             )
 
-            is IllegalStateException -> UserFriendlyError(
+            error is IllegalStateException -> UserFriendlyError(
                 title = "状态错误",
                 message = error.message ?: "应用程序处于无效状态，请重试。",
                 originalException = error,

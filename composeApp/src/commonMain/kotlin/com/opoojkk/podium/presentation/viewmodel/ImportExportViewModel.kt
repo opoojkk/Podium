@@ -72,7 +72,7 @@ class ImportExportViewModel(
                 Logger.d("ImportExportViewModel") { "Starting import process" }
                 val result = repository.importSubscriptions(content)
                 Logger.i("ImportExportViewModel") {
-                    "Import completed - Success: ${result.successCount}, Failed: ${result.failedCount}"
+                    "Import completed - Imported: ${result.imported}, Skipped: ${result.skipped}, Failed: ${result.failures.size}"
                 }
 
                 _importState.update {
