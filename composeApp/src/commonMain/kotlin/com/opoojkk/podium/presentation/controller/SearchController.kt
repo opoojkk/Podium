@@ -5,7 +5,9 @@ import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.repository.ApplePodcastSearchRepository
 import com.opoojkk.podium.data.repository.PodcastRepository
 import com.opoojkk.podium.presentation.SearchFilterType
+import com.opoojkk.podium.util.ErrorHandler
 import com.opoojkk.podium.util.Logger
+import com.opoojkk.podium.util.handleError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -123,12 +125,13 @@ class SearchController(
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (throwable: Throwable) {
+                val userError = ErrorHandler.logAndHandle("SearchController", throwable)
                 _searchState.update { current ->
                     current.copy(
                         searchResults = emptyList(),
                         isSearching = false,
                         isSearchActive = true,
-                        searchErrorMessage = throwable.message ?: "搜索失败，请稍后重试。",
+                        searchErrorMessage = userError.message,
                     )
                 }
             }
@@ -168,10 +171,11 @@ class SearchController(
                     )
                 }
             } catch (e: Exception) {
+                val userError = ErrorHandler.logAndHandle("SearchController", e)
                 _searchState.update { current ->
                     current.copy(
                         isLoadingMoreResults = false,
-                        searchErrorMessage = e.message ?: "加载更多失败",
+                        searchErrorMessage = userError.message,
                     )
                 }
             }
@@ -244,8 +248,7 @@ class SearchController(
             Logger.w("SearchController") { "⏸️ iTunes播客搜索被取消" }
             throw e  // Re-throw cancellation exception
         } catch (e: Exception) {
-            Logger.e("SearchController", "❌ iTunes播客搜索失败: ${e.message}")
-            e.printStackTrace()
+            ErrorHandler.logAndHandle("SearchController", e)
             emptyList()
         }
     }
@@ -293,8 +296,7 @@ class SearchController(
             Logger.w("SearchController") { "⏸️ iTunes单集搜索被取消" }
             throw e  // Re-throw cancellation exception
         } catch (e: Exception) {
-            Logger.e("SearchController", "❌ iTunes单集搜索失败: ${e.message}")
-            e.printStackTrace()
+            ErrorHandler.logAndHandle("SearchController", e)
             emptyList()
         }
     }

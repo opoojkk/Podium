@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -120,7 +122,10 @@ class PodiumController(
                 downloadManager.downloads,
             ) { persisted, runtime ->
                 persisted + runtime
-            }.collect { combined ->
+            }
+                .debounce(300) // Debounce to avoid too frequent updates during downloads
+                .distinctUntilChanged() // Only update when the map actually changes
+                .collect { combined ->
                 _downloads.value = combined
                 val bytesPerMb = 1024L * 1024L
                 val defaultEpisodeSizeBytes = 50L * bytesPerMb

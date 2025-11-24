@@ -5,6 +5,7 @@ import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.data.repository.PodcastRepository
 import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.player.PodcastPlayer
+import com.opoojkk.podium.util.ErrorHandler
 import com.opoojkk.podium.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -148,8 +149,10 @@ class SubscriptionController(
                     duplicateSubscriptionTitle = e.podcastTitle
                 )
             } catch (e: Exception) {
-                Logger.e("SubscriptionController", "❌ Subscription failed: ${e.message}")
-                e.printStackTrace()
+                val userError = ErrorHandler.logAndHandle("SubscriptionController", e)
+                _subscriptionState.value = _subscriptionState.value.copy(
+                    errorMessage = userError.message
+                )
             } finally {
                 // Clear loading state
                 _subscriptionState.value = _subscriptionState.value.copy(isAdding = false)
