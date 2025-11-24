@@ -5,6 +5,7 @@ import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.data.repository.PodcastRepository
 import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.player.PodcastPlayer
+import com.opoojkk.podium.presentation.SubscriptionsUiState
 import com.opoojkk.podium.util.ErrorHandler
 import com.opoojkk.podium.util.Logger
 import kotlinx.coroutines.CoroutineScope
@@ -19,17 +20,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * State for subscription management.
- */
-data class SubscriptionState(
-    val subscriptions: List<Podcast> = emptyList(),
-    val isRefreshing: Boolean = false,
-    val isAdding: Boolean = false,
-    val errorMessage: String? = null,
-    val duplicateSubscriptionTitle: String? = null,
-)
-
-/**
  * Controller responsible for subscription-related operations including
  * subscribe, unsubscribe, refresh, and auto-download management.
  */
@@ -39,8 +29,8 @@ class SubscriptionController(
     private val player: PodcastPlayer,
     private val scope: CoroutineScope,
 ) {
-    private val _subscriptionState = MutableStateFlow(SubscriptionState())
-    val subscriptionState: StateFlow<SubscriptionState> = _subscriptionState.asStateFlow()
+    private val _subscriptionState = MutableStateFlow(SubscriptionsUiState())
+    val subscriptionState: StateFlow<SubscriptionsUiState> = _subscriptionState.asStateFlow()
 
     private var refreshJob: Job? = null
 

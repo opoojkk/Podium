@@ -2,21 +2,13 @@ package com.opoojkk.podium.presentation.controller
 
 import com.opoojkk.podium.data.model.PlaylistItem
 import com.opoojkk.podium.data.repository.PodcastRepository
+import com.opoojkk.podium.presentation.PlaylistUiState
 import com.opoojkk.podium.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
-/**
- * State for playlist management.
- */
-data class PlaylistState(
-    val items: List<PlaylistItem> = emptyList(),
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-)
 
 /**
  * Controller responsible for playlist-related operations including
@@ -26,8 +18,8 @@ class PlaylistController(
     private val repository: PodcastRepository,
     private val scope: CoroutineScope,
 ) {
-    private val _playlistState = MutableStateFlow(PlaylistState())
-    val playlistState: StateFlow<PlaylistState> = _playlistState.asStateFlow()
+    private val _playlistState = MutableStateFlow(PlaylistUiState())
+    val playlistState: StateFlow<PlaylistUiState> = _playlistState.asStateFlow()
 
     init {
         // Observe playlist changes from repository
