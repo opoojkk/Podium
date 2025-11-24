@@ -101,9 +101,31 @@ fun PodiumApp(
     val showRecommendedPodcastDetail = remember { mutableStateOf(false) }
     val showCacheManagement = remember { mutableStateOf(false) }
 
-    // Categories state
-    val categoriesState = remember { mutableStateOf<List<PodcastCategory>>(emptyList()) }
-    val categoriesLoading = remember { mutableStateOf(false) }
+    // Use HomeViewModel for categories and XYZRank data
+    val homeViewModel = com.opoojkk.podium.presentation.viewmodel.rememberHomeViewModel(environment)
+    val homeViewModelState by homeViewModel.state.collectAsState()
+
+    // For backward compatibility, create references to ViewModel state
+    val categoriesState = remember(homeViewModelState.categories) {
+        mutableStateOf(homeViewModelState.categories)
+    }
+    val categoriesLoading = remember(homeViewModelState.isLoading) {
+        mutableStateOf(homeViewModelState.isLoading)
+    }
+    val hotEpisodes = remember(homeViewModelState.hotEpisodes) {
+        mutableStateOf(homeViewModelState.hotEpisodes)
+    }
+    val hotPodcasts = remember(homeViewModelState.hotPodcasts) {
+        mutableStateOf(homeViewModelState.hotPodcasts)
+    }
+    val newEpisodes = remember(homeViewModelState.newEpisodes) {
+        mutableStateOf(homeViewModelState.newEpisodes)
+    }
+    val newPodcasts = remember(homeViewModelState.newPodcasts) {
+        mutableStateOf(homeViewModelState.newPodcasts)
+    }
+
+    // RecommendedPodcastRepository for category detail screen
     val recommendedPodcastRepository = remember {
         RecommendedPodcastRepository(
             feedService = com.opoojkk.podium.data.rss.PodcastFeedService(
@@ -112,90 +134,15 @@ fun PodiumApp(
             )
         )
     }
+    // Use ImportExportViewModel for OPML operations
+    val importExportViewModel = com.opoojkk.podium.presentation.viewmodel.rememberImportExportViewModel(environment)
+    val importState by importExportViewModel.importState.collectAsState()
+    val exportState by importExportViewModel.exportState.collectAsState()
 
-    // XYZRank repository and states
-    val xyzRankRepository = remember {
-        XYZRankRepository(httpClient = environment.httpClient)
-    }
-    val hotEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
-    val hotPodcasts = remember { mutableStateOf<List<Podcast>>(emptyList()) }
-    val newEpisodes = remember { mutableStateOf<List<EpisodeWithPodcast>>(emptyList()) }
-    val newPodcasts = remember { mutableStateOf<List<Podcast>>(emptyList()) }
-
-    // Load categories and XYZRank data on app start (parallel loading for better performance)
-    LaunchedEffect(Unit) {
-        Logger.d("App") { "LaunchedEffect started - loading data in parallel..." }
-
-        categoriesLoading.value = true
-
-        // Execute all network requests in parallel using coroutineScope
-        coroutineScope {
-            val categoriesDeferred = async {
-                runCatching { recommendedPodcastRepository.getAllCategories() }
-            }
-            val hotEpisodesDeferred = async {
-                runCatching { xyzRankRepository.getHotEpisodes() }
-            }
-            val hotPodcastsDeferred = async {
-                runCatching { xyzRankRepository.getHotPodcasts() }
-            }
-            val newEpisodesDeferred = async {
-                runCatching { xyzRankRepository.getNewEpisodes() }
-            }
-            val newPodcastsDeferred = async {
-                runCatching { xyzRankRepository.getNewPodcasts() }
-            }
-
-            // Wait for all requests to complete and process results
-            categoriesDeferred.await().getOrNull()?.onSuccess { categories ->
-                categoriesState.value = categories
-                Logger.i("App") { "Loaded ${categories.size} categories" }
-            }
-
-            hotEpisodesDeferred.await().getOrNull()?.onSuccess { episodes ->
-                hotEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
-                Logger.i("App") { "Loaded ${episodes.size} hot episodes" }
-            }?.onFailure { error ->
-                Logger.e("App", "Failed to load hot episodes: ${error.message}", error)
-            }
-
-            hotPodcastsDeferred.await().getOrNull()?.onSuccess { podcasts ->
-                hotPodcasts.value = podcasts.take(10).map { it.toPodcast() }
-                Logger.i("App") { "Loaded ${podcasts.size} hot podcasts" }
-            }?.onFailure { error ->
-                Logger.e("App", "Failed to load hot podcasts: ${error.message}", error)
-            }
-
-            newEpisodesDeferred.await().getOrNull()?.onSuccess { episodes ->
-                newEpisodes.value = episodes.take(10).map { it.toEpisodeWithPodcast() }
-                Logger.i("App") { "Loaded ${episodes.size} new episodes" }
-            }?.onFailure { error ->
-                Logger.e("App", "Failed to load new episodes: ${error.message}", error)
-            }
-
-            newPodcastsDeferred.await().getOrNull()?.onSuccess { podcasts ->
-                newPodcasts.value = podcasts.take(10).map { it.toPodcast() }
-                Logger.i("App") { "Loaded ${podcasts.size} new podcasts" }
-            }?.onFailure { error ->
-                Logger.e("App", "Failed to load new podcasts: ${error.message}", error)
-            }
-        }
-
-        categoriesLoading.value = false
-        Logger.i("App") { "All requests completed in parallel" }
-    }
     val showImportDialog = remember { mutableStateOf(false) }
     val showExportDialog = remember { mutableStateOf(false) }
     val showAboutDialog = remember { mutableStateOf(false) }
     val showUpdateIntervalDialog = remember { mutableStateOf(false) }
-    val importText = remember { mutableStateOf("") }
-    val importInProgress = remember { mutableStateOf(false) }
-    val importResultState = remember { mutableStateOf<com.opoojkk.podium.data.repository.PodcastRepository.OpmlImportResult?>(null) }
-    val importErrorMessage = remember { mutableStateOf<String?>(null) }
-    val exportInProgress = remember { mutableStateOf(false) }
-    val exportContent = remember { mutableStateOf<String?>(null) }
-    val exportErrorMessage = remember { mutableStateOf<String?>(null) }
-    val exportFormat = remember { mutableStateOf(com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML) }
 
     val platformContext = remember { environment.platformContext }
     val fileOperations = remember { environment.fileOperations }
@@ -219,57 +166,36 @@ fun PodiumApp(
     // 倍速选择对话框状态
     val showSpeedDialog = remember { mutableStateOf(false) }
 
-    val loadExportContent: () -> Unit = {
-        exportInProgress.value = true
-        exportErrorMessage.value = null
-        exportContent.value = null
-        scope.launch {
-            val result = runCatching { controller.exportSubscriptions(exportFormat.value) }
-            result.onSuccess { content ->
-                exportContent.value = content
-            }.onFailure { throwable ->
-                exportContent.value = null
-                exportErrorMessage.value = throwable.message ?: "导出失败，请稍后重试。"
-            }
-            exportInProgress.value = false
-        }
-    }
-
     val handleImportClick = {
         showImportDialog.value = true
-        importText.value = ""
-        importResultState.value = null
-        importErrorMessage.value = null
-        importInProgress.value = false
+        importExportViewModel.resetImport()
     }
 
     val handleExportClick = {
         showExportDialog.value = true
-        exportFormat.value = com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML
-        loadExportContent()
+        importExportViewModel.setExportFormat(com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML)
     }
 
     val handleFormatChange: (com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat) -> Unit = { format ->
-        exportFormat.value = format
-        loadExportContent()
+        importExportViewModel.setExportFormat(format)
     }
 
     val handlePickFile: () -> Unit = {
         scope.launch {
             val content = fileOperations.pickFileToImport()
             if (content != null) {
-                importText.value = content
+                importExportViewModel.setImportText(content)
             }
         }
     }
 
     val handleSaveToFile: (String) -> Unit = { content ->
         scope.launch {
-            val fileName = when (exportFormat.value) {
+            val fileName = when (exportState.format) {
                 com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML -> "podium_subscriptions.opml"
                 com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.JSON -> "podium_subscriptions.json"
             }
-            val mimeType = when (exportFormat.value) {
+            val mimeType = when (exportState.format) {
                 com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.OPML -> "text/xml"
                 com.opoojkk.podium.data.repository.PodcastRepository.ExportFormat.JSON -> "application/json"
             }
@@ -283,35 +209,17 @@ fun PodiumApp(
     }
 
     val handleImportConfirm: () -> Unit = {
-        val content = importText.value.trim()
-        if (content.isNotEmpty() && !importInProgress.value) {
-            importInProgress.value = true
-            importResultState.value = null
-            importErrorMessage.value = null
-            scope.launch {
-                val result = runCatching { controller.importSubscriptions(content) }
-                result.onSuccess { importResultState.value = it }
-                    .onFailure { throwable ->
-                        importErrorMessage.value = throwable.message ?: "导入失败，请稍后重试。"
-                    }
-                importInProgress.value = false
-            }
-        }
+        importExportViewModel.startImport()
     }
 
     val handleImportDismiss: () -> Unit = {
         showImportDialog.value = false
-        importText.value = ""
-        importResultState.value = null
-        importErrorMessage.value = null
-        importInProgress.value = false
+        importExportViewModel.resetImport()
     }
 
     val handleExportDismiss: () -> Unit = {
         showExportDialog.value = false
-        exportContent.value = null
-        exportErrorMessage.value = null
-        exportInProgress.value = false
+        importExportViewModel.resetExport()
     }
 
     val copyOpmlToClipboard: (String) -> Boolean = remember(platformContext) {
@@ -322,100 +230,39 @@ fun PodiumApp(
         { url -> openUrl(platformContext, url) }
     }
 
-    // Handle XYZRank podcast click - search Apple Podcast and open details (without subscribing)
-    // Optimized: reduced from 8 to 3 dependencies by removing:
-    // - selectedPodcast, selectedRecommendedPodcast, showRecommendedPodcastDetail (only written, not read)
-    // - snackbarHostState (not used)
-    // This reduces unnecessary recompositions by 50%+
+    // Handle XYZRank podcast click using HomeViewModel
     val handleXYZRankPodcastClick: (Podcast) -> Unit = remember(
-        environment.applePodcastSearchRepository,
+        homeViewModel,
         openUrlInBrowser,
         scope
     ) {
         { podcast ->
-            Logger.d("App") { "Podcast clicked: id=${podcast.id}, title=${podcast.title}" }
-            Logger.d("App") { "Podcast description: ${podcast.description}" }
-
             if (podcast.id.startsWith("xyzrank_podcast_")) {
                 scope.launch {
-                    try {
-                        Logger.d("App") { "Searching Apple Podcast for: ${podcast.title}" }
-
-                        val searchResult = environment.applePodcastSearchRepository.searchPodcast(
-                            query = podcast.title,
-                            limit = 5
-                        )
-
-                        searchResult.onSuccess { searchPodcasts ->
-                            Logger.i("App") { "Apple Podcast search results: ${searchPodcasts.size} found" }
-                            searchPodcasts.forEachIndexed { index, result ->
-                                Logger.d("App") { "  [$index] ${result.collectionName}, feedUrl: ${result.feedUrl}" }
-                            }
-
-                            if (searchPodcasts.isNotEmpty()) {
-                                val found = searchPodcasts.first()
-                                Logger.i("App") { "Using feed URL: ${found.feedUrl}" }
-
-                                // Convert to RecommendedPodcast to show details without subscribing
-                                val recommendedPodcast = com.opoojkk.podium.data.model.recommended.RecommendedPodcast(
-                                    id = found.collectionId.toString(),
-                                    name = found.collectionName,
-                                    host = found.artistName,
-                                    description = podcast.description, // Use XYZRank description
-                                    artworkUrl = found.artworkUrl600 ?: found.artworkUrl100,
-                                    rssUrl = found.feedUrl
-                                )
-
-                                Logger.i("App") { "Opening podcast details (as recommended): ${recommendedPodcast.name}" }
-                                selectedRecommendedPodcast.value = recommendedPodcast
-                                showRecommendedPodcastDetail.value = true
-                            } else {
-                                Logger.w("App") { "No Apple Podcast results, trying 小宇宙 fallback" }
-                                val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                                val webLink = linkMatch?.groupValues?.get(1)
-                                Logger.d("App") { "Extracted link: $webLink" }
-                                if (webLink != null) {
-                                    openUrlInBrowser(webLink)
-                                }
-                            }
-                        }.onFailure { error ->
-                            Logger.e("App", "Apple Podcast search failed: ${error.message}", error)
-                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                            val webLink = linkMatch?.groupValues?.get(1)
-                            Logger.d("App") { "Fallback link: $webLink" }
-                            if (webLink != null) {
-                                openUrlInBrowser(webLink)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Logger.e("App", "Exception: ${e.message}", e)
-                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(podcast.description)
-                        val webLink = linkMatch?.groupValues?.get(1)
-                        Logger.d("App") { "Exception fallback link: $webLink" }
-                        if (webLink != null) {
+                    val recommendedPodcast = homeViewModel.searchAndConvertXYZRankPodcast(podcast)
+                    if (recommendedPodcast != null) {
+                        selectedRecommendedPodcast.value = recommendedPodcast
+                        showRecommendedPodcastDetail.value = true
+                    } else {
+                        // Fallback to 小宇宙 web link
+                        homeViewModel.extractWebLink(podcast.description)?.let { webLink ->
                             openUrlInBrowser(webLink)
                         }
                     }
                 }
             } else if (podcast.id.startsWith("itunes_")) {
-                // Handle iTunes search results - convert to RecommendedPodcast using feedUrl
-                Logger.i("App") { "iTunes podcast clicked: ${podcast.title}" }
-                Logger.d("App") { "Feed URL: ${podcast.feedUrl}" }
-
+                // Handle iTunes search results
                 val recommendedPodcast = com.opoojkk.podium.data.model.recommended.RecommendedPodcast(
                     id = podcast.id,
                     name = podcast.title,
-                    host = "", // iTunes results don't have host info in Podcast model
+                    host = "",
                     description = podcast.description,
                     artworkUrl = podcast.artworkUrl,
                     rssUrl = podcast.feedUrl
                 )
-
-                Logger.i("App") { "Opening iTunes podcast details with feedUrl: ${recommendedPodcast.rssUrl}" }
                 selectedRecommendedPodcast.value = recommendedPodcast
                 showRecommendedPodcastDetail.value = true
             } else {
-                Logger.d("App") { "Opening normal podcast details" }
                 selectedPodcast.value = podcast
             }
         }
@@ -425,99 +272,23 @@ fun PodiumApp(
     var previousPlaybackState by remember { mutableStateOf(playbackState) }
     var lastHandledCompletionId by remember { mutableStateOf<String?>(null) }
 
-    val playEpisode: (Episode) -> Unit = remember(controller, openUrlInBrowser, snackbarHostState, scope, environment.applePodcastSearchRepository) {
+    val playEpisode: (Episode) -> Unit = remember(controller, homeViewModel, openUrlInBrowser, scope) {
         { episode ->
-            Logger.d("App") { "Episode play requested: id=${episode.id}, title=${episode.title}" }
-            Logger.d("App") { "Episode description: ${episode.description}" }
-            Logger.d("App") { "Audio URL: '${episode.audioUrl}'" }
-
             // Check if episode is from XYZRank (no audio URL)
             if (episode.audioUrl.isBlank() && episode.id.startsWith("xyzrank_episode_")) {
-                Logger.i("App") { "XYZRank episode detected, searching Apple Podcast..." }
                 scope.launch {
-                    try {
-                        // Search Apple Podcast for this episode
-                        Logger.d("App") { "Searching for episode: podcast='${episode.podcastTitle}', episode='${episode.title}'" }
-                        val result = environment.applePodcastSearchRepository.searchEpisode(
-                            podcastName = episode.podcastTitle,
-                            episodeTitle = episode.title
-                        )
-
-                        result.onSuccess { episodes ->
-                            Logger.i("App") { "Episode search results: ${episodes.size} found" }
-                            episodes.forEachIndexed { index, ep ->
-                                Logger.d("App") { "  [$index] ${ep.trackName}, audioUrl: ${ep.audioUrl}" }
-                            }
-
-                            if (episodes.isNotEmpty()) {
-                                val found = episodes.first()
-                                Logger.i("App") { "Found episode with audioUrl: ${found.audioUrl}" }
-
-                                // Check if we have a valid audio URL
-                                val validAudioUrl = found.audioUrl?.takeIf { it.isNotBlank() }
-                                if (validAudioUrl != null) {
-                                    // Parse release date to Instant
-                                    val publishDate = try {
-                                        kotlinx.datetime.Instant.parse(found.releaseDate)
-                                    } catch (e: Exception) {
-                                        Logger.w("App") { "Failed to parse date: ${found.releaseDate}, using current time" }
-                                        kotlinx.datetime.Clock.System.now()
-                                    }
-
-                                    // Create Episode from search result and play immediately
-                                    val playableEpisode = Episode(
-                                        id = "apple_${found.trackId}",
-                                        podcastId = found.collectionId.toString(),
-                                        podcastTitle = found.collectionName,
-                                        title = found.trackName,
-                                        description = found.description ?: episode.description,
-                                        audioUrl = validAudioUrl,
-                                        publishDate = publishDate,
-                                        duration = found.durationMs,
-                                        imageUrl = found.artworkUrl600 ?: found.artworkUrl100 ?: episode.imageUrl
-                                    )
-
-                                    Logger.i("App") { "Playing converted episode" }
-                                    pendingEpisodeId = playableEpisode.id
-                                    controller.playEpisode(playableEpisode)
-                                } else {
-                                    Logger.w("App") { "No valid audio URL in search result" }
-                                    val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
-                                    val webLink = linkMatch?.groupValues?.get(1)
-                                    if (webLink != null) {
-                                        openUrlInBrowser(webLink)
-                                    }
-                                }
-                            } else {
-                                Logger.w("App") { "No episodes found, fallback to 小宇宙" }
-                                val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
-                                val webLink = linkMatch?.groupValues?.get(1)
-                                Logger.d("App") { "Extracted link: $webLink" }
-                                if (webLink != null) {
-                                    openUrlInBrowser(webLink)
-                                }
-                            }
-                        }.onFailure { error ->
-                            Logger.e("App", "Episode search failed: ${error.message}", error)
-                            val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
-                            val webLink = linkMatch?.groupValues?.get(1)
-                            Logger.d("App") { "Fallback link: $webLink" }
-                            if (webLink != null) {
-                                openUrlInBrowser(webLink)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Logger.e("App", "Exception: ${e.message}", e)
-                        val linkMatch = Regex("链接：(https?://[^\\s]+)").find(episode.description)
-                        val webLink = linkMatch?.groupValues?.get(1)
-                        Logger.d("App") { "Exception fallback link: $webLink" }
-                        if (webLink != null) {
+                    val playableEpisode = homeViewModel.searchAndConvertXYZRankEpisode(episode)
+                    if (playableEpisode != null) {
+                        pendingEpisodeId = playableEpisode.id
+                        controller.playEpisode(playableEpisode)
+                    } else {
+                        // Fallback to 小宇宙 web link
+                        homeViewModel.extractWebLink(episode.description)?.let { webLink ->
                             openUrlInBrowser(webLink)
                         }
                     }
                 }
             } else {
-                Logger.i("App") { "Playing normal episode" }
                 // Normal episode, play it
                 pendingEpisodeId = episode.id
                 controller.playEpisode(episode)
@@ -727,11 +498,11 @@ fun PodiumApp(
 
         if (showImportDialog.value) {
             ImportOpmlDialog(
-                opmlText = importText.value,
-                onOpmlTextChange = { importText.value = it },
-                isProcessing = importInProgress.value,
-                result = importResultState.value,
-                errorMessage = importErrorMessage.value,
+                opmlText = importState.text,
+                onOpmlTextChange = { importExportViewModel.setImportText(it) },
+                isProcessing = importState.isProcessing,
+                result = importState.result,
+                errorMessage = importState.errorMessage,
                 onConfirm = handleImportConfirm,
                 onDismiss = handleImportDismiss,
                 onPickFile = handlePickFile,
@@ -739,12 +510,12 @@ fun PodiumApp(
         }
         if (showExportDialog.value) {
             ExportOpmlDialog(
-                isProcessing = exportInProgress.value,
-                opmlContent = exportContent.value,
-                errorMessage = exportErrorMessage.value,
-                selectedFormat = exportFormat.value,
+                isProcessing = exportState.isProcessing,
+                opmlContent = exportState.content,
+                errorMessage = exportState.errorMessage,
+                selectedFormat = exportState.format,
                 onFormatChange = handleFormatChange,
-                onRetry = loadExportContent,
+                onRetry = { importExportViewModel.startExport() },
                 onDismiss = handleExportDismiss,
                 onCopy = copyOpmlToClipboard,
                 onSaveToFile = handleSaveToFile,
