@@ -2,8 +2,6 @@ package com.opoojkk.podium.presentation
 
 import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.Episode
-import com.opoojkk.podium.data.model.EpisodeWithPodcast
-import com.opoojkk.podium.data.model.PlaybackProgress
 import com.opoojkk.podium.data.model.SleepTimerDuration
 import com.opoojkk.podium.data.model.SleepTimerState
 import com.opoojkk.podium.data.repository.PodcastRepository
@@ -11,23 +9,26 @@ import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.platform.fileLastModifiedMillis
 import com.opoojkk.podium.platform.fileSizeInBytes
 import com.opoojkk.podium.player.PodcastPlayer
-import com.opoojkk.podium.util.Logger
-import kotlinx.coroutines.CancellationException
+import com.opoojkk.podium.presentation.controller.PlaybackController
+import com.opoojkk.podium.presentation.controller.PlaylistController
+import com.opoojkk.podium.presentation.controller.SearchController
+import com.opoojkk.podium.presentation.controller.SubscriptionController
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
 
+/**
+ * Main coordinator controller that orchestrates all sub-controllers.
+ * This controller follows the Single Responsibility Principle by delegating
+ * specific responsibilities to specialized controllers:
+ * - PlaybackController: Playback operations and sleep timer
+ * - SearchController: Search functionality
+ * - SubscriptionController: Subscription management
+ * - PlaylistController: Playlist management
+ */
 class PodiumController(
     private val repository: PodcastRepository,
     private val applePodcastSearchRepository: com.opoojkk.podium.data.repository.ApplePodcastSearchRepository,
@@ -35,371 +36,84 @@ class PodiumController(
     private val downloadManager: PodcastDownloadManager,
     private val scope: CoroutineScope,
 ) {
+    // Sub-controllers
+    private val playbackController = PlaybackController(repository, player, scope)
+    private val searchController = SearchController(repository, applePodcastSearchRepository, scope)
+    private val subscriptionController = SubscriptionController(repository, downloadManager, player, scope)
+    private val playlistController = PlaylistController(repository, scope)
 
+    // UI States
     private val _homeState = MutableStateFlow(HomeUiState(isLoading = true))
     val homeState: StateFlow<HomeUiState> = _homeState.asStateFlow()
-
-    private val _subscriptionsState = MutableStateFlow(SubscriptionsUiState())
-    val subscriptionsState: StateFlow<SubscriptionsUiState> = _subscriptionsState.asStateFlow()
 
     private val _profileState = MutableStateFlow(ProfileUiState(updateInterval = repository.getUpdateInterval()))
     val profileState: StateFlow<ProfileUiState> = _profileState.asStateFlow()
 
-    private val _playlistState = MutableStateFlow(PlaylistUiState())
-    val playlistState: StateFlow<PlaylistUiState> = _playlistState.asStateFlow()
-
     private val _downloads = MutableStateFlow<Map<String, DownloadStatus>>(emptyMap())
     val downloads: StateFlow<Map<String, DownloadStatus>> = _downloads.asStateFlow()
 
-    private val downloadEpisodeCache = mutableMapOf<String, EpisodeWithPodcast?>()
-    private val downloadEpisodeCacheMutex = Mutex()
+    // Delegated states from sub-controllers
+    val subscriptionsState = subscriptionController.subscriptionState
+    val playlistState = playlistController.playlistState
+    val playbackState = playbackController.playbackState
+    val sleepTimerState = playbackController.sleepTimerState
 
-    val playbackState: StateFlow<com.opoojkk.podium.data.model.PlaybackState> = player.state
-    private var homeSearchJob: Job? = null
+    // Search state (exposed via homeState for backward compatibility)
+    private val searchState = searchController.searchState
 
-    // Sleep timer state
-    private val _sleepTimerState = MutableStateFlow(SleepTimerState())
-    val sleepTimerState: StateFlow<SleepTimerState> = _sleepTimerState.asStateFlow()
-    private var sleepTimerJob: Job? = null
-    var onSleepTimerComplete: (() -> Unit)? = null
-
-    // 查看更多页面使用的完整列表
+    // Full lists for "see more" pages
     val allRecentListening = repository.observeAllRecentListening()
     val allRecentUpdates = repository.observeAllRecentUpdates()
 
-    // 获取特定播客的所有单集
-    fun getPodcastEpisodes(podcastId: String) = repository.observePodcastEpisodes(podcastId)
-
-    fun onHomeSearchQueryChange(query: String) {
-        val sanitizedQuery = query.take(200)
-        val effectiveQuery = sanitizedQuery.trim()
-
-        homeSearchJob?.cancel()
-
-        _homeState.update { current ->
-            current.copy(
-                searchQuery = sanitizedQuery,
-                isSearchActive = effectiveQuery.isNotEmpty(),
-                searchErrorMessage = null,
-                isSearching = effectiveQuery.isNotEmpty(),
-                searchResults = if (current.searchQuery == sanitizedQuery) current.searchResults else emptyList(),
-                // 重置分页状态
-                searchOffset = 0,
-                hasMoreSearchResults = true,
-            )
-        }
-
-        if (effectiveQuery.isEmpty()) {
-            _homeState.update { current ->
-                current.copy(
-                    searchResults = emptyList(),
-                    isSearching = false,
-                    isSearchActive = false,
-                    searchOffset = 0,
-                    hasMoreSearchResults = true,
-                )
-            }
-            return
-        }
-
-        homeSearchJob = scope.launch {
-            kotlinx.coroutines.delay(250)
-            try {
-                val limit = _homeState.value.searchLimit
-                Logger.d("PodiumController") { "开始搜索: \"$effectiveQuery\", limit=$limit" }
-
-                // 并行搜索本地、iTunes播客和iTunes单集
-                val localResults = async {
-                    repository.searchEpisodes(effectiveQuery, limit = limit, offset = 0)
-                }
-                val remotePodcastResults = async {
-                    searchApplePodcasts(effectiveQuery, limit = 10)
-                }
-                val remoteEpisodeResults = async {
-                    searchAppleEpisodes(effectiveQuery, limit = limit)
-                }
-
-                // 等待所有搜索完成
-                val local = localResults.await()
-                val remotePodcasts = remotePodcastResults.await()
-                val remoteEpisodes = remoteEpisodeResults.await()
-
-                Logger.i("PodiumController") { "搜索完成 - 本地: ${local.size}, iTunes播客: ${remotePodcasts.size}, iTunes单集: ${remoteEpisodes.size}" }
-
-                // 合并结果：iTunes播客优先，然后是iTunes单集，最后是本地结果
-                val combinedResults = (remotePodcasts + remoteEpisodes + local).distinctBy { it.episode.id }
-
-                Logger.i("PodiumController") { "合并去重后: ${combinedResults.size} 条结果 (播客: ${remotePodcasts.size}, 单集: ${remoteEpisodes.size + local.size})" }
-
-                _homeState.update { current ->
-                    current.copy(
-                        searchResults = combinedResults,
-                        isSearching = false,
-                        isSearchActive = true,
-                        searchErrorMessage = null,
-                        searchOffset = local.size,  // 只统计本地结果的offset
-                        hasMoreSearchResults = local.size >= limit,  // 只看本地是否还有更多
-                    )
-                }
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (throwable: Throwable) {
-                _homeState.update { current ->
-                    current.copy(
-                        searchResults = emptyList(),
-                        isSearching = false,
-                        isSearchActive = true,
-                        searchErrorMessage = throwable.message ?: "搜索失败，请稍后重试。",
-                    )
-                }
-            }
-        }
-    }
-
-    private suspend fun searchApplePodcasts(query: String, limit: Int = 20): List<EpisodeWithPodcast> {
-        Logger.d("PodiumController") { "iTunes播客搜索开始: \"$query\", limit=$limit" }
-        return try {
-            val result = applePodcastSearchRepository.searchPodcast(query, limit = limit)
-            val results = result.getOrNull()?.map { applePodcast ->
-                // 将 ApplePodcast 转换为 EpisodeWithPodcast
-                // 注意：这里创建的是虚拟的 Episode，因为 iTunes API 搜索返回的是 Podcast，不是 Episode
-                val podcast = com.opoojkk.podium.data.model.Podcast(
-                    id = "itunes_${applePodcast.collectionId}",
-                    title = applePodcast.collectionName,
-                    description = applePodcast.primaryGenreName ?: "",
-                    artworkUrl = applePodcast.artworkUrl600 ?: applePodcast.artworkUrl100,
-                    feedUrl = applePodcast.feedUrl,
-                    lastUpdated = kotlinx.datetime.Clock.System.now(),
-                    autoDownload = false,
-                )
-
-                // 创建一个虚拟 episode 表示这个播客
-                val episode = Episode(
-                    id = "itunes_ep_${applePodcast.collectionId}",
-                    podcastId = podcast.id,
-                    podcastTitle = podcast.title,
-                    title = applePodcast.collectionName,
-                    description = "来自 iTunes: ${applePodcast.primaryGenreName ?: ""} · ${applePodcast.trackCount ?: 0} 集",
-                    audioUrl = "",  // iTunes 搜索结果没有单集音频
-                    publishDate = kotlinx.datetime.Clock.System.now(),
-                    duration = null,
-                    imageUrl = applePodcast.artworkUrl600 ?: applePodcast.artworkUrl100,
-                    chapters = emptyList(),
-                )
-
-                EpisodeWithPodcast(episode = episode, podcast = podcast)
-            } ?: emptyList()
-
-            Logger.d("PodiumController") { "🍎 iTunes播客搜索完成: 找到 ${results.size} 个结果" }
-            results
-        } catch (e: CancellationException) {
-            Logger.w("PodiumController") { "⏸️ iTunes播客搜索被取消" }
-            throw e  // 重新抛出取消异常
-        } catch (e: Exception) {
-            Logger.e("PodiumController", "❌ iTunes播客搜索失败: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
-    }
-
-    private suspend fun searchAppleEpisodes(query: String, limit: Int = 20): List<EpisodeWithPodcast> {
-        Logger.d("PodiumController") { "iTunes单集搜索开始: \"$query\", limit=$limit" }
-        return try{
-            val result = applePodcastSearchRepository.searchEpisodes(query, limit = limit)
-            val results = result.getOrNull()?.map { appleEpisode ->
-                // 将 ApplePodcastEpisodeResult 转换为 EpisodeWithPodcast
-                val podcast = com.opoojkk.podium.data.model.Podcast(
-                    id = "itunes_${appleEpisode.collectionId}",
-                    title = appleEpisode.collectionName,
-                    description = appleEpisode.artistName ?: "",
-                    artworkUrl = appleEpisode.artworkUrl600 ?: appleEpisode.artworkUrl100,
-                    feedUrl = appleEpisode.feedUrl ?: "",
-                    lastUpdated = kotlinx.datetime.Clock.System.now(),
-                    autoDownload = false,
-                )
-
-                // 创建实际的 episode
-                val episode = Episode(
-                    id = "itunes_ep_${appleEpisode.trackId}",
-                    podcastId = podcast.id,
-                    podcastTitle = podcast.title,
-                    title = appleEpisode.trackName,
-                    description = appleEpisode.description ?: "来自 iTunes",
-                    audioUrl = appleEpisode.audioUrl ?: "",  // iTunes 单集搜索可能有音频URL
-                    publishDate = try {
-                        kotlinx.datetime.Instant.parse(appleEpisode.releaseDate)
-                    } catch (e: Exception) {
-                        kotlinx.datetime.Clock.System.now()
-                    },
-                    duration = appleEpisode.durationMs,
-                    imageUrl = appleEpisode.artworkUrl600 ?: appleEpisode.artworkUrl100,
-                    chapters = emptyList(),
-                )
-
-                EpisodeWithPodcast(episode = episode, podcast = podcast)
-            } ?: emptyList()
-
-            Logger.d("PodiumController") { "🎧 iTunes单集搜索完成: 找到 ${results.size} 个结果" }
-            results
-        } catch (e: CancellationException) {
-            Logger.w("PodiumController") { "⏸️ iTunes单集搜索被取消" }
-            throw e  // 重新抛出取消异常
-        } catch (e: Exception) {
-            Logger.e("PodiumController", "❌ iTunes单集搜索失败: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
-    }
-
-    fun loadMoreSearchResults() {
-        val currentState = _homeState.value
-
-        // 如果已经在加载或没有更多结果，直接返回
-        if (currentState.isLoadingMoreResults || !currentState.hasMoreSearchResults) {
-            return
-        }
-
-        val query = currentState.searchQuery.trim()
-        if (query.isEmpty()) {
-            return
-        }
-
-        _homeState.update { it.copy(isLoadingMoreResults = true) }
-
-        scope.launch {
-            try {
-                val limit = currentState.searchLimit
-                val offset = currentState.searchOffset
-                val moreResults = repository.searchEpisodes(query, limit = limit, offset = offset)
-
-                _homeState.update { current ->
-                    current.copy(
-                        searchResults = current.searchResults + moreResults,
-                        searchOffset = current.searchOffset + moreResults.size,
-                        hasMoreSearchResults = moreResults.size >= limit,
-                        isLoadingMoreResults = false,
-                    )
-                }
-            } catch (e: Exception) {
-                _homeState.update { current ->
-                    current.copy(
-                        isLoadingMoreResults = false,
-                        searchErrorMessage = e.message ?: "加载更多失败",
-                    )
-                }
-            }
-        }
-    }
-
-    fun clearHomeSearch() {
-        homeSearchJob?.cancel()
-        _homeState.update { current ->
-            current.copy(
-                searchQuery = "",
-                searchResults = emptyList(),
-                isSearchActive = false,
-                isSearching = false,
-                searchErrorMessage = null,
-                searchFilterType = SearchFilterType.ALL,
-            )
-        }
-    }
-
-    fun setSearchFilterType(filterType: SearchFilterType) {
-        _homeState.update { current ->
-            current.copy(searchFilterType = filterType)
-        }
-    }
-
-    private var refreshJob: Job? = null
-    private var playbackSaveJob: Job? = null
+    // Sleep timer callback
+    var onSleepTimerComplete: (() -> Unit)?
+        get() = playbackController.onSleepTimerComplete
+        set(value) { playbackController.onSleepTimerComplete = value }
 
     init {
-        // 加载上次播放的单集
-        scope.launch {
-            val lastPlayed = repository.getLastPlayedEpisode()
-            if (lastPlayed != null) {
-                val (episode, progress) = lastPlayed
-                Logger.d("PodiumController") { "🎵 PodiumController: Restoring last played episode: ${episode.title} at ${progress.positionMs}ms" }
-                player.restorePlaybackState(episode, progress.positionMs)
-            }
-        }
+        // Set downloads state flow for playback controller
+        playbackController.setDownloads(downloads)
 
-        // 检查是否需要自动更新播客订阅
-        scope.launch {
-            if (repository.shouldAutoUpdate()) {
-                Logger.d("PodiumController") { "🔄 PodiumController: Auto-updating podcasts based on user settings" }
-                refreshSubscriptions()
-            } else {
-                Logger.w("PodiumController") { "⏸️ PodiumController: Skipping auto-update (user preference or too soon)" }
-            }
-        }
-
-        // 监听播放状态变化，定期保存进度
-        scope.launch {
-            player.state.collect { state ->
-                if (state.episode != null && state.isPlaying) {
-                    // 启动定期保存任务
-                    if (playbackSaveJob?.isActive != true) {
-                        playbackSaveJob = scope.launch {
-                            while (state.isPlaying) {
-                                kotlinx.coroutines.delay(10_000) // 每10秒保存一次
-                                val currentState = player.state.value
-                                if (currentState.episode != null) {
-                                    repository.savePlayback(
-                                        PlaybackProgress(
-                                            episodeId = currentState.episode.id,
-                                            positionMs = currentState.positionMs,
-                                            durationMs = currentState.durationMs ?: currentState.episode.duration,
-                                            updatedAt = Clock.System.now(),
-                                        ),
-                                    )
-                                    Logger.d("PodiumController") { "🎵 PodiumController: Auto-saved playback progress: ${currentState.positionMs}ms" }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // 停止播放时取消定期保存任务
-                    playbackSaveJob?.cancel()
-                    playbackSaveJob = null
-                }
-            }
-        }
-
+        // Observe home state from repository
         scope.launch {
             repository.observeHomeState().collect { data ->
-                _homeState.update { current ->
-                    current.copy(
-                        recentPlayed = data.recentPlayed,
-                        recentUpdates = data.recentUpdates,
-                        isLoading = data.isLoading,
-                        errorMessage = data.errorMessage,
-                    )
-                }
+                _homeState.value = _homeState.value.copy(
+                    recentPlayed = data.recentPlayed,
+                    recentUpdates = data.recentUpdates,
+                    isLoading = data.isLoading,
+                    errorMessage = data.errorMessage,
+                )
             }
         }
 
+        // Sync search state to home state
         scope.launch {
-            repository.observePlaylist().collect { playlistItems ->
-                Logger.d("PodiumController") { "📋 Playlist updated: ${playlistItems.size} items" }
-                _playlistState.value = _playlistState.value.copy(
-                    items = playlistItems,
-                    isLoading = false,
+            searchState.collect { search ->
+                _homeState.value = _homeState.value.copy(
+                    searchQuery = search.searchQuery,
+                    searchResults = search.searchResults,
+                    isSearchActive = search.isSearchActive,
+                    isSearching = search.isSearching,
+                    searchErrorMessage = search.searchErrorMessage,
+                    searchFilterType = search.searchFilterType,
+                    searchOffset = search.searchOffset,
+                    searchLimit = search.searchLimit,
+                    hasMoreSearchResults = search.hasMoreSearchResults,
+                    isLoadingMoreResults = search.isLoadingMoreResults,
                 )
             }
         }
+
+        // Observe subscriptions for profile state
         scope.launch {
-            repository.observeSubscriptions().collect { podcasts ->
-                _subscriptionsState.value = _subscriptionsState.value.copy(
-                    subscriptions = podcasts,
-                    isRefreshing = false,
-                )
+            subscriptionController.subscriptionState.collect { state ->
                 _profileState.value = _profileState.value.copy(
-                    subscribedPodcasts = podcasts,
+                    subscribedPodcasts = state.subscriptions,
                 )
             }
         }
+
+        // Observe downloads and update profile state
         scope.launch {
             combine(
                 repository.observeDownloads(),
@@ -423,7 +137,7 @@ class PodiumController(
                             val resolvedSize = sizeBytes ?: defaultEpisodeSizeBytes
                             totalCacheBytes += resolvedSize
 
-                            val details = episodeDetailsForDownload(status.episodeId)
+                            val details = subscriptionController.getEpisodeDetailsForDownload(status.episodeId)
                             if (details != null) {
                                 val completedAt = status.filePath.takeIf { it.isNotBlank() }?.let { fileLastModifiedMillis(it) }
                                 cachedItems += ProfileCachedItem(
@@ -439,7 +153,7 @@ class PodiumController(
                         }
 
                         is DownloadStatus.InProgress -> {
-                            val details = episodeDetailsForDownload(status.episodeId) ?: continue
+                            val details = subscriptionController.getEpisodeDetailsForDownload(status.episodeId) ?: continue
                             inProgressItems += ProfileDownloadItem(
                                 episodeId = details.episode.id,
                                 episodeTitle = details.episode.title,
@@ -450,7 +164,7 @@ class PodiumController(
                         }
 
                         is DownloadStatus.Idle, is DownloadStatus.Failed -> {
-                            val details = episodeDetailsForDownload(status.episodeId) ?: continue
+                            val details = subscriptionController.getEpisodeDetailsForDownload(status.episodeId) ?: continue
                             queuedItems += ProfileDownloadItem(
                                 episodeId = details.episode.id,
                                 episodeTitle = details.episode.title,
@@ -485,334 +199,49 @@ class PodiumController(
         }
     }
 
-    fun playEpisode(episode: Episode) {
-        Logger.d("PodiumController") { "🎵 PodiumController: playEpisode called for: ${episode.title}" }
-        Logger.d("PodiumController") { "🎵 PodiumController: Audio URL: ${episode.audioUrl}" }
-        scope.launch {
-            val (episodeToPlay, cachePath) = resolvePlaybackEpisode(episode)
-            if (cachePath != null) {
-                Logger.d("PodiumController") { "🎵 PodiumController: Playing cached file at $cachePath" }
-            }
-            val progress = repository.playbackForEpisode(episode.id)
-            val startPosition = progress?.positionMs ?: 0L
-            Logger.d("PodiumController") { "🎵 PodiumController: Starting playback at position: $startPosition" }
-            player.play(episodeToPlay, startPosition)
-            repository.savePlayback(
-                PlaybackProgress(
-                    episodeId = episode.id,
-                    positionMs = startPosition,
-                    durationMs = episode.duration,
-                    updatedAt = Clock.System.now(),
-                ),
-            )
-        }
-    }
+    // ==================== Playback Methods ====================
+    fun playEpisode(episode: Episode) = playbackController.playEpisode(episode)
+    fun resume() = playbackController.resume()
+    fun pause() = playbackController.pause()
+    fun stop() = playbackController.stop()
+    fun seekTo(positionMs: Long) = playbackController.seekTo(positionMs)
+    fun seekBy(deltaMs: Long) = playbackController.seekBy(deltaMs)
+    fun setPlaybackSpeed(speed: Float) = playbackController.setPlaybackSpeed(speed)
+    fun startSleepTimer(duration: SleepTimerDuration) = playbackController.startSleepTimer(duration)
+    fun cancelSleepTimer() = playbackController.cancelSleepTimer()
 
-    fun resume() = player.resume()
+    // ==================== Search Methods ====================
+    fun onHomeSearchQueryChange(query: String) = searchController.onSearchQueryChange(query)
+    fun loadMoreSearchResults() = searchController.loadMoreSearchResults()
+    fun clearHomeSearch() = searchController.clearSearch()
+    fun setSearchFilterType(filterType: SearchFilterType) = searchController.setSearchFilterType(filterType)
 
-    fun pause() = player.pause()
+    // ==================== Subscription Methods ====================
+    fun refreshSubscriptions(onComplete: ((Int) -> Unit)? = null) = subscriptionController.refreshSubscriptions(onComplete)
+    fun refreshPodcast(podcastId: String, onComplete: (Int) -> Unit = {}) = subscriptionController.refreshPodcast(podcastId, onComplete)
+    fun subscribe(feedUrl: String) = subscriptionController.subscribe(feedUrl)
+    fun clearDuplicateSubscriptionMessage() = subscriptionController.clearDuplicateSubscriptionMessage()
+    fun toggleAutoDownload(enabled: Boolean) = subscriptionController.toggleAutoDownload(enabled)
+    fun togglePodcastAutoDownload(podcastId: String, enabled: Boolean) = subscriptionController.togglePodcastAutoDownload(podcastId, enabled)
+    fun enqueueDownload(episode: Episode) = subscriptionController.enqueueDownload(episode)
+    fun cancelDownload(episodeId: String) = subscriptionController.cancelDownload(episodeId)
+    suspend fun importOpml(opml: String): PodcastRepository.OpmlImportResult = subscriptionController.importOpml(opml)
+    suspend fun importSubscriptions(content: String): PodcastRepository.OpmlImportResult = subscriptionController.importSubscriptions(content)
+    suspend fun exportOpml(): String = subscriptionController.exportOpml()
+    suspend fun exportSubscriptions(format: PodcastRepository.ExportFormat): String = subscriptionController.exportSubscriptions(format)
+    fun deleteSubscription(podcastId: String) = subscriptionController.deleteSubscription(podcastId)
+    suspend fun checkIfSubscribed(feedUrl: String): Boolean = subscriptionController.checkIfSubscribed(feedUrl)
+    fun unsubscribeByFeedUrl(feedUrl: String) = subscriptionController.unsubscribeByFeedUrl(feedUrl)
+    fun renameSubscription(podcastId: String, newTitle: String) = subscriptionController.renameSubscription(podcastId, newTitle)
 
-    fun stop() = player.stop()
+    // ==================== Playlist Methods ====================
+    fun markEpisodeCompleted(episodeId: String) = playlistController.markEpisodeCompleted(episodeId)
+    fun removeFromPlaylist(episodeId: String) = playlistController.removeFromPlaylist(episodeId)
+    fun addToPlaylist(episodeId: String) = playlistController.addToPlaylist(episodeId)
 
-    fun seekTo(positionMs: Long) = player.seekTo(positionMs)
+    // ==================== Other Methods ====================
+    fun getPodcastEpisodes(podcastId: String) = repository.observePodcastEpisodes(podcastId)
 
-    fun seekBy(deltaMs: Long) = player.seekBy(deltaMs)
-
-    fun setPlaybackSpeed(speed: Float) = player.setPlaybackSpeed(speed)
-
-    fun refreshSubscriptions(onComplete: ((Int) -> Unit)? = null) {
-        if (refreshJob?.isActive == true) return
-        _subscriptionsState.value = _subscriptionsState.value.copy(isRefreshing = true)
-        refreshJob = scope.launch {
-            val newEpisodesByPodcast = repository.refreshSubscriptions()
-
-            // 计算新单集总数
-            val totalNewEpisodes = newEpisodesByPodcast.values.sumOf { it.size }
-
-            // 对于启用自动下载的播客，下载新节目
-            val podcasts = repository.observeSubscriptions().first()
-            newEpisodesByPodcast.forEach { (podcastId, newEpisodes) ->
-                val podcast = podcasts.find { it.id == podcastId }
-                if (podcast?.autoDownload == true) {
-                    newEpisodes.forEach { episode ->
-                        downloadManager.enqueue(episode, auto = true)
-                    }
-                }
-            }
-
-            _subscriptionsState.value = _subscriptionsState.value.copy(isRefreshing = false)
-
-            // 通知刷新完成
-            onComplete?.invoke(totalNewEpisodes)
-        }
-    }
-
-    /**
-     * Refresh a single podcast subscription.
-     */
-    fun refreshPodcast(podcastId: String, onComplete: (Int) -> Unit = {}) {
-        scope.launch {
-            val newEpisodes = repository.refreshPodcast(podcastId)
-
-            // 对于启用自动下载的播客，下载新节目
-            val podcasts = repository.observeSubscriptions().first()
-            val podcast = podcasts.find { it.id == podcastId }
-            if (podcast?.autoDownload == true && newEpisodes.isNotEmpty()) {
-                newEpisodes.forEach { episode ->
-                    downloadManager.enqueue(episode, auto = true)
-                }
-            }
-
-            onComplete(newEpisodes.size)
-        }
-    }
-
-    fun subscribe(feedUrl: String) {
-        scope.launch {
-            // 设置正在添加状态
-            _subscriptionsState.value = _subscriptionsState.value.copy(isAdding = true)
-
-            try {
-                Logger.d("PodiumController") { "🎧 Controller: Starting subscription process for: $feedUrl" }
-                val result = repository.subscribe(feedUrl)
-                Logger.d("PodiumController") { "🎧 Controller: Subscription completed, got ${result.episodes.size} episodes" }
-
-                // 如果启用自动下载，下载该播客的所有节目
-                if (result.podcast.autoDownload) {
-                    result.episodes.forEach { episode ->
-                        downloadManager.enqueue(episode, auto = true)
-                    }
-                }
-
-                repository.setAutoDownload(result.podcast.id, result.podcast.autoDownload)
-                Logger.d("PodiumController") { "🎧 Controller: Subscription process finished successfully" }
-            } catch (e: com.opoojkk.podium.data.repository.DuplicateSubscriptionException) {
-                // 捕获重复订阅异常，显示提示
-                Logger.w("PodiumController") { "⚠️ Controller: Duplicate subscription detected: ${e.podcastTitle}" }
-                Logger.w("PodiumController") { "⚠️ Controller: Setting duplicateSubscriptionTitle in state" }
-                _subscriptionsState.value = _subscriptionsState.value.copy(
-                    duplicateSubscriptionTitle = e.podcastTitle
-                )
-                Logger.w("PodiumController") { "⚠️ Controller: State updated, duplicateSubscriptionTitle = ${_subscriptionsState.value.duplicateSubscriptionTitle}" }
-            } catch (e: Exception) {
-                Logger.e("PodiumController", "❌ Controller: Subscription failed: ${e.message}")
-                Logger.e("PodiumController", "❌ Controller: Exception type: ${e::class.simpleName}")
-                e.printStackTrace()
-            } finally {
-                // 无论成功或失败，都清除加载状态
-                _subscriptionsState.value = _subscriptionsState.value.copy(isAdding = false)
-            }
-        }
-    }
-
-    fun clearDuplicateSubscriptionMessage() {
-        _subscriptionsState.value = _subscriptionsState.value.copy(duplicateSubscriptionTitle = null)
-    }
-
-    fun toggleAutoDownload(enabled: Boolean) {
-        downloadManager.setAutoDownload(enabled)
-        scope.launch {
-            _profileState.value.subscribedPodcasts.forEach { podcast ->
-                repository.setAutoDownload(podcast.id, enabled)
-            }
-        }
-    }
-
-    fun togglePodcastAutoDownload(podcastId: String, enabled: Boolean) {
-        scope.launch {
-            repository.setAutoDownload(podcastId, enabled)
-            // 如果启用自动缓存，下载该播客的所有节目
-            if (enabled) {
-                val episodes = repository.observePodcastEpisodes(podcastId).first()
-                episodes.forEach { episodeWithPodcast ->
-                    downloadManager.enqueue(episodeWithPodcast.episode, auto = true)
-                }
-            }
-        }
-    }
-
-    fun enqueueDownload(episode: Episode) {
-        downloadManager.enqueue(episode)
-    }
-
-    fun cancelDownload(episodeId: String) {
-        downloadManager.cancel(episodeId)
-    }
-
-    suspend fun importOpml(opml: String): PodcastRepository.OpmlImportResult =
-        repository.importOpml(opml)
-
-    suspend fun importSubscriptions(content: String): PodcastRepository.OpmlImportResult =
-        repository.importSubscriptions(content)
-
-    suspend fun exportOpml(): String = repository.exportOpml()
-
-    suspend fun exportSubscriptions(format: PodcastRepository.ExportFormat): String =
-        repository.exportSubscriptions(format)
-
-    fun deleteSubscription(podcastId: String) {
-        scope.launch {
-            val episodeIds = repository.getEpisodeIdsForPodcast(podcastId)
-            repository.deleteSubscription(podcastId)
-            if (episodeIds.isNotEmpty()) {
-                downloadManager.clearDownloads(episodeIds)
-                downloadEpisodeCacheMutex.withLock {
-                    episodeIds.forEach { downloadEpisodeCache.remove(it) }
-                }
-            }
-            val currentEpisode = player.state.value.episode
-            if (currentEpisode?.podcastId == podcastId) {
-                player.stop()
-            }
-        }
-    }
-
-    suspend fun checkIfSubscribed(feedUrl: String): Boolean {
-        return repository.getPodcastByFeedUrl(feedUrl) != null
-    }
-
-    fun unsubscribeByFeedUrl(feedUrl: String) {
-        scope.launch {
-            val podcast = repository.getPodcastByFeedUrl(feedUrl)
-            if (podcast != null) {
-                deleteSubscription(podcast.id)
-            }
-        }
-    }
-
-    private suspend fun episodeDetailsForDownload(episodeId: String): EpisodeWithPodcast? {
-        val cached = downloadEpisodeCacheMutex.withLock {
-            downloadEpisodeCache[episodeId]
-        }
-        if (cached != null) return cached
-
-        val fetched = repository.getEpisodeWithPodcast(episodeId)
-        downloadEpisodeCacheMutex.withLock {
-            if (fetched == null) {
-                downloadEpisodeCache.remove(episodeId)
-            } else {
-                downloadEpisodeCache[episodeId] = fetched
-            }
-        }
-        return fetched
-    }
-
-    fun renameSubscription(podcastId: String, newTitle: String) {
-        scope.launch {
-            repository.renameSubscription(podcastId, newTitle)
-        }
-    }
-
-    // Playlist-related methods
-    fun markEpisodeCompleted(episodeId: String) {
-        scope.launch {
-            repository.markEpisodeCompleted(episodeId)
-            Logger.i("PodiumController") { "✅ Marked episode $episodeId as completed" }
-        }
-    }
-
-    fun removeFromPlaylist(episodeId: String) {
-        scope.launch {
-            repository.removeFromPlaylist(episodeId)
-            Logger.d("PodiumController") { "🗑️ Removed episode $episodeId from playlist" }
-        }
-    }
-
-    fun addToPlaylist(episodeId: String) {
-        scope.launch {
-            repository.addToPlaylist(episodeId)
-            Logger.d("PodiumController") { "➕ Added episode $episodeId to playlist" }
-        }
-    }
-
-    private fun resolvePlaybackEpisode(episode: Episode): Pair<Episode, String?> {
-        val completed = downloads.value[episode.id] as? DownloadStatus.Completed
-        val filePath = completed?.filePath?.takeIf { it.isNotBlank() }
-        if (filePath != null) {
-            val exists = fileSizeInBytes(filePath) != null
-            if (exists) {
-                return episode.copy(audioUrl = toPlayableUri(filePath)) to filePath
-            }
-        }
-        return episode to null
-    }
-
-    private fun toPlayableUri(path: String): String = when {
-        path.startsWith("file://") -> path
-        path.startsWith("content://") -> path
-        path.startsWith("/") -> "file://$path"
-        else -> path
-    }
-
-    // Sleep timer methods
-    fun startSleepTimer(duration: SleepTimerDuration) {
-        Logger.d("PodiumController") { "⏰ Starting sleep timer for ${duration.displayName}" }
-        cancelSleepTimer() // Cancel any existing timer
-
-        _sleepTimerState.value = SleepTimerState(
-            isActive = true,
-            duration = duration,
-            remainingMs = duration.milliseconds
-        )
-
-        sleepTimerJob = scope.launch {
-            val startTime = Clock.System.now().toEpochMilliseconds()
-            val endTime = startTime + duration.milliseconds
-
-            while (true) {
-                kotlinx.coroutines.delay(1000) // Update every second
-                val currentTime = Clock.System.now().toEpochMilliseconds()
-                val remaining = (endTime - currentTime).coerceAtLeast(0)
-
-                _sleepTimerState.value = _sleepTimerState.value.copy(
-                    remainingMs = remaining
-                )
-
-                if (remaining <= 0) {
-                    Logger.d("PodiumController") { "⏰ Sleep timer completed" }
-                    onTimerComplete()
-                    break
-                }
-            }
-        }
-    }
-
-    fun cancelSleepTimer() {
-        Logger.d("PodiumController") { "⏰ Cancelling sleep timer" }
-        sleepTimerJob?.cancel()
-        sleepTimerJob = null
-        _sleepTimerState.value = SleepTimerState()
-    }
-
-    private fun onTimerComplete() {
-        // Stop playback
-        player.pause()
-
-        // Save current progress
-        scope.launch {
-            val currentState = player.state.value
-            if (currentState.episode != null) {
-                repository.savePlayback(
-                    PlaybackProgress(
-                        episodeId = currentState.episode.id,
-                        positionMs = currentState.positionMs,
-                        durationMs = currentState.durationMs ?: currentState.episode.duration,
-                        updatedAt = Clock.System.now(),
-                    ),
-                )
-            }
-        }
-
-        // Reset timer state
-        _sleepTimerState.value = SleepTimerState()
-
-        // Trigger app exit callback
-        onSleepTimerComplete?.invoke()
-    }
-
-    /**
-     * Set the podcast update interval preference.
-     */
     fun setUpdateInterval(interval: com.opoojkk.podium.data.model.UpdateInterval) {
         scope.launch {
             repository.setUpdateInterval(interval)
