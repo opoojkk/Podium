@@ -88,6 +88,28 @@ fun HomeScreen(
     // Debug: Print XYZRank data status
     Logger.d("HomeScreen") { "🏠 HomeScreen - XYZRank data: hotEpisodes=${state.hotEpisodes.size}, hotPodcasts=${state.hotPodcasts.size}, newEpisodes=${state.newEpisodes.size}, newPodcasts=${state.newPodcasts.size}" }
 
+    // 使用 derivedStateOf 和 partition 优化过滤，只需单次遍历
+    val filteredResults = remember(state.searchResults, state.searchFilterType) {
+        derivedStateOf {
+            when (state.searchFilterType) {
+                SearchFilterType.ALL -> state.searchResults
+                else -> {
+                    // 使用 partition 单次遍历分离 podcasts 和 episodes
+                    val (podcasts, episodes) = state.searchResults.partition { item ->
+                        item.episode.audioUrl.isEmpty() &&
+                        item.episode.id.startsWith("itunes_ep_") &&
+                        item.podcast.id.startsWith("itunes_")
+                    }
+                    when (state.searchFilterType) {
+                        SearchFilterType.PODCASTS -> podcasts
+                        SearchFilterType.EPISODES -> episodes
+                        else -> state.searchResults // Fallback (unreachable)
+                    }
+                }
+            }
+        }
+    }.value
+
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
@@ -151,28 +173,6 @@ fun HomeScreen(
                         }
                     }
                     else -> {
-                        // 使用 derivedStateOf 和 partition 优化过滤，只需单次遍历
-                        val filteredResults = remember(state.searchResults, state.searchFilterType) {
-                            derivedStateOf {
-                                when (state.searchFilterType) {
-                                    SearchFilterType.ALL -> state.searchResults
-                                    else -> {
-                                        // 使用 partition 单次遍历分离 podcasts 和 episodes
-                                        val (podcasts, episodes) = state.searchResults.partition { item ->
-                                            item.episode.audioUrl.isEmpty() &&
-                                            item.episode.id.startsWith("itunes_ep_") &&
-                                            item.podcast.id.startsWith("itunes_")
-                                        }
-                                        when (state.searchFilterType) {
-                                            SearchFilterType.PODCASTS -> podcasts
-                                            SearchFilterType.EPISODES -> episodes
-                                            else -> state.searchResults // Fallback (unreachable)
-                                        }
-                                    }
-                                }
-                            }
-                        }.value
-
                         items(filteredResults, key = { it.episode.id }) { item ->
                             // 判断是播客节目还是单集：如果 audioUrl 为空且是 iTunes 搜索结果，则认为是播客节目
                             val isPodcast = item.episode.audioUrl.isEmpty() &&
