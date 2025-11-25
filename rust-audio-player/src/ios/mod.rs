@@ -392,7 +392,7 @@ impl AudioPlayer for IOSAudioPlayer {
     }
 
     fn load_url(&mut self, url: &str) -> Result<()> {
-        log::info!("Loading audio from URL: {}", url);
+        log::info!("Loading audio from URL (streaming): {}", url);
 
         self.state_container.set_state(PlayerState::Loading);
         self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
@@ -405,17 +405,19 @@ impl AudioPlayer for IOSAudioPlayer {
         self.ring_buffer.lock().clear();
         *self.sample_count.lock() = 0;
 
-        // Get temp cache path
-        let temp_file_path = crate::http_utils::get_temp_cache_path(url);
-        log::info!("Downloading to temp file: {}", temp_file_path);
+        // Create hint from URL
+        let hint = AudioDecoder::create_hint_from_url(url);
 
-        // Download with progressive loading
-        crate::http_utils::download_with_prebuffer(url, &temp_file_path)?;
+        // Use HTTP Range-based source for true streaming without downloading entire file
+        // This supports both Fast Start and Non-Fast Start M4A files
+        log::info!("Using HTTP Range source (on-demand download)");
+        let source = crate::http_range_source::HttpRangeSource::new(url.to_string())?;
+        let decoder = AudioDecoder::from_streaming_source(Box::new(source), hint)?;
 
-        log::info!("Pre-buffer complete, loading audio");
-        let decoder = AudioDecoder::from_file(&temp_file_path)?;
         let sample_rate = decoder.format.sample_rate;
         let channels = decoder.format.channels;
+
+        log::info!("Streaming decoder created: {}Hz, {} channels", sample_rate, channels);
 
         self.initialize_audio_stream(sample_rate, channels)?;
         *self.decoder.lock() = Some(decoder);
@@ -432,7 +434,7 @@ impl AudioPlayer for IOSAudioPlayer {
             new_state: PlayerState::Ready,
         });
 
-        log::info!("Audio URL loaded successfully");
+        log::info!("Audio URL loaded successfully (streaming mode)");
         Ok(())
     }
 
