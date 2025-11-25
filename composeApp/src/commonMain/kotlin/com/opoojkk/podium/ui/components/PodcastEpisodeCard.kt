@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -15,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,6 +48,16 @@ fun PodcastEpisodeCard(
     isBuffering: Boolean = false,
     showPlaybackStatus: Boolean = false,
 ) {
+    // Track buffering timeout (30 seconds)
+    val bufferingTimeout by produceState(false, isBuffering) {
+        if (isBuffering) {
+            kotlinx.coroutines.delay(30_000)
+            value = true
+        } else {
+            value = false
+        }
+    }
+
     var showMoreMenu by remember { mutableStateOf(false) }
     Card(
         modifier = modifier
@@ -92,11 +104,12 @@ fun PodcastEpisodeCard(
                 }
             }
 
-            ArtworkPlaceholder(
+            ArtworkWithPlaceholder(
                 artworkUrl = episodeWithPodcast.podcast.artworkUrl,
                 title = episodeWithPodcast.podcast.title,
-                modifier = Modifier.size(if (compact) 56.dp else 80.dp),
-                displaySize = if (compact) 56.dp else 80.dp
+                size = if (compact) 56.dp else 80.dp,
+                cornerRadius = 16.dp,
+                contentDescription = episodeWithPodcast.podcast.title
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -150,19 +163,33 @@ fun PodcastEpisodeCard(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 ) {
-                    if (isBuffering) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(if (compact) 22.dp else 24.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(if (compact) 22.dp else 24.dp)
-                        )
+                    when {
+                        bufferingTimeout -> {
+                            // Buffering timeout - show error icon
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = "加载超时",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(if (compact) 22.dp else 24.dp)
+                            )
+                        }
+                        isBuffering -> {
+                            // Still buffering - show progress indicator
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(if (compact) 22.dp else 24.dp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        else -> {
+                            // Normal play/pause icon
+                            Icon(
+                                imageVector = if (isCurrentlyPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isCurrentlyPlaying) "暂停" else "播放",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(if (compact) 22.dp else 24.dp)
+                            )
+                        }
                     }
                 }
 
@@ -236,53 +263,3 @@ fun PodcastEpisodeCard(
     }
 }
 
-@Composable
-private fun ArtworkPlaceholder(
-    artworkUrl: String?,
-    title: String,
-    modifier: Modifier = Modifier,
-    displaySize: androidx.compose.ui.unit.Dp = 80.dp
-) {
-    val initials = title.trim().split(" ", limit = 2)
-        .mapNotNull { it.firstOrNull()?.uppercase() }
-        .joinToString(separator = "")
-        .takeIf { it.isNotBlank() }
-        ?: "播客"
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!artworkUrl.isNullOrBlank()) {
-            OptimizedAsyncImage(
-                model = artworkUrl,
-                contentDescription = title,
-                displaySize = displaySize,
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Crop,
-                loading = {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                },
-                error = {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            )
-        } else {
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-    }
-}

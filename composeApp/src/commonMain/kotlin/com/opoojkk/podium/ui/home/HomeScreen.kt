@@ -570,52 +570,12 @@ private fun PodcastCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // 播客封面
-            Box(
-                modifier = Modifier
-                    .size(136.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                val artworkUrl = podcast.artworkUrl
-                val initials = podcast.title
-                    .trim()
-                    .split(" ", limit = 2)
-                    .mapNotNull { it.firstOrNull()?.uppercase() }
-                    .joinToString(separator = "")
-                    .takeIf { it.isNotBlank() }
-                    ?: "播客"
-
-                if (!artworkUrl.isNullOrBlank()) {
-                    OptimizedAsyncImage(
-                        model = artworkUrl,
-                        contentDescription = podcast.title,
-                        displaySize = 136.dp,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
-                            )
-                        },
-                        error = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    )
-                } else {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
+            ArtworkWithPlaceholder(
+                artworkUrl = podcast.artworkUrl,
+                title = podcast.title,
+                size = 136.dp,
+                contentDescription = podcast.title
+            )
 
             // 播客名称
             Text(
@@ -660,52 +620,12 @@ private fun SearchResultPodcastCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // 左侧：播客封面
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                val artworkUrl = podcast.artworkUrl
-                val initials = podcast.title
-                    .trim()
-                    .split(" ", limit = 2)
-                    .mapNotNull { it.firstOrNull()?.uppercase() }
-                    .joinToString(separator = "")
-                    .takeIf { it.isNotBlank() }
-                    ?: "播客"
-
-                if (!artworkUrl.isNullOrBlank()) {
-                    OptimizedAsyncImage(
-                        model = artworkUrl,
-                        contentDescription = podcast.title,
-                        displaySize = 136.dp,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
-                            )
-                        },
-                        error = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    )
-                } else {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
+            ArtworkWithPlaceholder(
+                artworkUrl = podcast.artworkUrl,
+                title = podcast.title,
+                size = 80.dp,
+                contentDescription = podcast.title
+            )
 
             // 右侧：播客信息
             Column(

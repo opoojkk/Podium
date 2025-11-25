@@ -192,55 +192,15 @@ private fun PodcastItemCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // 播客封面
-            Box(
+            ArtworkWithPlaceholder(
+                artworkUrl = podcast.artworkUrl,
+                title = podcast.name,
+                size = 136.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                val artworkUrl = podcast.artworkUrl
-                Logger.d("CategoriesScreen") { "PodcastItemCard: ${podcast.name} - artworkUrl: $artworkUrl" }
-                val initials = podcast.name
-                    .trim()
-                    .split(" ", limit = 2)
-                    .mapNotNull { it.firstOrNull()?.uppercase() }
-                    .joinToString(separator = "")
-                    .takeIf { it.isNotBlank() }
-                    ?: "播客"
-
-                if (!artworkUrl.isNullOrBlank()) {
-                    OptimizedAsyncImage(
-                        model = artworkUrl,
-                        contentDescription = podcast.name,
-                        displaySize = 136.dp,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        },
-                        error = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    )
-                } else {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
+                    .aspectRatio(1f),
+                contentDescription = podcast.name
+            )
 
             // 播客名称
             Text(

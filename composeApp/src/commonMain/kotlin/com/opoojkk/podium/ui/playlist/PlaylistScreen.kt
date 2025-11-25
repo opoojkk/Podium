@@ -145,10 +145,12 @@ private fun PlaylistItemCard(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // 播客封面
-                ArtworkImage(
+                ArtworkWithPlaceholder(
                     artworkUrl = item.podcast.artworkUrl,
                     title = item.podcast.title,
-                    modifier = Modifier.size(80.dp),
+                    size = 80.dp,
+                    cornerRadius = 16.dp,
+                    contentDescription = item.podcast.title
                 )
 
                 // 右侧内容区域
@@ -253,55 +255,6 @@ private fun PlaylistItemCard(
     }
 }
 
-@Composable
-private fun ArtworkImage(
-    artworkUrl: String?,
-    title: String,
-    modifier: Modifier = Modifier
-) {
-    val initials = title.trim().split(" ", limit = 2)
-        .mapNotNull { it.firstOrNull()?.uppercase() }
-        .joinToString(separator = "")
-        .takeIf { it.isNotBlank() }
-        ?: "播客"
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!artworkUrl.isNullOrBlank()) {
-            OptimizedAsyncImage(
-                model = artworkUrl,
-                contentDescription = title,
-                displaySize = 80.dp,
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Crop,
-                loading = {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                },
-                error = {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            )
-        } else {
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-    }
-}
 
 private fun formatDuration(milliseconds: Long): String {
     val totalSeconds = (milliseconds / 1000).toInt()

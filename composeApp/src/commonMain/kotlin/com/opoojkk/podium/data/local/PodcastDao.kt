@@ -248,7 +248,7 @@ class PodcastDao(private val database: PodcastDatabase) {
             mapPodcast(id, title, description, artworkUrl, feedUrl_, lastUpdated, autoDownload)
         }
             .executeAsOneOrNull()
-        println("🔍 DAO: Query result: ${if (result != null) "Found: ${result.title}" else "Not found"}")
+        Logger.d("PodcastDao") { "Query result: ${if (result != null) "Found: ${result.title}" else "Not found"}" }
         return result
     }
 

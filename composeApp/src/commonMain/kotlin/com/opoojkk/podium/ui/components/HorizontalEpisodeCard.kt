@@ -94,52 +94,15 @@ private fun HorizontalEpisodeCard(
         ) {
             // 播客封面
             Box(
-                modifier = Modifier
-                    .size(136.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
+                modifier = Modifier.size(136.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                val artworkUrl = episodeWithPodcast.podcast.artworkUrl
-                val initials = episodeWithPodcast.podcast.title
-                    .trim()
-                    .split(" ", limit = 2)
-                    .mapNotNull { it.firstOrNull()?.uppercase() }
-                    .joinToString(separator = "")
-                    .takeIf { it.isNotBlank() }
-                    ?: "播客"
-
-                // 加载图片或显示占位符
-                if (!artworkUrl.isNullOrBlank()) {
-                    OptimizedAsyncImage(
-                        model = artworkUrl,
-                        contentDescription = episodeWithPodcast.podcast.title,
-                        displaySize = 136.dp,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        },
-                        error = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    )
-                } else {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
+                ArtworkWithPlaceholder(
+                    artworkUrl = episodeWithPodcast.podcast.artworkUrl,
+                    title = episodeWithPodcast.podcast.title,
+                    size = 136.dp,
+                    contentDescription = episodeWithPodcast.podcast.title
+                )
 
                 // 播放按钮
                 IconButton(

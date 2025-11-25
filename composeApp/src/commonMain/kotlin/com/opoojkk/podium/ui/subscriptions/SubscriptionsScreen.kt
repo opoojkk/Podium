@@ -184,10 +184,11 @@ private fun SubscriptionCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // 左侧方形圆角图标
-            PodcastArtwork(
+            ArtworkWithPlaceholder(
                 artworkUrl = podcast.artworkUrl,
                 title = podcast.title,
-                modifier = Modifier.size(64.dp)
+                size = 64.dp,
+                contentDescription = podcast.title
             )
             
             // 右侧内容
@@ -366,63 +367,6 @@ private fun AddSubscriptionDialog(
     )
 }
 
-@Composable
-private fun PodcastArtwork(
-    artworkUrl: String?,
-    title: String,
-    modifier: Modifier = Modifier,
-    displaySize: androidx.compose.ui.unit.Dp = 64.dp
-) {
-    val initials = title.trim().split(" ", limit = 2)
-        .mapNotNull { it.firstOrNull()?.uppercase() }
-        .joinToString(separator = "")
-        .takeIf { it.isNotBlank() }
-        ?: "播客"
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!artworkUrl.isNullOrBlank()) {
-            Logger.d("SubscriptionsScreen") { "Loading podcast artwork: $artworkUrl" }
-
-            OptimizedAsyncImage(
-                model = artworkUrl,
-                contentDescription = title,
-                displaySize = displaySize,
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Crop,
-                loading = {
-                    // 加载中显示占位符
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                },
-                error = {
-                    // 加载失败显示占位符
-                    Logger.w("SubscriptionsScreen") { "Failed to load image: $artworkUrl" }
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            )
-        } else {
-            // 没有图片URL时显示占位符
-            Logger.d("SubscriptionsScreen") { "No artwork URL for podcast: $title" }
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-    }
-}
 
 private fun formatLastUpdated(instant: kotlinx.datetime.Instant): String {
     val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
