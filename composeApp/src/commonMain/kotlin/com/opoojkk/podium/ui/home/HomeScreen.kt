@@ -150,20 +150,23 @@ fun HomeScreen(
                         }
                     }
                     else -> {
-                        // 使用 derivedStateOf 优化过滤计算，避免不必要的重组
+                        // 使用 derivedStateOf 和 partition 优化过滤，只需单次遍历
                         val filteredResults = remember(state.searchResults, state.searchFilterType) {
                             derivedStateOf {
                                 when (state.searchFilterType) {
                                     SearchFilterType.ALL -> state.searchResults
-                                    SearchFilterType.PODCASTS -> state.searchResults.filter { item ->
-                                        item.episode.audioUrl.isEmpty() &&
-                                        item.episode.id.startsWith("itunes_ep_") &&
-                                        item.podcast.id.startsWith("itunes_")
-                                    }
-                                    SearchFilterType.EPISODES -> state.searchResults.filter { item ->
-                                        !(item.episode.audioUrl.isEmpty() &&
-                                          item.episode.id.startsWith("itunes_ep_") &&
-                                          item.podcast.id.startsWith("itunes_"))
+                                    else -> {
+                                        // 使用 partition 单次遍历分离 podcasts 和 episodes
+                                        val (podcasts, episodes) = state.searchResults.partition { item ->
+                                            item.episode.audioUrl.isEmpty() &&
+                                            item.episode.id.startsWith("itunes_ep_") &&
+                                            item.podcast.id.startsWith("itunes_")
+                                        }
+                                        when (state.searchFilterType) {
+                                            SearchFilterType.PODCASTS -> podcasts
+                                            SearchFilterType.EPISODES -> episodes
+                                            else -> state.searchResults // Fallback (unreachable)
+                                        }
                                     }
                                 }
                             }

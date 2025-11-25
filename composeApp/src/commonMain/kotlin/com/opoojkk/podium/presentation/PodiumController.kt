@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -39,9 +39,6 @@ class PodiumController(
     private val scope: CoroutineScope,
 ) {
     companion object {
-        /** Debounce duration for download updates in milliseconds */
-        private const val DOWNLOAD_UPDATE_DEBOUNCE_MS = 300L
-
         /** Bytes per megabyte */
         private const val BYTES_PER_MB = 1024L * 1024L
 
@@ -134,7 +131,7 @@ class PodiumController(
             ) { persisted, runtime ->
                 persisted + runtime
             }
-                .debounce(DOWNLOAD_UPDATE_DEBOUNCE_MS) // Debounce to avoid too frequent updates during downloads
+                .conflate() // Skip intermediate values, always use latest - more responsive than debounce
                 .distinctUntilChanged() // Only update when the map actually changes
                 .collect { combined ->
                 _downloads.value = combined
