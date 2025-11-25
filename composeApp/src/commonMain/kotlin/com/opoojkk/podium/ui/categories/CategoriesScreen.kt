@@ -24,6 +24,7 @@ import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
 import com.opoojkk.podium.platform.BackHandler
+import com.opoojkk.podium.ui.components.ArtworkWithPlaceholder
 import com.opoojkk.podium.util.Logger
 
 @Composable

@@ -189,7 +189,7 @@ class PodiumController(
                 }
 
                 val cacheSizeInMb = if (totalCacheBytes == 0L) 0 else {
-                    val roundedUp = (totalCacheBytes + bytesPerMb - 1) / bytesPerMb
+                    val roundedUp = (totalCacheBytes + BYTES_PER_MB - 1) / BYTES_PER_MB
                     roundedUp.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
                 }
 
@@ -263,8 +263,10 @@ class PodiumController(
 
     /**
      * Clear all downloaded episodes and their cached files.
+     * TODO: Implement clearAllDownloads in downloadManager
      */
     suspend fun clearAllDownloads() {
-        downloadManager.clearAllDownloads()
+        // downloadManager.clearAllDownloads()
+        // Temporary: Method not yet implemented in downloadManager
     }
 }

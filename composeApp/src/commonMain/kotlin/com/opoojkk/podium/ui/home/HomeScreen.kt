@@ -56,6 +56,7 @@ import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.presentation.HomeUiState
 import com.opoojkk.podium.presentation.SearchFilterType
+import com.opoojkk.podium.ui.components.ArtworkWithPlaceholder
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRow
 import com.opoojkk.podium.ui.components.HorizontalEpisodeRowSkeleton
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard

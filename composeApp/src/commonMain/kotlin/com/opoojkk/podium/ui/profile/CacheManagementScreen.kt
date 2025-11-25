@@ -55,6 +55,7 @@ import com.opoojkk.podium.presentation.ProfileCachedItem
 import com.opoojkk.podium.presentation.ProfileDownloadItem
 import com.opoojkk.podium.presentation.ProfileUiState
 import com.opoojkk.podium.platform.BackHandler
+import com.opoojkk.podium.ui.components.OptimizedAsyncImage
 import kotlin.math.roundToInt
 
 private sealed interface CacheManagementViewState {

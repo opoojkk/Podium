@@ -21,6 +21,7 @@ import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaylistItem
 import com.opoojkk.podium.presentation.PlaylistUiState
 import com.opoojkk.podium.platform.BackHandler
+import com.opoojkk.podium.ui.components.ArtworkWithPlaceholder
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)

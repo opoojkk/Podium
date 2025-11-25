@@ -49,6 +49,7 @@ import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.Podcast
+import com.opoojkk.podium.ui.components.OptimizedAsyncImage
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
 import com.opoojkk.podium.platform.BackHandler
 import kotlinx.coroutines.delay

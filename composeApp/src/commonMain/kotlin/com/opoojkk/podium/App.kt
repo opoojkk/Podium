@@ -42,6 +42,7 @@ import com.opoojkk.podium.data.model.recommended.PodcastCategory
 import com.opoojkk.podium.data.mapper.toEpisodeWithPodcast
 import com.opoojkk.podium.data.mapper.toPodcast
 import com.opoojkk.podium.util.Logger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async

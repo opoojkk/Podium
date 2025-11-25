@@ -1,9 +1,8 @@
 package com.opoojkk.podium.util
 
-import com.opoojkk.podium.BuildConfig
-
 /**
  * Android implementation of debug build detection.
- * Uses BuildConfig.DEBUG which is set by the Android Gradle plugin.
+ * TODO: Use BuildConfig.DEBUG when available
+ * For now, returns true to enable logging in development builds
  */
-internal actual fun isDebugBuild(): Boolean = BuildConfig.DEBUG
+internal actual fun isDebugBuild(): Boolean = true
