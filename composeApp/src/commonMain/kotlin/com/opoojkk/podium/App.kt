@@ -235,12 +235,10 @@ private fun PodcastEpisodesContent(
                     snackbarHostState.showSnackbar("已取消订阅《${podcast.title}》")
                 }
             },
-            onEpisodeClick = if (showPlayerDetail != null) {
-                { episode ->
-                    onPlayEpisode(episode)
-                    showPlayerDetail.value = true
-                }
-            } else null,
+            onEpisodeClick = { episode ->
+                onPlayEpisode(episode)
+                showPlayerDetail?.value = true
+            },
         )
     }
 }
@@ -350,12 +348,10 @@ private fun MainNavigationScreens(
             onAddToPlaylist = { episodeId ->
                 controller.addToPlaylist(episodeId)
             },
-            onEpisodeClick = if (showPlayerDetail != null) {
-                { episode ->
-                    onPlayEpisode(episode)
-                    showPlayerDetail.value = true
-                }
-            } else null,
+            onEpisodeClick = { episode ->
+                onPlayEpisode(episode)
+                showPlayerDetail?.value = true
+            },
             onLoadMoreSearchResults = controller::loadMoreSearchResults,
             onSearchFilterTypeChange = controller::setSearchFilterType,
         )
