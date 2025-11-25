@@ -1,5 +1,7 @@
 package com.opoojkk.podium.util
 
+import io.ktor.util.date.*
+
 /**
  * Simple conditional logger to replace println statements
  * Logs are only executed in debug builds to improve production performance
@@ -50,11 +52,11 @@ object Logger {
      */
     inline fun <T> measureTime(tag: String, operation: String, block: () -> T): T {
         if (DEBUG) {
-            val startTime = System.currentTimeMillis()
+            val startTime = getTimeMillis()
             return try {
                 block()
             } finally {
-                val duration = System.currentTimeMillis() - startTime
+                val duration = getTimeMillis() - startTime
                 println("⏱️ [$tag] $operation took ${duration}ms")
             }
         } else {
