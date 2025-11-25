@@ -3,13 +3,19 @@ package com.opoojkk.podium.util
 import io.ktor.util.date.*
 
 /**
+ * Platform-specific function to determine if the app is in debug mode.
+ */
+internal expect fun isDebugBuild(): Boolean
+
+/**
  * Simple conditional logger to replace println statements
  * Logs are only executed in debug builds to improve production performance
  */
 object Logger {
-    // TODO: Replace with BuildConfig.DEBUG when build configuration is set up
-    // For now, set this to false in production builds
-    const val DEBUG = true
+    /**
+     * Debug flag - determined at compile time based on platform build configuration
+     */
+    val DEBUG: Boolean = isDebugBuild()
 
     /**
      * Debug log - only executed in debug builds

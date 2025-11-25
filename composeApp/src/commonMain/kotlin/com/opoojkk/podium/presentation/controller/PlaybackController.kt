@@ -29,6 +29,14 @@ class PlaybackController(
     private val player: PodcastPlayer,
     private val scope: CoroutineScope,
 ) {
+    companion object {
+        /** Auto-save interval in milliseconds (10 seconds) */
+        private const val AUTO_SAVE_INTERVAL_MS = 10_000L
+
+        /** Sleep timer update interval in milliseconds (1 second) */
+        private const val SLEEP_TIMER_UPDATE_INTERVAL_MS = 1_000L
+    }
+
     // Expose player state
     val playbackState: StateFlow<com.opoojkk.podium.data.model.PlaybackState> = player.state
 
@@ -77,7 +85,7 @@ class PlaybackController(
 
         playbackSaveJob = scope.launch {
             while (isActive) {
-                kotlinx.coroutines.delay(10_000) // Save every 10 seconds
+                kotlinx.coroutines.delay(AUTO_SAVE_INTERVAL_MS)
 
                 // Get fresh state
                 val currentState = player.state.value
@@ -188,7 +196,7 @@ class PlaybackController(
             val endTime = startTime + duration.milliseconds
 
             while (true) {
-                kotlinx.coroutines.delay(1000) // Update every second
+                kotlinx.coroutines.delay(SLEEP_TIMER_UPDATE_INTERVAL_MS)
                 val currentTime = Clock.System.now().toEpochMilliseconds()
                 val remaining = (endTime - currentTime).coerceAtLeast(0)
 

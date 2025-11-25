@@ -23,6 +23,20 @@ class PodcastRepository(
     private val feedService: PodcastFeedService,
     private val appSettings: com.opoojkk.podium.data.local.AppSettings,
 ) {
+    companion object {
+        /** Default limit for recent episodes list */
+        private const val RECENT_EPISODES_LIMIT = 20
+
+        /** Default limit for recent listening list */
+        private const val RECENT_LISTENING_LIMIT = 10
+
+        /** Limit for home screen recent listening (unique podcasts) */
+        private const val HOME_RECENT_LISTENING_LIMIT = 6
+
+        /** Limit for home screen recent episodes */
+        private const val HOME_RECENT_EPISODES_LIMIT = 6
+    }
+
     private val exporter = SubscriptionExporter()
     private val importer = SubscriptionImporter()
 
@@ -30,14 +44,14 @@ class PodcastRepository(
 
     suspend fun getPodcastByFeedUrl(feedUrl: String): Podcast? = dao.getPodcastByFeedUrl(feedUrl)
 
-    fun observeRecentUpdates(): Flow<List<EpisodeWithPodcast>> = dao.observeRecentEpisodes(20)
+    fun observeRecentUpdates(): Flow<List<EpisodeWithPodcast>> = dao.observeRecentEpisodes(RECENT_EPISODES_LIMIT)
 
-    fun observeRecentListening(): Flow<List<EpisodeWithPodcast>> = dao.observeRecentListening(10)
+    fun observeRecentListening(): Flow<List<EpisodeWithPodcast>> = dao.observeRecentListening(RECENT_LISTENING_LIMIT)
 
     // 首页专用：最近收听显示不同播客的最多6集，最近更新按单集发布时间排序显示最多6集
     fun observeHomeState(): Flow<HomeUiState> = combine(
-        dao.observeRecentListeningUnique(6),  // 每个播客只显示最近播放的一集
-        dao.observeRecentEpisodes(6),         // 按发布时间排序，不同播客的单集可以穿插
+        dao.observeRecentListeningUnique(HOME_RECENT_LISTENING_LIMIT),  // 每个播客只显示最近播放的一集
+        dao.observeRecentEpisodes(HOME_RECENT_EPISODES_LIMIT),         // 按发布时间排序，不同播客的单集可以穿插
     ) { listening, updates ->
         HomeUiState(
             recentPlayed = listening,

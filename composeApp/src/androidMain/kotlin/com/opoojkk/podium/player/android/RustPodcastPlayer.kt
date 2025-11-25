@@ -24,6 +24,7 @@ class RustPodcastPlayer(
     companion object {
         private const val TAG = "RustPodcastPlayer"
         private const val POSITION_UPDATE_INTERVAL_MS = 1000L // 1 second
+        private const val DURATION_CHECK_DELAY_MS = 100L // Delay for duration to become available
     }
 
     private val rustPlayer = RustAudioPlayer()
@@ -81,7 +82,7 @@ class RustPodcastPlayer(
             }
 
             // Wait a bit for duration to be available
-            delay(100)
+            delay(DURATION_CHECK_DELAY_MS)
 
             val duration = rustPlayer.getDuration()
             Log.d(TAG, "Audio loaded, duration: $duration ms")

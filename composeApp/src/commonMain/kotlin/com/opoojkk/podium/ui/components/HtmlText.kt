@@ -80,6 +80,15 @@ fun HtmlText(
  * - <ul>, <ol>, <li> - 列表
  * - 时间戳识别 (MM:SS, H:MM:SS)
  */
+
+// HTML heading font size multipliers
+private const val H1_SIZE_MULTIPLIER = 2.0
+private const val H2_SIZE_MULTIPLIER = 1.5
+private const val H3_SIZE_MULTIPLIER = 1.3
+private const val H4_SIZE_MULTIPLIER = 1.15
+private const val H5_SIZE_MULTIPLIER = 1.1
+private const val H6_SIZE_MULTIPLIER = 1.05
+
 private fun parseHtmlToAnnotatedString(
     html: String,
     linkColor: Color,
@@ -176,12 +185,12 @@ private fun parseHtmlToAnnotatedString(
                 "h1", "h2", "h3", "h4", "h5", "h6" -> {
                     if (!isClosing) {
                         val fontSize = when (tagName) {
-                            "h1" -> baseStyle.fontSize * 2.0
-                            "h2" -> baseStyle.fontSize * 1.5
-                            "h3" -> baseStyle.fontSize * 1.3
-                            "h4" -> baseStyle.fontSize * 1.15
-                            "h5" -> baseStyle.fontSize * 1.1
-                            else -> baseStyle.fontSize * 1.05
+                            "h1" -> baseStyle.fontSize * H1_SIZE_MULTIPLIER
+                            "h2" -> baseStyle.fontSize * H2_SIZE_MULTIPLIER
+                            "h3" -> baseStyle.fontSize * H3_SIZE_MULTIPLIER
+                            "h4" -> baseStyle.fontSize * H4_SIZE_MULTIPLIER
+                            "h5" -> baseStyle.fontSize * H5_SIZE_MULTIPLIER
+                            else -> baseStyle.fontSize * H6_SIZE_MULTIPLIER
                         }
                         pushStyle(
                             SpanStyle(

@@ -38,6 +38,17 @@ class PodiumController(
     private val downloadManager: PodcastDownloadManager,
     private val scope: CoroutineScope,
 ) {
+    companion object {
+        /** Debounce duration for download updates in milliseconds */
+        private const val DOWNLOAD_UPDATE_DEBOUNCE_MS = 300L
+
+        /** Bytes per megabyte */
+        private const val BYTES_PER_MB = 1024L * 1024L
+
+        /** Default estimated episode size in megabytes */
+        private const val DEFAULT_EPISODE_SIZE_MB = 50L
+    }
+
     // Sub-controllers
     private val playbackController = PlaybackController(repository, player, scope)
     private val searchController = SearchController(repository, applePodcastSearchRepository, scope)
@@ -123,12 +134,11 @@ class PodiumController(
             ) { persisted, runtime ->
                 persisted + runtime
             }
-                .debounce(300) // Debounce to avoid too frequent updates during downloads
+                .debounce(DOWNLOAD_UPDATE_DEBOUNCE_MS) // Debounce to avoid too frequent updates during downloads
                 .distinctUntilChanged() // Only update when the map actually changes
                 .collect { combined ->
                 _downloads.value = combined
-                val bytesPerMb = 1024L * 1024L
-                val defaultEpisodeSizeBytes = 50L * bytesPerMb
+                val defaultEpisodeSizeBytes = DEFAULT_EPISODE_SIZE_MB * BYTES_PER_MB
 
                 var totalCacheBytes = 0L
                 val cachedItems = mutableListOf<ProfileCachedItem>()

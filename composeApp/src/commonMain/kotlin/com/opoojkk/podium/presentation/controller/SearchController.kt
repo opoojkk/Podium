@@ -43,6 +43,17 @@ class SearchController(
     private val applePodcastSearchRepository: ApplePodcastSearchRepository,
     private val scope: CoroutineScope,
 ) {
+    companion object {
+        /** Maximum search query length */
+        private const val MAX_QUERY_LENGTH = 200
+
+        /** Search debounce delay in milliseconds */
+        private const val SEARCH_DEBOUNCE_MS = 250L
+
+        /** Default limit for iTunes podcast search */
+        private const val ITUNES_PODCAST_SEARCH_LIMIT = 10
+    }
+
     private val _searchState = MutableStateFlow(SearchState())
     val searchState: StateFlow<SearchState> = _searchState.asStateFlow()
 
@@ -52,7 +63,7 @@ class SearchController(
      * Handle search query changes with debouncing.
      */
     fun onSearchQueryChange(query: String) {
-        val sanitizedQuery = query.take(200)
+        val sanitizedQuery = query.take(MAX_QUERY_LENGTH)
         val effectiveQuery = sanitizedQuery.trim()
 
         searchJob?.cancel()
@@ -84,7 +95,7 @@ class SearchController(
         }
 
         searchJob = scope.launch {
-            kotlinx.coroutines.delay(250)
+            kotlinx.coroutines.delay(SEARCH_DEBOUNCE_MS)
             try {
                 val limit = _searchState.value.searchLimit
                 Logger.d("SearchController") { "开始搜索: \"$effectiveQuery\", limit=$limit" }
@@ -94,7 +105,7 @@ class SearchController(
                     repository.searchEpisodes(effectiveQuery, limit = limit, offset = 0)
                 }
                 val remotePodcastResults = async {
-                    searchApplePodcasts(effectiveQuery, limit = 10)
+                    searchApplePodcasts(effectiveQuery, limit = ITUNES_PODCAST_SEARCH_LIMIT)
                 }
                 val remoteEpisodeResults = async {
                     searchAppleEpisodes(effectiveQuery, limit = limit)
