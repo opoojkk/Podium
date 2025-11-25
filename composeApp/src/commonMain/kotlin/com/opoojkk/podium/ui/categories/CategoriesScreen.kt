@@ -210,9 +210,10 @@ private fun PodcastItemCard(
                     ?: "播客"
 
                 if (!artworkUrl.isNullOrBlank()) {
-                    SubcomposeAsyncImage(
+                    OptimizedAsyncImage(
                         model = artworkUrl,
                         contentDescription = podcast.name,
+                        displaySize = 136.dp,
                         modifier = Modifier
                             .matchParentSize()
                             .clip(RoundedCornerShape(12.dp)),

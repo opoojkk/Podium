@@ -673,9 +673,10 @@ private fun PodcastArtwork(
         contentAlignment = Alignment.Center,
     ) {
         if (!artworkUrl.isNullOrBlank()) {
-            SubcomposeAsyncImage(
+            OptimizedAsyncImage(
                 model = artworkUrl,
                 contentDescription = podcastTitle,
+                displaySize = 56.dp,
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
                 loading = {

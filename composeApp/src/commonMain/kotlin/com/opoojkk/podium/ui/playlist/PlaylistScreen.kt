@@ -272,9 +272,10 @@ private fun ArtworkImage(
         contentAlignment = Alignment.Center,
     ) {
         if (!artworkUrl.isNullOrBlank()) {
-            SubcomposeAsyncImage(
+            OptimizedAsyncImage(
                 model = artworkUrl,
                 contentDescription = title,
+                displaySize = 80.dp,
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
                 loading = {

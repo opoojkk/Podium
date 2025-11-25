@@ -12,8 +12,10 @@ import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.data.model.PlaybackState
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
+import com.opoojkk.podium.platform.PlatformType
 import com.opoojkk.podium.platform.SetStatusBarColor
 import com.opoojkk.podium.platform.copyTextToClipboard
+import com.opoojkk.podium.platform.getPlatformType
 import com.opoojkk.podium.platform.openUrl
 import com.opoojkk.podium.ui.components.DesktopNavigationRail
 import com.opoojkk.podium.ui.components.DesktopPlaybackBar
@@ -70,13 +72,25 @@ private fun CacheManagementContent(
     showCacheManagement: MutableState<Boolean>,
     profileState: com.opoojkk.podium.presentation.ProfileUiState,
     controller: com.opoojkk.podium.presentation.PodiumController,
+    snackbarHostState: SnackbarHostState,
+    scope: CoroutineScope,
 ) {
     if (showCacheManagement.value) {
         CacheManagementScreen(
             state = profileState,
             onBackClick = { showCacheManagement.value = false },
             onTogglePodcastAutoDownload = controller::togglePodcastAutoDownload,
-            onClearCache = { /* TODO: 实现清除缓存功能 */ },
+            onClearCache = {
+                scope.launch {
+                    try {
+                        controller.clearAllDownloads()
+                        snackbarHostState.showSnackbar("缓存已清除")
+                    } catch (e: Exception) {
+                        Logger.e("App", "Failed to clear cache", e)
+                        snackbarHostState.showSnackbar("清除缓存失败: ${e.message}")
+                    }
+                }
+            },
         )
     }
 }
@@ -694,12 +708,10 @@ fun PodiumApp(
     }
 
     // 检测当前平台
-    val platform = remember { getPlatform() }
-    val isDesktop = remember(platform) {
-        val isDesktopPlatform = platform.name.contains("JVM", ignoreCase = true) ||
-                platform.name.contains("Desktop", ignoreCase = true) ||
-                platform.name.contains("Java", ignoreCase = true)
-        Logger.i("App") { "Platform detected: ${platform.name}" }
+    val isDesktop = remember {
+        val platformType = getPlatformType()
+        val isDesktopPlatform = platformType == PlatformType.DESKTOP
+        Logger.i("App") { "Platform type: $platformType" }
         Logger.i("App") { "Using ${if (isDesktopPlatform) "Desktop" else "Mobile"} Layout" }
         isDesktopPlatform
     }
@@ -947,6 +959,8 @@ private fun DesktopLayout(
                                 showCacheManagement = showCacheManagement,
                                 profileState = profileState,
                                 controller = controller,
+                                snackbarHostState = snackbarHostState,
+                                scope = scope,
                             )
                         }
                         showPlayerDetail.value && playbackState.episode != null -> {
@@ -1233,6 +1247,8 @@ private fun MobileLayout(
                             showCacheManagement = showCacheManagement,
                             profileState = profileState,
                             controller = controller,
+                            snackbarHostState = snackbarHostState,
+                            scope = scope,
                         )
                     }
                     showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {

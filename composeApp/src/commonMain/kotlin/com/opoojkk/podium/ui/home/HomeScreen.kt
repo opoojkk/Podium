@@ -586,9 +586,10 @@ private fun PodcastCard(
                     ?: "播客"
 
                 if (!artworkUrl.isNullOrBlank()) {
-                    SubcomposeAsyncImage(
+                    OptimizedAsyncImage(
                         model = artworkUrl,
                         contentDescription = podcast.title,
+                        displaySize = 136.dp,
                         modifier = Modifier
                             .matchParentSize()
                             .clip(RoundedCornerShape(12.dp)),
@@ -675,9 +676,10 @@ private fun SearchResultPodcastCard(
                     ?: "播客"
 
                 if (!artworkUrl.isNullOrBlank()) {
-                    SubcomposeAsyncImage(
+                    OptimizedAsyncImage(
                         model = artworkUrl,
                         contentDescription = podcast.title,
+                        displaySize = 136.dp,
                         modifier = Modifier
                             .matchParentSize()
                             .clip(RoundedCornerShape(12.dp)),

@@ -253,4 +253,11 @@ class PodiumController(
             _profileState.value = _profileState.value.copy(updateInterval = interval)
         }
     }
+
+    /**
+     * Clear all downloaded episodes and their cached files.
+     */
+    suspend fun clearAllDownloads() {
+        downloadManager.clearAllDownloads()
+    }
 }

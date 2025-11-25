@@ -23,8 +23,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
+import com.opoojkk.podium.ui.components.OptimizedAsyncImage
 import com.opoojkk.podium.data.rss.PodcastFeed
 import com.opoojkk.podium.data.rss.RssEpisode
 import com.opoojkk.podium.platform.BackHandler
@@ -55,6 +55,7 @@ fun RecommendedPodcastDetailScreen(
     checkIfSubscribed: suspend (String) -> Boolean = { false },
     onUnsubscribe: (String) -> Unit = {},
 ) {
+    val scope = rememberCoroutineScope()
     var feedState by remember { mutableStateOf<FeedState>(FeedState.Loading) }
     var isSubscribed by remember { mutableStateOf(false) }
     var sortOrder by remember { mutableStateOf(EpisodeSortOrder.NEWEST_FIRST) }
@@ -100,7 +101,7 @@ fun RecommendedPodcastDetailScreen(
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
-                kotlinx.coroutines.MainScope().launch {
+                scope.launch {
                     isRefreshing = true
                     loadFeed()
                     isRefreshing = false
@@ -285,9 +286,10 @@ private fun PodcastHeader(
                     ?: "播客"
 
                 if (!artworkUrl.isNullOrBlank()) {
-                    SubcomposeAsyncImage(
+                    OptimizedAsyncImage(
                         model = artworkUrl,
                         contentDescription = podcast.name,
+                        displaySize = 120.dp,
                         modifier = Modifier
                             .matchParentSize()
                             .clip(RoundedCornerShape(12.dp)),
@@ -411,9 +413,10 @@ private fun EpisodeListItem(
                     ?: "播客"
 
                 if (!artworkUrl.isNullOrBlank()) {
-                    SubcomposeAsyncImage(
+                    OptimizedAsyncImage(
                         model = artworkUrl,
                         contentDescription = podcastTitle,
+                        displaySize = 80.dp,
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop,
                         loading = {
