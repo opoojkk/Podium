@@ -40,6 +40,8 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -148,20 +150,24 @@ fun HomeScreen(
                         }
                     }
                     else -> {
-                        // 根据筛选类型过滤结果
-                        val filteredResults = when (state.searchFilterType) {
-                            SearchFilterType.ALL -> state.searchResults
-                            SearchFilterType.PODCASTS -> state.searchResults.filter { item ->
-                                item.episode.audioUrl.isEmpty() &&
-                                item.episode.id.startsWith("itunes_ep_") &&
-                                item.podcast.id.startsWith("itunes_")
+                        // 使用 derivedStateOf 优化过滤计算，避免不必要的重组
+                        val filteredResults = remember(state.searchResults, state.searchFilterType) {
+                            derivedStateOf {
+                                when (state.searchFilterType) {
+                                    SearchFilterType.ALL -> state.searchResults
+                                    SearchFilterType.PODCASTS -> state.searchResults.filter { item ->
+                                        item.episode.audioUrl.isEmpty() &&
+                                        item.episode.id.startsWith("itunes_ep_") &&
+                                        item.podcast.id.startsWith("itunes_")
+                                    }
+                                    SearchFilterType.EPISODES -> state.searchResults.filter { item ->
+                                        !(item.episode.audioUrl.isEmpty() &&
+                                          item.episode.id.startsWith("itunes_ep_") &&
+                                          item.podcast.id.startsWith("itunes_"))
+                                    }
+                                }
                             }
-                            SearchFilterType.EPISODES -> state.searchResults.filter { item ->
-                                !(item.episode.audioUrl.isEmpty() &&
-                                  item.episode.id.startsWith("itunes_ep_") &&
-                                  item.podcast.id.startsWith("itunes_"))
-                            }
-                        }
+                        }.value
 
                         items(filteredResults, key = { it.episode.id }) { item ->
                             // 判断是播客节目还是单集：如果 audioUrl 为空且是 iTunes 搜索结果，则认为是播客节目

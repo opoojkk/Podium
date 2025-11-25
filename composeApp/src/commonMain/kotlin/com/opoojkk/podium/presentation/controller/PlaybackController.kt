@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -54,35 +56,55 @@ class PlaybackController(
 
         // Monitor playback state and auto-save progress
         scope.launch {
-            player.state.collect { state ->
-                if (state.episode != null && state.isPlaying) {
-                    // Start periodic save task
-                    if (playbackSaveJob?.isActive != true) {
-                        playbackSaveJob = scope.launch {
-                            while (state.isPlaying) {
-                                kotlinx.coroutines.delay(10_000) // Save every 10 seconds
-                                val currentState = player.state.value
-                                if (currentState.episode != null) {
-                                    repository.savePlayback(
-                                        PlaybackProgress(
-                                            episodeId = currentState.episode.id,
-                                            positionMs = currentState.positionMs,
-                                            durationMs = currentState.durationMs ?: currentState.episode.duration,
-                                            updatedAt = Clock.System.now(),
-                                        ),
-                                    )
-                                    Logger.d("PlaybackController") { "🎵 Auto-saved playback progress: ${currentState.positionMs}ms" }
-                                }
-                            }
-                        }
+            player.state
+                .distinctUntilChangedBy { it.isPlaying }
+                .collect { state ->
+                    if (state.episode != null && state.isPlaying) {
+                        startAutoSave()
+                    } else {
+                        stopAutoSave()
                     }
+                }
+        }
+    }
+
+    /**
+     * Start auto-save timer for playback progress.
+     */
+    private fun startAutoSave() {
+        // Cancel existing job if any
+        playbackSaveJob?.cancel()
+
+        playbackSaveJob = scope.launch {
+            while (isActive) {
+                kotlinx.coroutines.delay(10_000) // Save every 10 seconds
+
+                // Get fresh state
+                val currentState = player.state.value
+                if (currentState.episode != null && currentState.isPlaying) {
+                    repository.savePlayback(
+                        PlaybackProgress(
+                            episodeId = currentState.episode.id,
+                            positionMs = currentState.positionMs,
+                            durationMs = currentState.durationMs ?: currentState.episode.duration,
+                            updatedAt = Clock.System.now(),
+                        ),
+                    )
+                    Logger.d("PlaybackController") { "🎵 Auto-saved playback progress: ${currentState.positionMs}ms" }
                 } else {
-                    // Stop auto-save when playback stops
-                    playbackSaveJob?.cancel()
-                    playbackSaveJob = null
+                    // Stop if playback stopped
+                    break
                 }
             }
         }
+    }
+
+    /**
+     * Stop auto-save timer.
+     */
+    private fun stopAutoSave() {
+        playbackSaveJob?.cancel()
+        playbackSaveJob = null
     }
 
     /**

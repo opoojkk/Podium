@@ -63,6 +63,370 @@ private fun PlaybackState.isEpisodeNearCompletion(): Boolean {
     return remaining <= PLAYBACK_COMPLETION_THRESHOLD_MS || positionMs >= duration
 }
 
+// Shared Composable Functions to eliminate duplication between Desktop and Mobile layouts
+
+@Composable
+private fun CacheManagementContent(
+    showCacheManagement: MutableState<Boolean>,
+    profileState: com.opoojkk.podium.presentation.ProfileUiState,
+    controller: com.opoojkk.podium.presentation.PodiumController,
+) {
+    if (showCacheManagement.value) {
+        CacheManagementScreen(
+            state = profileState,
+            onBackClick = { showCacheManagement.value = false },
+            onTogglePodcastAutoDownload = controller::togglePodcastAutoDownload,
+            onClearCache = { /* TODO: 实现清除缓存功能 */ },
+        )
+    }
+}
+
+@Composable
+private fun RecommendedPodcastDetailContent(
+    showRecommendedPodcastDetail: MutableState<Boolean>,
+    selectedRecommendedPodcast: MutableState<com.opoojkk.podium.data.model.recommended.RecommendedPodcast?>,
+    controller: com.opoojkk.podium.presentation.PodiumController,
+    environment: PodiumEnvironment,
+    playbackState: PlaybackState,
+    onPlayEpisode: (Episode) -> Unit,
+    snackbarHostState: SnackbarHostState,
+) {
+    val scope = rememberCoroutineScope()
+    if (showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null) {
+        val podcastToShow = selectedRecommendedPodcast.value!!
+        val podcastName = podcastToShow.name
+        com.opoojkk.podium.ui.podcast.RecommendedPodcastDetailScreen(
+            podcast = podcastToShow,
+            onBack = {
+                showRecommendedPodcastDetail.value = false
+                selectedRecommendedPodcast.value = null
+            },
+            onSubscribe = { rssUrl ->
+                controller.subscribe(rssUrl)
+                scope.launch {
+                    snackbarHostState.showSnackbar("已订阅《${podcastName}》")
+                }
+            },
+            onUnsubscribe = { rssUrl ->
+                controller.unsubscribeByFeedUrl(rssUrl)
+                scope.launch {
+                    snackbarHostState.showSnackbar("已取消订阅《${podcastName}》")
+                }
+            },
+            checkIfSubscribed = { rssUrl ->
+                controller.checkIfSubscribed(rssUrl)
+            },
+            onPlayEpisode = { rssEpisode ->
+                val episode = Episode(
+                    id = rssEpisode.id,
+                    podcastId = podcastToShow.id,
+                    podcastTitle = podcastToShow.name,
+                    title = rssEpisode.title,
+                    description = rssEpisode.description,
+                    audioUrl = rssEpisode.audioUrl,
+                    publishDate = rssEpisode.publishDate,
+                    duration = rssEpisode.duration,
+                    imageUrl = rssEpisode.imageUrl,
+                    chapters = rssEpisode.chapters,
+                )
+                onPlayEpisode(episode)
+            },
+            loadPodcastFeed = { feedUrl ->
+                kotlin.runCatching {
+                    com.opoojkk.podium.data.rss.PodcastFeedService(
+                        httpClient = environment.httpClient,
+                        parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
+                    ).fetch(feedUrl)
+                }
+            },
+            currentPlayingEpisodeId = playbackState.episode?.id,
+            isPlaying = playbackState.isPlaying,
+            isBuffering = playbackState.isBuffering,
+            onPauseResume = {
+                if (playbackState.isPlaying) {
+                    controller.pause()
+                } else {
+                    controller.resume()
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun CategoryDetailContent(
+    selectedCategory: MutableState<PodcastCategory?>,
+    selectedRecommendedPodcast: MutableState<com.opoojkk.podium.data.model.recommended.RecommendedPodcast?>,
+    showRecommendedPodcastDetail: MutableState<Boolean>,
+    recommendedPodcastRepository: RecommendedPodcastRepository,
+) {
+    if (selectedCategory.value != null) {
+        val category = selectedCategory.value!!
+        CategoryDetailScreen(
+            category = category,
+            onBack = { selectedCategory.value = null },
+            onPodcastClick = { podcast ->
+                selectedRecommendedPodcast.value = podcast
+                showRecommendedPodcastDetail.value = true
+            },
+            loadPodcastArtwork = { podcasts ->
+                recommendedPodcastRepository.loadPodcastsWithArtwork(podcasts)
+            }
+        )
+    }
+}
+
+@Composable
+private fun PodcastEpisodesContent(
+    selectedPodcast: MutableState<Podcast?>,
+    controller: com.opoojkk.podium.presentation.PodiumController,
+    playbackState: PlaybackState,
+    downloads: Map<String, com.opoojkk.podium.data.model.DownloadStatus>,
+    onPlayEpisode: (Episode) -> Unit,
+    snackbarHostState: SnackbarHostState,
+    showPlayerDetail: MutableState<Boolean>? = null,
+) {
+    val scope = rememberCoroutineScope()
+    if (selectedPodcast.value != null) {
+        val podcast = selectedPodcast.value!!
+        val podcastEpisodes by controller.getPodcastEpisodes(podcast.id).collectAsState(emptyList())
+        PodcastEpisodesScreen(
+            podcast = podcast,
+            episodes = podcastEpisodes,
+            onPlayEpisode = onPlayEpisode,
+            onBack = { selectedPodcast.value = null },
+            downloads = downloads,
+            onDownloadEpisode = controller::enqueueDownload,
+            onRefresh = { onComplete ->
+                controller.refreshPodcast(podcast.id, onComplete)
+            },
+            currentPlayingEpisodeId = playbackState.episode?.id,
+            isPlaying = playbackState.isPlaying,
+            isBuffering = playbackState.isBuffering,
+            onPauseResume = {
+                if (playbackState.isPlaying) {
+                    controller.pause()
+                } else {
+                    controller.resume()
+                }
+            },
+            onAddToPlaylist = { episodeId ->
+                controller.addToPlaylist(episodeId)
+            },
+            onUnsubscribe = {
+                controller.deleteSubscription(podcast.id)
+                selectedPodcast.value = null
+                scope.launch {
+                    snackbarHostState.showSnackbar("已取消订阅《${podcast.title}》")
+                }
+            },
+            onEpisodeClick = if (showPlayerDetail != null) {
+                { episode ->
+                    onPlayEpisode(episode)
+                    showPlayerDetail.value = true
+                }
+            } else null,
+        )
+    }
+}
+
+@Composable
+private fun ViewMoreContent(
+    showViewMore: MutableState<ViewMoreType?>,
+    allRecentListening: List<EpisodeWithPodcast>,
+    allRecentUpdates: List<EpisodeWithPodcast>,
+    controller: com.opoojkk.podium.presentation.PodiumController,
+    playbackState: PlaybackState,
+    onPlayEpisode: (Episode) -> Unit,
+) {
+    if (showViewMore.value != null) {
+        val viewMoreType = showViewMore.value!!
+        val (title, episodes) = when (viewMoreType) {
+            ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
+            ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
+        }
+        ViewMoreScreen(
+            title = title,
+            episodes = episodes,
+            onPlayEpisode = onPlayEpisode,
+            onBack = { showViewMore.value = null },
+            currentPlayingEpisodeId = playbackState.episode?.id,
+            isPlaying = playbackState.isPlaying,
+            isBuffering = playbackState.isBuffering,
+            onPauseResume = {
+                if (playbackState.isPlaying) {
+                    controller.pause()
+                } else {
+                    controller.resume()
+                }
+            },
+            onAddToPlaylist = { episodeId ->
+                controller.addToPlaylist(episodeId)
+            },
+        )
+    }
+}
+
+@Composable
+private fun MainNavigationScreens(
+    currentDestination: PodiumDestination,
+    homeState: com.opoojkk.podium.presentation.HomeUiState,
+    subscriptionsState: com.opoojkk.podium.presentation.SubscriptionsUiState,
+    profileState: com.opoojkk.podium.presentation.ProfileUiState,
+    playbackState: PlaybackState,
+    categories: List<PodcastCategory>,
+    categoriesLoading: Boolean,
+    hotEpisodes: List<EpisodeWithPodcast>,
+    hotPodcasts: List<Podcast>,
+    newEpisodes: List<EpisodeWithPodcast>,
+    newPodcasts: List<Podcast>,
+    controller: com.opoojkk.podium.presentation.PodiumController,
+    selectedPodcast: MutableState<Podcast?>,
+    selectedCategory: MutableState<PodcastCategory?>,
+    showViewMore: MutableState<ViewMoreType?>,
+    showCacheManagement: MutableState<Boolean>,
+    showAboutDialog: MutableState<Boolean>,
+    showUpdateIntervalDialog: MutableState<Boolean>,
+    onPlayEpisode: (Episode) -> Unit,
+    onPodcastClick: (Podcast) -> Unit,
+    onImportClick: () -> Unit,
+    onExportClick: () -> Unit,
+    snackbarHostState: SnackbarHostState,
+    showPlayerDetail: MutableState<Boolean>? = null,
+) {
+    val scope = rememberCoroutineScope()
+    when (currentDestination) {
+        PodiumDestination.Home -> HomeScreen(
+            state = homeState.copy(
+                hotEpisodes = hotEpisodes,
+                hotPodcasts = hotPodcasts,
+                newEpisodes = newEpisodes,
+                newPodcasts = newPodcasts
+            ),
+            onPlayEpisode = onPlayEpisode,
+            onSearchQueryChange = controller::onHomeSearchQueryChange,
+            onClearSearch = controller::clearHomeSearch,
+            onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
+            onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
+            onRefresh = {
+                controller.refreshSubscriptions { count ->
+                    scope.launch {
+                        val message = if (count > 0) {
+                            "更新完成，发现 $count 个新节目"
+                        } else {
+                            "已是最新"
+                        }
+                        snackbarHostState.showSnackbar(message)
+                    }
+                }
+            },
+            isRefreshing = subscriptionsState.isRefreshing,
+            onPodcastClick = onPodcastClick,
+            currentPlayingEpisodeId = playbackState.episode?.id,
+            isPlaying = playbackState.isPlaying,
+            isBuffering = playbackState.isBuffering,
+            onPauseResume = {
+                if (playbackState.isPlaying) {
+                    controller.pause()
+                } else {
+                    controller.resume()
+                }
+            },
+            onAddToPlaylist = { episodeId ->
+                controller.addToPlaylist(episodeId)
+            },
+            onEpisodeClick = if (showPlayerDetail != null) {
+                { episode ->
+                    onPlayEpisode(episode)
+                    showPlayerDetail.value = true
+                }
+            } else null,
+            onLoadMoreSearchResults = controller::loadMoreSearchResults,
+            onSearchFilterTypeChange = controller::setSearchFilterType,
+        )
+
+        PodiumDestination.Subscriptions -> SubscriptionsScreen(
+            state = subscriptionsState,
+            onRefresh = controller::refreshSubscriptions,
+            onAddSubscription = controller::subscribe,
+            onEditSubscription = controller::renameSubscription,
+            onDeleteSubscription = controller::deleteSubscription,
+            onPodcastClick = { podcast -> selectedPodcast.value = podcast },
+            onClearDuplicateMessage = controller::clearDuplicateSubscriptionMessage,
+        )
+
+        PodiumDestination.Categories -> CategoriesScreen(
+            categories = categories,
+            isLoading = categoriesLoading,
+            onCategoryClick = { category -> selectedCategory.value = category }
+        )
+
+        PodiumDestination.Profile -> ProfileScreen(
+            state = profileState,
+            onImportClick = onImportClick,
+            onExportClick = onExportClick,
+            onCacheManagementClick = { showCacheManagement.value = true },
+            onAboutClick = { showAboutDialog.value = true },
+            onUpdateIntervalClick = { showUpdateIntervalDialog.value = true },
+        )
+    }
+}
+
+@Composable
+private fun PlaylistContent(
+    showPlaylist: MutableState<Boolean>,
+    showPlaylistFromPlayerDetail: MutableState<Boolean>,
+    showPlayerDetail: MutableState<Boolean>,
+    playlistState: com.opoojkk.podium.presentation.PlaylistUiState,
+    controller: com.opoojkk.podium.presentation.PodiumController,
+    onPlayEpisode: (Episode) -> Unit,
+) {
+    com.opoojkk.podium.ui.playlist.PlaylistScreen(
+        state = playlistState,
+        onPlayEpisode = { episode ->
+            onPlayEpisode(episode)
+            showPlaylist.value = false
+            if (showPlaylistFromPlayerDetail.value) {
+                showPlayerDetail.value = true
+                showPlaylistFromPlayerDetail.value = false
+            }
+        },
+        onMarkCompleted = { episodeId ->
+            controller.markEpisodeCompleted(episodeId)
+        },
+        onRemoveFromPlaylist = { episodeId ->
+            controller.removeFromPlaylist(episodeId)
+        },
+        onBack = {
+            showPlaylist.value = false
+            if (showPlaylistFromPlayerDetail.value) {
+                showPlayerDetail.value = true
+                showPlaylistFromPlayerDetail.value = false
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
+    )
+}
+
+@Composable
+private fun SharedSnackbarHost(
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+) {
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = modifier,
+        snackbar = { snackbarData ->
+            androidx.compose.material3.Snackbar(
+                snackbarData = snackbarData,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                shape = MaterialTheme.shapes.medium,
+            )
+        }
+    )
+}
+
 @Composable
 fun PodiumApp(
     environment: PodiumEnvironment,
@@ -104,26 +468,6 @@ fun PodiumApp(
     // Use HomeViewModel for categories and XYZRank data
     val homeViewModel = com.opoojkk.podium.presentation.viewmodel.rememberHomeViewModel(environment)
     val homeViewModelState by homeViewModel.state.collectAsState()
-
-    // For backward compatibility, create references to ViewModel state
-    val categoriesState = remember(homeViewModelState.categories) {
-        mutableStateOf(homeViewModelState.categories)
-    }
-    val categoriesLoading = remember(homeViewModelState.isLoading) {
-        mutableStateOf(homeViewModelState.isLoading)
-    }
-    val hotEpisodes = remember(homeViewModelState.hotEpisodes) {
-        mutableStateOf(homeViewModelState.hotEpisodes)
-    }
-    val hotPodcasts = remember(homeViewModelState.hotPodcasts) {
-        mutableStateOf(homeViewModelState.hotPodcasts)
-    }
-    val newEpisodes = remember(homeViewModelState.newEpisodes) {
-        mutableStateOf(homeViewModelState.newEpisodes)
-    }
-    val newPodcasts = remember(homeViewModelState.newPodcasts) {
-        mutableStateOf(homeViewModelState.newPodcasts)
-    }
 
     // RecommendedPodcastRepository for category detail screen
     val recommendedPodcastRepository = remember {
@@ -437,13 +781,13 @@ fun PodiumApp(
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
                 downloads = downloads,
-                categories = categoriesState.value,
-                categoriesLoading = categoriesLoading.value,
+                categories = homeViewModelState.categories,
+                categoriesLoading = homeViewModelState.isLoading,
                 recommendedPodcastRepository = recommendedPodcastRepository,
-                hotEpisodes = hotEpisodes.value,
-                hotPodcasts = hotPodcasts.value,
-                newEpisodes = newEpisodes.value,
-                newPodcasts = newPodcasts.value,
+                hotEpisodes = homeViewModelState.hotEpisodes,
+                hotPodcasts = homeViewModelState.hotPodcasts,
+                newEpisodes = homeViewModelState.newEpisodes,
+                newPodcasts = homeViewModelState.newPodcasts,
                 environment = environment,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
@@ -479,13 +823,13 @@ fun PodiumApp(
                 allRecentListening = allRecentListening,
                 allRecentUpdates = allRecentUpdates,
                 downloads = downloads,
-                categories = categoriesState.value,
-                categoriesLoading = categoriesLoading.value,
+                categories = homeViewModelState.categories,
+                categoriesLoading = homeViewModelState.isLoading,
                 recommendedPodcastRepository = recommendedPodcastRepository,
-                hotEpisodes = hotEpisodes.value,
-                hotPodcasts = hotPodcasts.value,
-                newEpisodes = newEpisodes.value,
-                newPodcasts = newPodcasts.value,
+                hotEpisodes = homeViewModelState.hotEpisodes,
+                hotPodcasts = homeViewModelState.hotPodcasts,
+                newEpisodes = homeViewModelState.newEpisodes,
+                newPodcasts = homeViewModelState.newPodcasts,
                 environment = environment,
                 onImportClick = handleImportClick,
                 onExportClick = handleExportClick,
@@ -599,12 +943,10 @@ private fun DesktopLayout(
                     // 主内容区域 - 始终显示
                     when {
                         showCacheManagement.value -> {
-                            // 显示缓存管理页面
-                            CacheManagementScreen(
-                                state = profileState,
-                                onBackClick = { showCacheManagement.value = false },
-                                onTogglePodcastAutoDownload = controller::togglePodcastAutoDownload,
-                                onClearCache = { /* TODO: 实现清除缓存功能 */ },
+                            CacheManagementContent(
+                                showCacheManagement = showCacheManagement,
+                                profileState = profileState,
+                                controller = controller,
                             )
                         }
                         showPlayerDetail.value && playbackState.episode != null -> {
@@ -630,224 +972,72 @@ private fun DesktopLayout(
                             )
                         }
                         showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
-                            // 显示推荐播客详情页
-                            val podcastToShow = selectedRecommendedPodcast.value!!
-                            val podcastName = podcastToShow.name
-                            com.opoojkk.podium.ui.podcast.RecommendedPodcastDetailScreen(
-                                podcast = podcastToShow,
-                                onBack = {
-                                    showRecommendedPodcastDetail.value = false
-                                    selectedRecommendedPodcast.value = null
-                                },
-                                onSubscribe = { rssUrl ->
-                                    controller.subscribe(rssUrl)
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("已订阅《${podcastName}》")
-                                    }
-                                },
-                                onUnsubscribe = { rssUrl ->
-                                    controller.unsubscribeByFeedUrl(rssUrl)
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("已取消订阅《${podcastName}》")
-                                    }
-                                },
-                                checkIfSubscribed = { rssUrl ->
-                                    controller.checkIfSubscribed(rssUrl)
-                                },
-                                onPlayEpisode = { rssEpisode ->
-                                    // Convert RssEpisode to Episode for playback
-                                    val episode = Episode(
-                                        id = rssEpisode.id,
-                                        podcastId = podcastToShow.id,
-                                        podcastTitle = podcastToShow.name,
-                                        title = rssEpisode.title,
-                                        description = rssEpisode.description,
-                                        audioUrl = rssEpisode.audioUrl,
-                                        publishDate = rssEpisode.publishDate,
-                                        duration = rssEpisode.duration,
-                                        imageUrl = rssEpisode.imageUrl,
-                                        chapters = rssEpisode.chapters,
-                                    )
-                                    onPlayEpisode(episode)
-                                },
-                                loadPodcastFeed = { feedUrl ->
-                                    kotlin.runCatching {
-                                        com.opoojkk.podium.data.rss.PodcastFeedService(
-                                            httpClient = environment.httpClient,
-                                            parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
-                                        ).fetch(feedUrl)
-                                    }
-                                },
-                                currentPlayingEpisodeId = playbackState.episode?.id,
-                                isPlaying = playbackState.isPlaying,
-                                isBuffering = playbackState.isBuffering,
-                                onPauseResume = {
-                                    if (playbackState.isPlaying) {
-                                        controller.pause()
-                                    } else {
-                                        controller.resume()
-                                    }
-                                },
+                            RecommendedPodcastDetailContent(
+                                showRecommendedPodcastDetail = showRecommendedPodcastDetail,
+                                selectedRecommendedPodcast = selectedRecommendedPodcast,
+                                controller = controller,
+                                environment = environment,
+                                playbackState = playbackState,
+                                onPlayEpisode = onPlayEpisode,
+                                snackbarHostState = snackbarHostState,
                             )
                         }
                         selectedCategory.value != null -> {
-                            // 显示分类详情页
-                            val category = selectedCategory.value!!
-                            CategoryDetailScreen(
-                                category = category,
-                                onBack = { selectedCategory.value = null },
-                                onPodcastClick = { podcast ->
-                                    selectedRecommendedPodcast.value = podcast
-                                    showRecommendedPodcastDetail.value = true
-                                },
-                                loadPodcastArtwork = { podcasts ->
-                                    recommendedPodcastRepository.loadPodcastsWithArtwork(podcasts)
-                                }
+                            CategoryDetailContent(
+                                selectedCategory = selectedCategory,
+                                selectedRecommendedPodcast = selectedRecommendedPodcast,
+                                showRecommendedPodcastDetail = showRecommendedPodcastDetail,
+                                recommendedPodcastRepository = recommendedPodcastRepository,
                             )
                         }
                         selectedPodcast.value != null -> {
-                            // 显示播客单集列表
-                            val podcast = selectedPodcast.value!!
-                            val podcastEpisodes by controller.getPodcastEpisodes(podcast.id).collectAsState(emptyList())
-                            PodcastEpisodesScreen(
-                                podcast = podcast,
-                                episodes = podcastEpisodes,
-                                onPlayEpisode = onPlayEpisode,
-                                onBack = { selectedPodcast.value = null },
+                            PodcastEpisodesContent(
+                                selectedPodcast = selectedPodcast,
+                                controller = controller,
+                                playbackState = playbackState,
                                 downloads = downloads,
-                                onDownloadEpisode = controller::enqueueDownload,
-                                onRefresh = { onComplete ->
-                                    controller.refreshPodcast(podcast.id, onComplete)
-                                },
-                                currentPlayingEpisodeId = playbackState.episode?.id,
-                                isPlaying = playbackState.isPlaying,
-                                isBuffering = playbackState.isBuffering,
-                                onPauseResume = {
-                                    if (playbackState.isPlaying) {
-                                        controller.pause()
-                                    } else {
-                                        controller.resume()
-                                    }
-                                },
-                                onAddToPlaylist = { episodeId ->
-                                    controller.addToPlaylist(episodeId)
-                                },
-                                onUnsubscribe = {
-                                    controller.deleteSubscription(podcast.id)
-                                    selectedPodcast.value = null
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("已取消订阅《${podcast.title}》")
-                                    }
-                                },
-                                onEpisodeClick = { episode ->
-                                    // 播放单集并打开播放器详情页
-                                    onPlayEpisode(episode)
-                                    showPlayerDetail.value = true
-                                },
+                                onPlayEpisode = onPlayEpisode,
+                                snackbarHostState = snackbarHostState,
+                                showPlayerDetail = showPlayerDetail,
                             )
                         }
                         showViewMore.value != null -> {
-                            // 显示查看更多页面
-                            val viewMoreType = showViewMore.value!!
-                            val (title, episodes) = when (viewMoreType) {
-                                ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
-                                ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
-                            }
-                            ViewMoreScreen(
-                                title = title,
-                                episodes = episodes,
+                            ViewMoreContent(
+                                showViewMore = showViewMore,
+                                allRecentListening = allRecentListening,
+                                allRecentUpdates = allRecentUpdates,
+                                controller = controller,
+                                playbackState = playbackState,
                                 onPlayEpisode = onPlayEpisode,
-                                onBack = { showViewMore.value = null },
-                                currentPlayingEpisodeId = playbackState.episode?.id,
-                                isPlaying = playbackState.isPlaying,
-                                isBuffering = playbackState.isBuffering,
-                                onPauseResume = {
-                                    if (playbackState.isPlaying) {
-                                        controller.pause()
-                                    } else {
-                                        controller.resume()
-                                    }
-                                },
-                                onAddToPlaylist = { episodeId ->
-                                    controller.addToPlaylist(episodeId)
-                                },
                             )
                         }
                         else -> {
-                            when (appState.currentDestination) {
-                                PodiumDestination.Home -> HomeScreen(
-                                    state = homeState.copy(
-                                        hotEpisodes = hotEpisodes,
-                                        hotPodcasts = hotPodcasts,
-                                        newEpisodes = newEpisodes,
-                                        newPodcasts = newPodcasts
-                                    ),
-                                    onPlayEpisode = onPlayEpisode,
-                                    onSearchQueryChange = controller::onHomeSearchQueryChange,
-                                    onClearSearch = controller::clearHomeSearch,
-                                    onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
-                                    onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
-                                    onRefresh = {
-                                        controller.refreshSubscriptions { count ->
-                                            scope.launch {
-                                                val message = if (count > 0) {
-                                                    "更新完成，发现 $count 个新节目"
-                                                } else {
-                                                    "已是最新"
-                                                }
-                                                snackbarHostState.showSnackbar(message)
-                                            }
-                                        }
-                                    },
-                                    isRefreshing = subscriptionsState.isRefreshing,
-                                    onPodcastClick = onPodcastClick,
-                                    currentPlayingEpisodeId = playbackState.episode?.id,
-                                    isPlaying = playbackState.isPlaying,
-                                isBuffering = playbackState.isBuffering,
-                                    onPauseResume = {
-                                        if (playbackState.isPlaying) {
-                                            controller.pause()
-                                        } else {
-                                            controller.resume()
-                                        }
-                                    },
-                                    onAddToPlaylist = { episodeId ->
-                                        controller.addToPlaylist(episodeId)
-                                    },
-                                    onEpisodeClick = { episode ->
-                                        // 播放单集并打开播放器详情页
-                                        onPlayEpisode(episode)
-                                        showPlayerDetail.value = true
-                                    },
-                                    onLoadMoreSearchResults = controller::loadMoreSearchResults,
-                                    onSearchFilterTypeChange = controller::setSearchFilterType,
-                                )
-
-                                PodiumDestination.Subscriptions -> SubscriptionsScreen(
-                                    state = subscriptionsState,
-                                    onRefresh = controller::refreshSubscriptions,
-                                    onAddSubscription = controller::subscribe,
-                                    onEditSubscription = controller::renameSubscription,
-                                    onDeleteSubscription = controller::deleteSubscription,
-                                    onPodcastClick = { podcast -> selectedPodcast.value = podcast },
-                                    onClearDuplicateMessage = controller::clearDuplicateSubscriptionMessage,
-                                )
-
-                                PodiumDestination.Categories -> CategoriesScreen(
-                                    categories = categories,
-                                    isLoading = categoriesLoading,
-                                    onCategoryClick = { category -> selectedCategory.value = category }
-                                )
-
-                                PodiumDestination.Profile -> ProfileScreen(
-                                    state = profileState,
-                                    onImportClick = onImportClick,
-                                    onExportClick = onExportClick,
-                                    onCacheManagementClick = { showCacheManagement.value = true },
-                                    onAboutClick = { showAboutDialog.value = true },
-                                    onUpdateIntervalClick = { showUpdateIntervalDialog.value = true },
-                                )
-                            }
+                            MainNavigationScreens(
+                                currentDestination = appState.currentDestination,
+                                homeState = homeState,
+                                subscriptionsState = subscriptionsState,
+                                profileState = profileState,
+                                playbackState = playbackState,
+                                categories = categories,
+                                categoriesLoading = categoriesLoading,
+                                hotEpisodes = hotEpisodes,
+                                hotPodcasts = hotPodcasts,
+                                newEpisodes = newEpisodes,
+                                newPodcasts = newPodcasts,
+                                controller = controller,
+                                selectedPodcast = selectedPodcast,
+                                selectedCategory = selectedCategory,
+                                showViewMore = showViewMore,
+                                showCacheManagement = showCacheManagement,
+                                showAboutDialog = showAboutDialog,
+                                showUpdateIntervalDialog = showUpdateIntervalDialog,
+                                onPlayEpisode = onPlayEpisode,
+                                onPodcastClick = onPodcastClick,
+                                onImportClick = onImportClick,
+                                onExportClick = onExportClick,
+                                snackbarHostState = snackbarHostState,
+                                showPlayerDetail = showPlayerDetail,
+                            )
                         }
                     }
 
@@ -879,30 +1069,13 @@ private fun DesktopLayout(
                             )
                         )
                     ) {
-                        com.opoojkk.podium.ui.playlist.PlaylistScreen(
-                            state = playlistState,
-                            onPlayEpisode = { episode ->
-                                onPlayEpisode(episode)
-                                showPlaylist.value = false
-                                if (showPlaylistFromPlayerDetail.value) {
-                                    showPlayerDetail.value = true
-                                    showPlaylistFromPlayerDetail.value = false
-                                }
-                            },
-                            onMarkCompleted = { episodeId ->
-                                controller.markEpisodeCompleted(episodeId)
-                            },
-                            onRemoveFromPlaylist = { episodeId ->
-                                controller.removeFromPlaylist(episodeId)
-                            },
-                            onBack = {
-                                showPlaylist.value = false
-                                if (showPlaylistFromPlayerDetail.value) {
-                                    showPlayerDetail.value = true
-                                    showPlaylistFromPlayerDetail.value = false
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize(),
+                        PlaylistContent(
+                            showPlaylist = showPlaylist,
+                            showPlaylistFromPlayerDetail = showPlaylistFromPlayerDetail,
+                            showPlayerDetail = showPlayerDetail,
+                            playlistState = playlistState,
+                            controller = controller,
+                            onPlayEpisode = onPlayEpisode,
                         )
                     }
                 }
@@ -933,17 +1106,9 @@ private fun DesktopLayout(
         }
 
         // Snackbar host for showing notifications
-        SnackbarHost(
-            hostState = snackbarHostState,
+        SharedSnackbarHost(
+            snackbarHostState = snackbarHostState,
             modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(16.dp),
-            snackbar = { snackbarData ->
-                androidx.compose.material3.Snackbar(
-                    snackbarData = snackbarData,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    shape = MaterialTheme.shapes.medium,
-                )
-            }
         )
         }
     }
@@ -1064,151 +1229,50 @@ private fun MobileLayout(
                 // 主内容区域
                 when {
                     showCacheManagement.value -> {
-                        // 显示缓存管理页面 - 不应用 padding，让 CacheManagementScreen 的 Scaffold 自己处理
-                        CacheManagementScreen(
-                            state = profileState,
-                            onBackClick = { showCacheManagement.value = false },
-                            onTogglePodcastAutoDownload = controller::togglePodcastAutoDownload,
-                            onClearCache = { /* TODO: 实现清除缓存功能 */ },
+                        CacheManagementContent(
+                            showCacheManagement = showCacheManagement,
+                            profileState = profileState,
+                            controller = controller,
                         )
                     }
                     showRecommendedPodcastDetail.value && selectedRecommendedPodcast.value != null -> {
-                        // 显示推荐播客详情页
-                        val podcastToShow = selectedRecommendedPodcast.value!!
-                        val podcastName = podcastToShow.name
-                        com.opoojkk.podium.ui.podcast.RecommendedPodcastDetailScreen(
-                            podcast = podcastToShow,
-                            onBack = {
-                                showRecommendedPodcastDetail.value = false
-                                selectedRecommendedPodcast.value = null
-                            },
-                            onSubscribe = { rssUrl ->
-                                controller.subscribe(rssUrl)
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("已订阅《${podcastName}》")
-                                }
-                            },
-                            onUnsubscribe = { rssUrl ->
-                                controller.unsubscribeByFeedUrl(rssUrl)
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("已取消订阅《${podcastName}》")
-                                }
-                            },
-                            checkIfSubscribed = { rssUrl ->
-                                controller.checkIfSubscribed(rssUrl)
-                            },
-                            onPlayEpisode = { rssEpisode ->
-                                // Convert RssEpisode to Episode for playback
-                                val episode = Episode(
-                                    id = rssEpisode.id,
-                                    podcastId = podcastToShow.id,
-                                    podcastTitle = podcastToShow.name,
-                                    title = rssEpisode.title,
-                                    description = rssEpisode.description,
-                                    audioUrl = rssEpisode.audioUrl,
-                                    publishDate = rssEpisode.publishDate,
-                                    duration = rssEpisode.duration,
-                                    imageUrl = rssEpisode.imageUrl,
-                                    chapters = rssEpisode.chapters,
-                                )
-                                onPlayEpisode(episode)
-                            },
-                            loadPodcastFeed = { feedUrl ->
-                                kotlin.runCatching {
-                                    com.opoojkk.podium.data.rss.PodcastFeedService(
-                                        httpClient = environment.httpClient,
-                                        parser = com.opoojkk.podium.data.rss.createDefaultRssParser()
-                                    ).fetch(feedUrl)
-                                }
-                            },
-                            currentPlayingEpisodeId = playbackState.episode?.id,
-                            isPlaying = playbackState.isPlaying,
-                                isBuffering = playbackState.isBuffering,
-                            onPauseResume = {
-                                if (playbackState.isPlaying) {
-                                    controller.pause()
-                                } else {
-                                    controller.resume()
-                                }
-                            },
+                        RecommendedPodcastDetailContent(
+                            showRecommendedPodcastDetail = showRecommendedPodcastDetail,
+                            selectedRecommendedPodcast = selectedRecommendedPodcast,
+                            controller = controller,
+                            environment = environment,
+                            playbackState = playbackState,
+                            onPlayEpisode = onPlayEpisode,
+                            snackbarHostState = snackbarHostState,
                         )
                     }
                     selectedCategory.value != null -> {
-                        // 显示分类详情页
-                        val category = selectedCategory.value!!
-                        CategoryDetailScreen(
-                            category = category,
-                            onBack = { selectedCategory.value = null },
-                            onPodcastClick = { podcast ->
-                                selectedRecommendedPodcast.value = podcast
-                                showRecommendedPodcastDetail.value = true
-                            },
-                            loadPodcastArtwork = { podcasts ->
-                                recommendedPodcastRepository.loadPodcastsWithArtwork(podcasts)
-                            }
+                        CategoryDetailContent(
+                            selectedCategory = selectedCategory,
+                            selectedRecommendedPodcast = selectedRecommendedPodcast,
+                            showRecommendedPodcastDetail = showRecommendedPodcastDetail,
+                            recommendedPodcastRepository = recommendedPodcastRepository,
                         )
                     }
                     selectedPodcast.value != null -> {
-                        // 显示播客单集列表
-                        val podcast = selectedPodcast.value!!
-                        val podcastEpisodes by controller.getPodcastEpisodes(podcast.id).collectAsState(emptyList())
-                        PodcastEpisodesScreen(
-                            podcast = podcast,
-                            episodes = podcastEpisodes,
-                            onPlayEpisode = onPlayEpisode,
-                            onBack = { selectedPodcast.value = null },
+                        PodcastEpisodesContent(
+                            selectedPodcast = selectedPodcast,
+                            controller = controller,
+                            playbackState = playbackState,
                             downloads = downloads,
-                            onDownloadEpisode = controller::enqueueDownload,
-                            onRefresh = { onComplete ->
-                                controller.refreshPodcast(podcast.id, onComplete)
-                            },
-                            currentPlayingEpisodeId = playbackState.episode?.id,
-                            isPlaying = playbackState.isPlaying,
-                                isBuffering = playbackState.isBuffering,
-                            onPauseResume = {
-                                if (playbackState.isPlaying) {
-                                    controller.pause()
-                                } else {
-                                    controller.resume()
-                                }
-                            },
-                            onAddToPlaylist = { episodeId ->
-                                controller.addToPlaylist(episodeId)
-                            },
-                            onUnsubscribe = {
-                                controller.deleteSubscription(podcast.id)
-                                selectedPodcast.value = null
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("已取消订阅《${podcast.title}》")
-                                }
-                            },
+                            onPlayEpisode = onPlayEpisode,
+                            snackbarHostState = snackbarHostState,
+                            showPlayerDetail = null,
                         )
                     }
                     showViewMore.value != null -> {
-                        // 显示查看更多页面 - 不应用 padding，让 Scaffold 自己处理
-                        val viewMoreType = showViewMore.value!!
-                        val (title, episodes) = when (viewMoreType) {
-                            ViewMoreType.RECENT_PLAYED -> "最近收听" to allRecentListening
-                            ViewMoreType.RECENT_UPDATES -> "最近更新" to allRecentUpdates
-                        }
-                        ViewMoreScreen(
-                            title = title,
-                            episodes = episodes,
+                        ViewMoreContent(
+                            showViewMore = showViewMore,
+                            allRecentListening = allRecentListening,
+                            allRecentUpdates = allRecentUpdates,
+                            controller = controller,
+                            playbackState = playbackState,
                             onPlayEpisode = onPlayEpisode,
-                            onBack = { showViewMore.value = null },
-                            currentPlayingEpisodeId = playbackState.episode?.id,
-                            isPlaying = playbackState.isPlaying,
-                                isBuffering = playbackState.isBuffering,
-                            onPauseResume = {
-                                if (playbackState.isPlaying) {
-                                    controller.pause()
-                                } else {
-                                    controller.resume()
-                                }
-                            },
-                            onAddToPlaylist = { episodeId ->
-                                controller.addToPlaylist(episodeId)
-                            },
                         )
                     }
 
@@ -1222,80 +1286,32 @@ private fun MobileLayout(
                                     bottom = paddingValues.calculateBottomPadding()
                                 )
                         ) {
-                            when (appState.currentDestination) {
-                                PodiumDestination.Home -> HomeScreen(
-                                    state = homeState.copy(
-                                        hotEpisodes = hotEpisodes,
-                                        hotPodcasts = hotPodcasts,
-                                        newEpisodes = newEpisodes,
-                                        newPodcasts = newPodcasts
-                                    ),
-                                    onPlayEpisode = onPlayEpisode,
-                                    onSearchQueryChange = controller::onHomeSearchQueryChange,
-                                    onClearSearch = controller::clearHomeSearch,
-                                    onViewMoreRecentPlayed = { showViewMore.value = ViewMoreType.RECENT_PLAYED },
-                                    onViewMoreRecentUpdates = { showViewMore.value = ViewMoreType.RECENT_UPDATES },
-                                    onRefresh = {
-                                        controller.refreshSubscriptions { count ->
-                                            scope.launch {
-                                                val message = if (count > 0) {
-                                                    "更新完成，发现 $count 个新节目"
-                                                } else {
-                                                    "已是最新"
-                                                }
-                                                snackbarHostState.showSnackbar(message)
-                                            }
-                                        }
-                                    },
-                                    isRefreshing = subscriptionsState.isRefreshing,
-                                    onPodcastClick = onPodcastClick,
-                                    currentPlayingEpisodeId = playbackState.episode?.id,
-                                    isPlaying = playbackState.isPlaying,
-                                isBuffering = playbackState.isBuffering,
-                                    onPauseResume = {
-                                        if (playbackState.isPlaying) {
-                                            controller.pause()
-                                        } else {
-                                            controller.resume()
-                                        }
-                                    },
-                                    onAddToPlaylist = { episodeId ->
-                                        controller.addToPlaylist(episodeId)
-                                    },
-                                    onEpisodeClick = { episode ->
-                                        // 播放单集并打开播放器详情页
-                                        onPlayEpisode(episode)
-                                        showPlayerDetail.value = true
-                                    },
-                                    onLoadMoreSearchResults = controller::loadMoreSearchResults,
-                                    onSearchFilterTypeChange = controller::setSearchFilterType,
-                                )
-
-                                PodiumDestination.Subscriptions -> SubscriptionsScreen(
-                                    state = subscriptionsState,
-                                    onRefresh = controller::refreshSubscriptions,
-                                    onAddSubscription = controller::subscribe,
-                                    onEditSubscription = controller::renameSubscription,
-                                    onDeleteSubscription = controller::deleteSubscription,
-                                    onPodcastClick = { podcast -> selectedPodcast.value = podcast },
-                                    onClearDuplicateMessage = controller::clearDuplicateSubscriptionMessage,
-                                )
-
-                                PodiumDestination.Profile -> ProfileScreen(
-                                    state = profileState,
-                                    onImportClick = onImportClick,
-                                    onExportClick = onExportClick,
-                                    onCacheManagementClick = { showCacheManagement.value = true },
-                                    onAboutClick = { showAboutDialog.value = true },
-                                    onUpdateIntervalClick = { showUpdateIntervalDialog.value = true },
-                                )
-
-                                PodiumDestination.Categories -> CategoriesScreen(
-                                    categories = categories,
-                                    isLoading = categoriesLoading,
-                                    onCategoryClick = { category -> selectedCategory.value = category }
-                                )
-                            }
+                            MainNavigationScreens(
+                                currentDestination = appState.currentDestination,
+                                homeState = homeState,
+                                subscriptionsState = subscriptionsState,
+                                profileState = profileState,
+                                playbackState = playbackState,
+                                categories = categories,
+                                categoriesLoading = categoriesLoading,
+                                hotEpisodes = hotEpisodes,
+                                hotPodcasts = hotPodcasts,
+                                newEpisodes = newEpisodes,
+                                newPodcasts = newPodcasts,
+                                controller = controller,
+                                selectedPodcast = selectedPodcast,
+                                selectedCategory = selectedCategory,
+                                showViewMore = showViewMore,
+                                showCacheManagement = showCacheManagement,
+                                showAboutDialog = showAboutDialog,
+                                showUpdateIntervalDialog = showUpdateIntervalDialog,
+                                onPlayEpisode = onPlayEpisode,
+                                onPodcastClick = onPodcastClick,
+                                onImportClick = onImportClick,
+                                onExportClick = onExportClick,
+                                snackbarHostState = snackbarHostState,
+                                showPlayerDetail = showPlayerDetail,
+                            )
                         }
                     }
                 }
@@ -1328,30 +1344,13 @@ private fun MobileLayout(
                         )
                     )
                 ) {
-                    com.opoojkk.podium.ui.playlist.PlaylistScreen(
-                        state = playlistState,
-                        onPlayEpisode = { episode ->
-                            onPlayEpisode(episode)
-                            showPlaylist.value = false
-                            if (showPlaylistFromPlayerDetail.value) {
-                                showPlayerDetail.value = true
-                                showPlaylistFromPlayerDetail.value = false
-                            }
-                        },
-                        onMarkCompleted = { episodeId ->
-                            controller.markEpisodeCompleted(episodeId)
-                        },
-                        onRemoveFromPlaylist = { episodeId ->
-                            controller.removeFromPlaylist(episodeId)
-                        },
-                        onBack = {
-                            showPlaylist.value = false
-                            if (showPlaylistFromPlayerDetail.value) {
-                                showPlayerDetail.value = true
-                                showPlaylistFromPlayerDetail.value = false
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize(),
+                    PlaylistContent(
+                        showPlaylist = showPlaylist,
+                        showPlaylistFromPlayerDetail = showPlaylistFromPlayerDetail,
+                        showPlayerDetail = showPlayerDetail,
+                        playlistState = playlistState,
+                        controller = controller,
+                        onPlayEpisode = onPlayEpisode,
                     )
                 }
             }
@@ -1411,17 +1410,9 @@ private fun MobileLayout(
         }
 
         // Snackbar host for showing notifications
-        SnackbarHost(
-            hostState = snackbarHostState,
+        SharedSnackbarHost(
+            snackbarHostState = snackbarHostState,
             modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(16.dp),
-            snackbar = { snackbarData ->
-                androidx.compose.material3.Snackbar(
-                    snackbarData = snackbarData,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    shape = MaterialTheme.shapes.medium,
-                )
-            }
         )
     }
 }
