@@ -1424,6 +1424,15 @@ private fun MobileLayout(
                 onDownloadClick = {
                     playbackState.episode?.let { controller.enqueueDownload(it) }
                 },
+                onMarkCompleted = {
+                    playbackState.episode?.let { controller.markEpisodeCompleted(it.id) }
+                },
+                onRemoveFromPlaylist = {
+                    playbackState.episode?.let { controller.removeFromPlaylist(it.id) }
+                },
+                onShareClick = {
+                    // TODO: 实现分享功能
+                },
                 playbackSpeed = playbackState.playbackSpeed,
                 onSpeedChange = { showSpeedDialog.value = true },
                 sleepTimerMinutes = if (sleepTimerState.isActive) sleepTimerState.remainingMinutes else null,
