@@ -10,19 +10,30 @@ import com.opoojkk.podium.navigation.PodiumDestination
 
 class PodiumAppState internal constructor(
     val controller: PodiumController,
-    private val selectedDestination: MutableState<PodiumDestination>,
+    private val destinationStack: MutableState<List<PodiumDestination>>,
 ) {
     val currentDestination: PodiumDestination
-        get() = selectedDestination.value
+        get() = destinationStack.value.last()
 
-    fun navigateTo(destination: PodiumDestination) {
-        selectedDestination.value = destination
+    val canGoBack: Boolean
+        get() = destinationStack.value.size > 1
+
+    fun navigateTo(destination: PodiumDestination, singleTop: Boolean = true) {
+        destinationStack.value = destinationStack.value.let { stack ->
+            if (singleTop && stack.lastOrNull() == destination) stack else stack + destination
+        }
+    }
+
+    fun navigateBack(): Boolean {
+        if (!canGoBack) return false
+        destinationStack.value = destinationStack.value.dropLast(1)
+        return true
     }
 }
 
 @Composable
 fun rememberPodiumAppState(environment: PodiumEnvironment): PodiumAppState {
     val controller = remember(environment) { environment.createController() }
-    val destinationState = remember { mutableStateOf(PodiumDestination.Home) }
+    val destinationState = remember { mutableStateOf(listOf(PodiumDestination.Home)) }
     return remember(controller) { PodiumAppState(controller, destinationState) }
 }

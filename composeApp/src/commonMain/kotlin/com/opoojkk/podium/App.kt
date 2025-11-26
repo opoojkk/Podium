@@ -13,6 +13,7 @@ import com.opoojkk.podium.data.model.PlaybackState
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
 import com.opoojkk.podium.platform.PlatformType
+import com.opoojkk.podium.platform.BackHandler
 import com.opoojkk.podium.platform.SetStatusBarColor
 import com.opoojkk.podium.platform.copyTextToClipboard
 import com.opoojkk.podium.platform.getPlatformType
@@ -448,6 +449,12 @@ fun PodiumApp(
     val controller = appState.controller
     val scope = rememberCoroutineScope()
     val showPlayerDetail = remember { mutableStateOf(false) }
+
+    BackHandler(enabled = appState.canGoBack) {
+        if (!appState.navigateBack()) {
+            onExitApp?.invoke()
+        }
+    }
 
     // 设置睡眠定时器完成回调
     DisposableEffect(controller) {

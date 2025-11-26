@@ -23,6 +23,7 @@ fun rememberHomeViewModel(environment: PodiumEnvironment): HomeViewModel {
                 httpClient = environment.httpClient
             ),
             applePodcastSearchRepository = environment.applePodcastSearchRepository,
+            homeCache = HomeCache(environment.appSettings),
             scope = scope
         )
     }

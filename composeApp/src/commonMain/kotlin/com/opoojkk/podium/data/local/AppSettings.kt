@@ -21,6 +21,7 @@ class AppSettings(private val queries: PodcastQueries) {
     companion object {
         private const val KEY_UPDATE_INTERVAL = "update_interval"
         private const val KEY_LAST_GLOBAL_UPDATE = "last_global_update"
+        private const val KEY_HOME_CACHE = "home_cache"
     }
 
     init {
@@ -100,5 +101,19 @@ class AppSettings(private val queries: PodcastQueries) {
             }
             UpdateInterval.MANUAL -> false
         }
+    }
+
+    /**
+     * Persist serialized home screen cache payload.
+     */
+    suspend fun saveHomeCache(serialized: String) {
+        queries.upsertSetting(KEY_HOME_CACHE, serialized)
+    }
+
+    /**
+     * Load serialized home screen cache payload if present.
+     */
+    fun getHomeCache(): String? {
+        return queries.getSetting(KEY_HOME_CACHE).executeAsOneOrNull()
     }
 }
