@@ -88,7 +88,7 @@ fun PlaybackBar(
             ) {
                 // Left: Artwork
                 ArtworkWithPlaceholder(
-                    artworkUrl = playbackState.episode.artworkUrl,
+                    artworkUrl = playbackState.episode.imageUrl,
                     title = playbackState.episode.title,
                     size = 48.dp,
                     cornerRadius = 8.dp,
