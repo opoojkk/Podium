@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -146,50 +147,40 @@ private fun PlaylistItemCard(
         } else 0f
     } ?: 0f
 
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        )
-    )
+    var showMenu by remember { mutableStateOf(false) }
+    val isPlaying = false // TODO: 需要从外部传入当前播放状态
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .scale(scale),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onPlayClick)
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            // 播客封面
-            ArtworkWithPlaceholder(
-                artworkUrl = item.podcast.artworkUrl,
-                title = item.podcast.title,
-                size = 64.dp,
-                cornerRadius = 10.dp,
-                contentDescription = item.podcast.title
-            )
-
-            // 右侧内容区域
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onPlayClick)
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 标题和播客名称
+                // 播客封面
+                ArtworkWithPlaceholder(
+                    artworkUrl = item.podcast.artworkUrl,
+                    title = item.podcast.title,
+                    size = 56.dp,
+                    cornerRadius = 8.dp,
+                    contentDescription = item.podcast.title
+                )
+
+                // 中间内容区域
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
                         text = item.episode.title,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -202,75 +193,117 @@ private fun PlaylistItemCard(
                     )
                 }
 
-                // 播放进度
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                // 右侧按钮组
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // 播放/暂停按钮
+                    IconButton(
+                        onClick = onPlayClick,
+                        modifier = Modifier.size(40.dp)
                     ) {
-                        Text(
-                            text = formatDuration(item.progress.positionMs),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) "暂停" else "播放",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
                         )
-                        item.progress.durationMs?.let {
-                            Text(
-                                text = formatDuration(it),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    }
+
+                    // 更多按钮
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "更多",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        // 下拉菜单
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("下一集播放") },
+                                onClick = {
+                                    showMenu = false
+                                    // TODO: 实现下一集播放
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.PlaylistPlay, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("移除") },
+                                onClick = {
+                                    showMenu = false
+                                    onRemoveFromPlaylist()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Delete, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("下载") },
+                                onClick = {
+                                    showMenu = false
+                                    // TODO: 实现下载
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Download, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("查看详情") },
+                                onClick = {
+                                    showMenu = false
+                                    // TODO: 实现查看详情
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Info, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("标记完成") },
+                                onClick = {
+                                    showMenu = false
+                                    onMarkCompleted()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.CheckCircle, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("分享") },
+                                onClick = {
+                                    showMenu = false
+                                    // TODO: 实现分享
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Share, contentDescription = null)
+                                }
                             )
                         }
                     }
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(2.dp)
-                            .clip(RoundedCornerShape(1.dp)),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    )
                 }
             }
 
-            // 右侧操作按钮组
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                // 标记完成按钮
-                IconButton(
-                    onClick = {
-                        isPressed = true
-                        onMarkCompleted()
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "标记完成",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                // 移除按钮
-                IconButton(
-                    onClick = {
-                        isPressed = true
-                        onRemoveFromPlaylist()
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "移除",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
+            // 底部进度条
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            )
         }
     }
 }

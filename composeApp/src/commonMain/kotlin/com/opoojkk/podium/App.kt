@@ -1059,7 +1059,7 @@ private fun DesktopLayout(
                         }
                     }
 
-                    // 播放列表从右侧滑入覆盖主内容
+                    // 播放列表从下往上滑入覆盖主内容
                     androidx.compose.animation.AnimatedVisibility(
                         visible = showPlaylist.value,
                         enter = androidx.compose.animation.fadeIn(
@@ -1067,10 +1067,10 @@ private fun DesktopLayout(
                                 durationMillis = 150,
                                 easing = androidx.compose.animation.core.FastOutSlowInEasing
                             )
-                        ) + androidx.compose.animation.slideInHorizontally(
-                            initialOffsetX = { it },
+                        ) + androidx.compose.animation.slideInVertically(
+                            initialOffsetY = { it },
                             animationSpec = androidx.compose.animation.core.tween(
-                                durationMillis = 200,
+                                durationMillis = 250,
                                 easing = androidx.compose.animation.core.FastOutSlowInEasing
                             )
                         ),
@@ -1079,10 +1079,10 @@ private fun DesktopLayout(
                                 durationMillis = 100,
                                 easing = androidx.compose.animation.core.FastOutLinearInEasing
                             )
-                        ) + androidx.compose.animation.slideOutHorizontally(
-                            targetOffsetX = { it },
+                        ) + androidx.compose.animation.slideOutVertically(
+                            targetOffsetY = { it },
                             animationSpec = androidx.compose.animation.core.tween(
-                                durationMillis = 150,
+                                durationMillis = 200,
                                 easing = androidx.compose.animation.core.FastOutLinearInEasing
                             )
                         )
@@ -1338,7 +1338,7 @@ private fun MobileLayout(
                     }
                 }
 
-                // 播放列表从上往下滑入覆盖主内容
+                // 播放列表从下往上滑入覆盖主内容
                 androidx.compose.animation.AnimatedVisibility(
                     visible = showPlaylist.value,
                     enter = androidx.compose.animation.fadeIn(
@@ -1347,9 +1347,9 @@ private fun MobileLayout(
                             easing = androidx.compose.animation.core.FastOutSlowInEasing
                         )
                     ) + androidx.compose.animation.slideInVertically(
-                        initialOffsetY = { -it },
+                        initialOffsetY = { it },
                         animationSpec = androidx.compose.animation.core.tween(
-                            durationMillis = 200,
+                            durationMillis = 250,
                             easing = androidx.compose.animation.core.FastOutSlowInEasing
                         )
                     ),
@@ -1359,9 +1359,9 @@ private fun MobileLayout(
                             easing = androidx.compose.animation.core.FastOutLinearInEasing
                         )
                     ) + androidx.compose.animation.slideOutVertically(
-                        targetOffsetY = { -it },
+                        targetOffsetY = { it },
                         animationSpec = androidx.compose.animation.core.tween(
-                            durationMillis = 150,
+                            durationMillis = 200,
                             easing = androidx.compose.animation.core.FastOutLinearInEasing
                         )
                     )
