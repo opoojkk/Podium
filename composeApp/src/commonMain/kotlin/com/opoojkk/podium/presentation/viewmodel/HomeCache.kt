@@ -12,7 +12,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Serializable
-private data class CachedEpisode(
+data class CachedEpisode(
     val id: String,
     val podcastId: String,
     val podcastTitle: String,
@@ -25,7 +25,7 @@ private data class CachedEpisode(
 )
 
 @Serializable
-private data class CachedPodcast(
+data class CachedPodcast(
     val id: String,
     val title: String,
     val description: String,
@@ -36,7 +36,7 @@ private data class CachedPodcast(
 )
 
 @Serializable
-private data class CachedEpisodeWithPodcast(
+data class CachedEpisodeWithPodcast(
     val episode: CachedEpisode,
     val podcast: CachedPodcast,
 )
