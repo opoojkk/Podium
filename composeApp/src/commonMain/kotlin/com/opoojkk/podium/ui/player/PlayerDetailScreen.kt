@@ -390,16 +390,6 @@ fun PlayerDetailScreen(
 
                 // 菜单选项
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Outlined.PlaylistPlay, contentDescription = null) },
-                    label = { Text("下一集播放") },
-                    selected = false,
-                    onClick = {
-                        showBottomSheet = false
-                        // TODO: 实现下一集播放
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
-                NavigationDrawerItem(
                     icon = { Icon(Icons.Outlined.CheckCircle, contentDescription = null) },
                     label = { Text("标记完成") },
                     selected = false,

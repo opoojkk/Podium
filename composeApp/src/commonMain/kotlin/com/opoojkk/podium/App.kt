@@ -409,6 +409,18 @@ private fun PlaylistContent(
         onRemoveFromPlaylist = { episodeId ->
             controller.removeFromPlaylist(episodeId)
         },
+        onPlayNext = { episode ->
+            // TODO: 实现插入播放队列队首
+        },
+        onDownload = { episode ->
+            controller.enqueueDownload(episode)
+        },
+        onShare = { episode ->
+            // 分享: 播客名称 + 单集名称 (暂时复制到剪贴板)
+            val shareText = "${episode.podcastTitle} - ${episode.title}"
+            copyTextToClipboard(shareText)
+            // TODO: 使用系统分享对话框
+        },
         onBack = {
             showPlaylist.value = false
             if (showPlaylistFromPlayerDetail.value) {

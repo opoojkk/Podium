@@ -36,6 +36,9 @@ fun PlaylistScreen(
     onPlayEpisode: (Episode) -> Unit,
     onMarkCompleted: (String) -> Unit,
     onRemoveFromPlaylist: (String) -> Unit,
+    onPlayNext: (Episode) -> Unit = {},
+    onDownload: (Episode) -> Unit = {},
+    onShare: (Episode) -> Unit = {},
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
 ) {
@@ -118,6 +121,9 @@ fun PlaylistScreen(
                         onPlayClick = { onPlayEpisode(item.episode) },
                         onMarkCompleted = { onMarkCompleted(item.episode.id) },
                         onRemoveFromPlaylist = { onRemoveFromPlaylist(item.episode.id) },
+                        onPlayNext = { onPlayNext(item.episode) },
+                        onDownload = { onDownload(item.episode) },
+                        onShare = { onShare(item.episode) },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 300),
                             fadeOutSpec = tween(durationMillis = 300),
@@ -140,6 +146,9 @@ private fun PlaylistItemCard(
     onPlayClick: () -> Unit,
     onMarkCompleted: () -> Unit,
     onRemoveFromPlaylist: () -> Unit,
+    onPlayNext: () -> Unit,
+    onDownload: () -> Unit,
+    onShare: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val progress = item.progress.durationMs?.let { duration ->
@@ -280,7 +289,7 @@ private fun PlaylistItemCard(
                     selected = false,
                     onClick = {
                         showBottomSheet = false
-                        // TODO: 实现下一集播放
+                        onPlayNext()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
@@ -300,7 +309,7 @@ private fun PlaylistItemCard(
                     selected = false,
                     onClick = {
                         showBottomSheet = false
-                        // TODO: 实现下载
+                        onDownload()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
@@ -320,7 +329,7 @@ private fun PlaylistItemCard(
                     selected = false,
                     onClick = {
                         showBottomSheet = false
-                        // TODO: 实现分享
+                        onShare()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
