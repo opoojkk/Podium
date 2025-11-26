@@ -359,6 +359,7 @@ fun PlayerDetailScreen(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             containerColor = MaterialTheme.colorScheme.surface,
+            scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.2f),
         ) {
             Column(
                 modifier = Modifier

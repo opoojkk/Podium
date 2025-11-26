@@ -16,6 +16,7 @@ import com.opoojkk.podium.platform.PlatformType
 import com.opoojkk.podium.platform.BackHandler
 import com.opoojkk.podium.platform.SetStatusBarColor
 import com.opoojkk.podium.platform.copyTextToClipboard
+import com.opoojkk.podium.platform.shareText
 import com.opoojkk.podium.platform.getPlatformType
 import com.opoojkk.podium.platform.openUrl
 import com.opoojkk.podium.ui.components.DesktopNavigationRail
@@ -417,10 +418,9 @@ private fun PlaylistContent(
             controller.enqueueDownload(episode)
         },
         onShare = { episode ->
-            // 分享: 播客名称 + 单集名称 (暂时复制到剪贴板)
+            // 分享: 播客名称 + 单集名称
             val shareText = "${episode.podcastTitle} - ${episode.title}"
-            copyTextToClipboard(platformContext, shareText)
-            // TODO: 使用系统分享对话框
+            shareText(platformContext, shareText, title = "分享节目")
         },
         onBack = {
             showPlaylist.value = false
@@ -1450,7 +1450,10 @@ private fun MobileLayout(
                     playbackState.episode?.let { controller.removeFromPlaylist(it.id) }
                 },
                 onShareClick = {
-                    // TODO: 实现分享功能
+                    playbackState.episode?.let { episode ->
+                        val shareText = "${episode.podcastTitle} - ${episode.title}"
+                        shareText(platformContext, shareText, title = "分享节目")
+                    }
                 },
                 playbackSpeed = playbackState.playbackSpeed,
                 onSpeedChange = { showSpeedDialog.value = true },
