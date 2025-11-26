@@ -133,6 +133,7 @@ fun PlaylistScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlaylistItemCard(
     item: PlaylistItem,
@@ -147,7 +148,7 @@ private fun PlaylistItemCard(
         } else 0f
     } ?: 0f
 
-    var showMenu by remember { mutableStateOf(false) }
+    var showBottomSheet by remember { mutableStateOf(false) }
     val isPlaying = false // TODO: 需要从外部传入当前播放状态
 
     Card(
@@ -212,85 +213,16 @@ private fun PlaylistItemCard(
                     }
 
                     // 更多按钮
-                    Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "更多",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        // 下拉菜单
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("下一集播放") },
-                                onClick = {
-                                    showMenu = false
-                                    // TODO: 实现下一集播放
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.PlaylistPlay, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("移除") },
-                                onClick = {
-                                    showMenu = false
-                                    onRemoveFromPlaylist()
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Delete, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("下载") },
-                                onClick = {
-                                    showMenu = false
-                                    // TODO: 实现下载
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Download, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("查看详情") },
-                                onClick = {
-                                    showMenu = false
-                                    // TODO: 实现查看详情
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Info, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("标记完成") },
-                                onClick = {
-                                    showMenu = false
-                                    onMarkCompleted()
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.CheckCircle, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("分享") },
-                                onClick = {
-                                    showMenu = false
-                                    // TODO: 实现分享
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Share, contentDescription = null)
-                                }
-                            )
-                        }
+                    IconButton(
+                        onClick = { showBottomSheet = true },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "更多",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
@@ -304,6 +236,109 @@ private fun PlaylistItemCard(
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
             )
+        }
+    }
+
+    // 底部抽屉
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                // 标题区域
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = item.episode.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = item.podcast.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // 菜单选项
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.PlaylistPlay, contentDescription = null) },
+                    label = { Text("下一集播放") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        // TODO: 实现下一集播放
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.CheckCircle, contentDescription = null) },
+                    label = { Text("标记完成") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        onMarkCompleted()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Download, contentDescription = null) },
+                    label = { Text("下载") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        // TODO: 实现下载
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                    label = { Text("查看详情") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        // TODO: 实现查看详情
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                    label = { Text("分享") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        // TODO: 实现分享
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                    label = { Text("移除") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        onRemoveFromPlaylist()
+                    },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedIconColor = MaterialTheme.colorScheme.error,
+                        unselectedTextColor = MaterialTheme.colorScheme.error,
+                    ),
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+            }
         }
     }
 }
