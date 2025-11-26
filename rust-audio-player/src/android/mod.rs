@@ -373,7 +373,7 @@ impl AudioPlayer for AndroidAudioPlayer {
     }
 
     fn load_url(&mut self, url: &str) -> Result<()> {
-        log::info!("Loading audio from URL: {}", url);
+        log::info!("Loading audio from URL (streaming): {}", url);
 
         self.state_container.set_state(PlayerState::Loading);
         self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
@@ -389,43 +389,37 @@ impl AudioPlayer for AndroidAudioPlayer {
         self.ring_buffer.lock().clear();
         *self.sample_count.lock() = 0;
 
-        // Get temp cache path
-        let temp_file_path = crate::http_utils::get_temp_cache_path(url);
-        log::info!("Downloading to temp file: {}", temp_file_path);
+        // Create hint from URL
+        let hint = AudioDecoder::create_hint_from_url(url);
 
-        // Download with progressive loading
-        match crate::http_utils::download_with_prebuffer(url, &temp_file_path) {
-            Ok(()) => {
-                log::info!("Pre-buffer complete, loading audio");
-                // Load the audio file (partially downloaded)
-                let decoder = AudioDecoder::from_file(&temp_file_path)?;
-                let sample_rate = decoder.format.sample_rate;
-                let channels = decoder.format.channels;
+        // Use HTTP Range-based source for true streaming without downloading entire file
+        // This supports both Fast Start and Non-Fast Start M4A files
+        log::info!("Using HTTP Range source (on-demand download)");
+        let source = crate::http_range_source::HttpRangeSource::new(url.to_string())?;
+        let decoder = AudioDecoder::from_streaming_source(Box::new(source), hint)?;
 
-                // Initialize audio stream with the correct format
-                self.initialize_audio_stream(sample_rate, channels)?;
+        let sample_rate = decoder.format.sample_rate;
+        let channels = decoder.format.channels;
 
-                // Store decoder
-                *self.decoder.lock() = Some(decoder);
+        log::info!("Streaming decoder created: {}Hz, {} channels", sample_rate, channels);
 
-                // Optimize buffer size based on audio duration
-                self.optimize_buffer_size();
+        // Initialize audio stream with the correct format
+        self.initialize_audio_stream(sample_rate, channels)?;
 
-                self.state_container.set_state(PlayerState::Ready);
-                self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
-                    old_state: PlayerState::Loading,
-                    new_state: PlayerState::Ready,
-                });
+        // Store decoder
+        *self.decoder.lock() = Some(decoder);
 
-                log::info!("Audio URL loaded successfully");
-                Ok(())
-            }
-            Err(e) => {
-                log::error!("Failed to download audio: {}", e);
-                self.state_container.set_state(PlayerState::Error);
-                Err(e)
-            }
-        }
+        // Optimize buffer size based on audio duration
+        self.optimize_buffer_size();
+
+        self.state_container.set_state(PlayerState::Ready);
+        self.callback_manager.dispatch_event(CallbackEvent::StateChanged {
+            old_state: PlayerState::Loading,
+            new_state: PlayerState::Ready,
+        });
+
+        log::info!("Audio URL loaded successfully (streaming mode)");
+        Ok(())
     }
 
     fn load_buffer(&mut self, buffer: &[u8]) -> Result<()> {

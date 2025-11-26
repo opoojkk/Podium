@@ -55,6 +55,11 @@ impl AudioDecoder {
         Self::from_media_source(media_source, hint)
     }
 
+    /// Create decoder from a streaming media source (for progressive playback)
+    pub fn from_streaming_source(media_source: Box<dyn MediaSource>, hint: Hint) -> Result<Self> {
+        Self::from_media_source(media_source, hint)
+    }
+
     /// Create decoder from media source
     fn from_media_source(
         media_source: Box<dyn MediaSource>,
@@ -428,6 +433,25 @@ impl AudioDecoder {
                 hint.with_extension(ext_str);
             }
         }
+        hint
+    }
+
+    /// Create a hint from URL (extracts extension from URL path)
+    pub fn create_hint_from_url(url: &str) -> Hint {
+        let mut hint = Hint::new();
+
+        // Try to extract extension from URL
+        if let Some(path_part) = url.split('?').next() {
+            // Get the file name part
+            if let Some(file_name) = path_part.split('/').last() {
+                // Extract extension
+                if let Some(dot_pos) = file_name.rfind('.') {
+                    let extension = &file_name[dot_pos + 1..];
+                    hint.with_extension(extension);
+                }
+            }
+        }
+
         hint
     }
 

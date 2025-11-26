@@ -17,6 +17,12 @@ pub mod error;
 pub mod callback;
 pub mod metadata;
 mod http_utils;
+mod streaming_source;
+mod m4a_streaming;
+mod streaming_http_source;
+mod m4a_smart_source;
+mod m4a_virtual_faststart;
+mod http_range_source;
 
 // Re-exports
 pub use player::{AudioPlayer, PlayerState, PlaybackStatus};
