@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +39,9 @@ fun PlayerDetailScreen(
     onPlaylistClick: () -> Unit = {},
     downloadStatus: DownloadStatus? = null,
     onDownloadClick: () -> Unit = {},
+    onMarkCompleted: () -> Unit = {},
+    onRemoveFromPlaylist: () -> Unit = {},
+    onShareClick: () -> Unit = {},
     playbackSpeed: Float = 1.0f,
     onSpeedChange: () -> Unit = { /* TODO: 打开倍速选择对话框 */ },
     sleepTimerMinutes: Int? = null,
@@ -45,6 +49,9 @@ fun PlayerDetailScreen(
 ) {
     val episode = playbackState.episode ?: return
     val durationMs = episode.duration ?: playbackState.durationMs
+
+    // 底部菜单状态
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     // 处理系统返回按钮
     BackHandler(onBack = onBack)
@@ -111,11 +118,13 @@ fun PlayerDetailScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    DownloadButton(
-                        downloadStatus = downloadStatus,
-                        onDownloadClick = onDownloadClick,
-                        iconOnly = true
-                    )
+                    IconButton(onClick = { showBottomSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "更多",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -342,6 +351,111 @@ fun PlayerDetailScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+
+    // 更多操作底部抽屉
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                // 标题区域
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = episode.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = episode.podcastTitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // 菜单选项
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.PlaylistPlay, contentDescription = null) },
+                    label = { Text("下一集播放") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        // TODO: 实现下一集播放
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.CheckCircle, contentDescription = null) },
+                    label = { Text("标记完成") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        onMarkCompleted()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = {
+                        when (downloadStatus) {
+                            is DownloadStatus.Completed -> Icon(Icons.Outlined.CheckCircle, contentDescription = null)
+                            is DownloadStatus.InProgress -> Icon(Icons.Outlined.Download, contentDescription = null)
+                            else -> Icon(Icons.Outlined.Download, contentDescription = null)
+                        }
+                    },
+                    label = {
+                        Text(when (downloadStatus) {
+                            is DownloadStatus.Completed -> "已下载"
+                            is DownloadStatus.InProgress -> "下载中..."
+                            else -> "下载"
+                        })
+                    },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        onDownloadClick()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                    label = { Text("分享") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        onShareClick()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                    label = { Text("移除") },
+                    selected = false,
+                    onClick = {
+                        showBottomSheet = false
+                        onRemoveFromPlaylist()
+                    },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedIconColor = MaterialTheme.colorScheme.error,
+                        unselectedTextColor = MaterialTheme.colorScheme.error,
+                    ),
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+            }
         }
     }
 }
