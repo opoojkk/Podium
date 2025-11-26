@@ -824,6 +824,7 @@ fun PodiumApp(
                 onPodcastClick = handleXYZRankPodcastClick,
                 onOpenUrl = openUrlInBrowser,
                 snackbarHostState = snackbarHostState,
+                platformContext = platformContext,
             )
         } else {
             // 移动平台：使用传统底部导航栏布局
@@ -866,6 +867,7 @@ fun PodiumApp(
                 onPodcastClick = handleXYZRankPodcastClick,
                 onOpenUrl = openUrlInBrowser,
                 snackbarHostState = snackbarHostState,
+                platformContext = platformContext,
             )
         }
 
@@ -927,6 +929,7 @@ private fun DesktopLayout(
     categoriesLoading: Boolean,
     recommendedPodcastRepository: RecommendedPodcastRepository,
     hotEpisodes: List<EpisodeWithPodcast>,
+    platformContext: com.opoojkk.podium.platform.PlatformContext,
     hotPodcasts: List<Podcast>,
     newEpisodes: List<EpisodeWithPodcast>,
     newPodcasts: List<Podcast>,
@@ -1181,6 +1184,7 @@ private fun MobileLayout(
     newEpisodes: List<EpisodeWithPodcast>,
     newPodcasts: List<Podcast>,
     environment: PodiumEnvironment,
+    platformContext: com.opoojkk.podium.platform.PlatformContext,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
     onPlayEpisode: (Episode) -> Unit,
