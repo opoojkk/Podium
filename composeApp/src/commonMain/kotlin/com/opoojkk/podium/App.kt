@@ -392,6 +392,7 @@ private fun PlaylistContent(
     playlistState: com.opoojkk.podium.presentation.PlaylistUiState,
     controller: com.opoojkk.podium.presentation.PodiumController,
     onPlayEpisode: (Episode) -> Unit,
+    platformContext: com.opoojkk.podium.platform.PlatformContext,
 ) {
     com.opoojkk.podium.ui.playlist.PlaylistScreen(
         state = playlistState,
@@ -418,7 +419,7 @@ private fun PlaylistContent(
         onShare = { episode ->
             // 分享: 播客名称 + 单集名称 (暂时复制到剪贴板)
             val shareText = "${episode.podcastTitle} - ${episode.title}"
-            copyTextToClipboard(shareText)
+            copyTextToClipboard(platformContext, shareText)
             // TODO: 使用系统分享对话框
         },
         onBack = {
@@ -1106,6 +1107,7 @@ private fun DesktopLayout(
                             playlistState = playlistState,
                             controller = controller,
                             onPlayEpisode = onPlayEpisode,
+                            platformContext = platformContext,
                         )
                     }
                 }
@@ -1385,6 +1387,7 @@ private fun MobileLayout(
                         playlistState = playlistState,
                         controller = controller,
                         onPlayEpisode = onPlayEpisode,
+                        platformContext = platformContext,
                     )
                 }
             }
