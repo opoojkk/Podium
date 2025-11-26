@@ -1117,7 +1117,8 @@ private fun DesktopLayout(
                                 controller.resume()
                             }
                         },
-                        onBarClick = { showPlayerDetail.value = true }
+                        onBarClick = { showPlayerDetail.value = true },
+                        onPlaylistClick = { showPlaylist.value = true }
                     )
                 }
             }
@@ -1220,6 +1221,7 @@ private fun MobileLayout(
                                     }
                                 },
                                 onBarClick = { showPlayerDetail.value = true },
+                                onPlaylistClick = { showPlaylist.value = true }
                             )
 
                             HorizontalDivider(
