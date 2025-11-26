@@ -6,6 +6,8 @@ import com.opoojkk.podium.audio.RustAudioPlayer
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.PlaybackState
 import com.opoojkk.podium.player.PodcastPlayer
+import com.opoojkk.podium.player.android.MediaNotificationManager
+import com.opoojkk.podium.player.android.MediaActionReceiver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +47,32 @@ class RustPodcastPlayer(
     private var positionUpdateJob: Job? = null
     private var currentEpisode: Episode? = null
     private var targetPlaybackSpeed: Float = 1.0f
+    private var notificationManager: MediaNotificationManager? = null
+
+    init {
+        // 初始化通知管理器
+        notificationManager = MediaNotificationManager(
+            context = context,
+            onPlayPause = {
+                if (_state.value.isPlaying) {
+                    pause()
+                } else {
+                    resume()
+                }
+            },
+            onSeekForward = {
+                seekBy(15000) // 快进15秒
+            },
+            onSeekBackward = {
+                seekBy(-15000) // 快退15秒
+            },
+            onStop = {
+                stop()
+            }
+        )
+        // 设置静态监听器以便BroadcastReceiver使用
+        MediaActionReceiver.listener = notificationManager
+    }
 
     override suspend fun play(episode: Episode, startPositionMs: Long) {
         Log.d(TAG, "play() - episode: ${episode.title}, startPosition: $startPositionMs")
@@ -319,7 +347,7 @@ class RustPodcastPlayer(
         isBuffering: Boolean = _state.value.isBuffering,
         playbackSpeed: Float = _state.value.playbackSpeed
     ) {
-        _state.value = PlaybackState(
+        val newState = PlaybackState(
             episode = episode,
             positionMs = positionMs,
             isPlaying = isPlaying,
@@ -327,6 +355,29 @@ class RustPodcastPlayer(
             isBuffering = isBuffering,
             playbackSpeed = playbackSpeed
         )
+        _state.value = newState
+
+        // 更新通知栏
+        updateNotification(newState)
+    }
+
+    /**
+     * 更新媒体通知
+     */
+    private fun updateNotification(state: PlaybackState) {
+        Log.d(TAG, "updateNotification called - episode=${state.episode?.title}, isPlaying=${state.isPlaying}, isBuffering=${state.isBuffering}")
+        state.episode?.let { episode ->
+            notificationManager?.showNotification(
+                episode = episode,
+                isPlaying = state.isPlaying,
+                positionMs = state.positionMs,
+                durationMs = state.durationMs,
+                isBuffering = state.isBuffering
+            )
+        } ?: run {
+            Log.d(TAG, "没有正在播放的节目，隐藏通知")
+            notificationManager?.hideNotification()
+        }
     }
 
     /**
@@ -502,6 +553,7 @@ class RustPodcastPlayer(
     fun release() {
         Log.d(TAG, "Releasing RustPodcastPlayer")
         stopPositionUpdates()
+        notificationManager?.hideNotification()
         coroutineScope.cancel()
         rustPlayer.release()
         cleanupStreamingCache()
