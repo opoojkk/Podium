@@ -418,8 +418,15 @@ private fun PlaylistContent(
             controller.enqueueDownload(episode)
         },
         onShare = { episode ->
-            // 分享: 播客名称 + 单集名称
-            val shareText = "${episode.podcastTitle} - ${episode.title}"
+            // 分享: 播客名称 + 单集名称 + 链接
+            val shareText = buildString {
+                append(episode.podcastTitle)
+                append(" - ")
+                append(episode.title)
+                append("\n\n")
+                append("链接：")
+                append(episode.audioUrl)
+            }
             shareText(platformContext, shareText, title = "分享节目")
         },
         onBack = {
@@ -1451,7 +1458,14 @@ private fun MobileLayout(
                 },
                 onShareClick = {
                     playbackState.episode?.let { episode ->
-                        val shareText = "${episode.podcastTitle} - ${episode.title}"
+                        val shareText = buildString {
+                            append(episode.podcastTitle)
+                            append(" - ")
+                            append(episode.title)
+                            append("\n\n")
+                            append("链接：")
+                            append(episode.audioUrl)
+                        }
                         shareText(platformContext, shareText, title = "分享节目")
                     }
                 },
