@@ -3,30 +3,22 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- 基于Podium Logo的简化设计 -->
+    <!-- 精确还原Podium Logo设计 -->
 
-    <!-- 外圆弧 - 从左上到左下，约240度 -->
+    <!-- 外圆弧 - 从左上环绕到左下 -->
     <path
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2.8"
+        android:strokeWidth="2.6"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M7,5.2 A8.5,8.5 0 1,1 5.2,17"/>
+        android:pathData="M7.2,5.5 A8.3,8.3 0 1,1 5.5,16.8"/>
 
-    <!-- P字母 - 流畅的笔画设计 -->
+    <!-- P字母 - 连续笔画 -->
     <path
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2.8"
+        android:strokeWidth="2.6"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000"
-        android:pathData="M10.5,19 L10.5,6.5 L13.5,6.5 A3,3 0 1,1 13.5,12.5 L10.5,12.5"/>
-
-    <!-- P字母底部延伸弧 -->
-    <path
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2.8"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M10.5,17 Q11.5,19.5 14,19.5"/>
+        android:pathData="M10.5,19.5 L10.5,7 Q10.5,6.5 11,6.5 L14,6.5 A2.8,2.8 0 1,1 14,12.1 L10.5,12.1 M10.5,17.5 Q11.5,20 14.5,20"/>
 </vector>
