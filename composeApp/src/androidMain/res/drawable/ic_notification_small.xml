@@ -5,13 +5,13 @@
     android:viewportHeight="24">
     <!-- 基于Podium Logo的P字母和圆弧设计 -->
 
-    <!-- 外圆弧 - 约270度环绕 -->
+    <!-- 外圆弧 - 约270度环绕，开口在左下方 -->
     <path
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M19.5,6.5 A9,9 0 1,1 6.5,4.5"/>
+        android:pathData="M6.5,4.5 A9,9 0 1,1 4.5,17.5"/>
 
     <!-- P字母 -->
     <path
