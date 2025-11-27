@@ -21,7 +21,7 @@ import coil3.size.Size
  *
  * @param model Image URL or resource
  * @param contentDescription Accessibility description
- * @param displaySize Display size in Dp - image will be decoded to this size
+ * @param displaySize Display size in Dp - image will be decoded to 2x this size for crisp display on high DPI screens
  * @param modifier Compose modifier
  * @param contentScale How to scale the image in its container
  * @param loading Composable to show while loading
@@ -41,7 +41,10 @@ fun OptimizedAsyncImage(
     val density = LocalDensity.current
 
     // Convert Dp to pixels using actual density
-    val pixelSize = with(density) { displaySize.roundToPx() }
+    // Use 2x size for high DPI displays to avoid blurry images
+    val pixelSize = with(density) {
+        (displaySize * 2f).roundToPx()
+    }
 
     SubcomposeAsyncImage(
         model = ImageRequest.Builder(context)
