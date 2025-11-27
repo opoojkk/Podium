@@ -145,7 +145,7 @@ class MediaNotificationManager(
         val stopIntent = createActionIntent(ACTION_STOP)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName))
+            .setSmallIcon(context.resources.getIdentifier("ic_notification_small", "drawable", context.packageName))
             .setContentTitle(episode.title)
             .setContentText(episode.podcastTitle)
             .setSubText("Podium")
