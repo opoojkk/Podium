@@ -256,6 +256,7 @@ private fun PlaylistItemCard(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             containerColor = MaterialTheme.colorScheme.surface,
+            scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f),
         ) {
             Column(
                 modifier = Modifier
