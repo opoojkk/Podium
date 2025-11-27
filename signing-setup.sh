@@ -57,11 +57,13 @@ if [ ! -d "signing" ]; then
     echo -e "${YELLOW}To use Git submodule for signing configuration:${NC}"
     echo "1. Create a private GitHub repository (e.g., Podium-Signing)"
     echo "2. Add your keystore.properties and .jks file to it"
-    echo "3. Enter the repository URL below"
+    echo "3. Enter the repository SSH URL below"
     echo ""
-    echo -e "${BLUE}Enter your private signing repository URL:${NC}"
-    echo "  Example: git@github.com:YourUsername/Podium-Signing.git"
-    echo "  or: https://github.com/YourUsername/Podium-Signing.git"
+    echo -e "${BLUE}Enter your private signing repository SSH URL:${NC}"
+    echo "  Example (SSH, recommended): git@github.com:YourUsername/Podium-Signing.git"
+    echo ""
+    echo -e "${YELLOW}Note: SSH authentication is recommended for private repositories${NC}"
+    echo "      Make sure you have SSH keys set up with GitHub"
     echo ""
     read -p "Repository URL (or 'skip' to use local keystore.properties): " repo_url
     
