@@ -24,7 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.recommended.RecommendedPodcast
-import com.opoojkk.podium.ui.components.OptimizedAsyncImage
+import com.opoojkk.podium.ui.components.PodiumImageWithInitials
 import com.opoojkk.podium.data.rss.PodcastFeed
 import com.opoojkk.podium.data.rss.RssEpisode
 import com.opoojkk.podium.platform.BackHandler
@@ -270,53 +270,14 @@ private fun PodcastHeader(
             modifier = Modifier.fillMaxWidth()
         ) {
             // 封面
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                val artworkUrl = feed?.artworkUrl ?: podcast.artworkUrl
-                val initials = podcast.name
-                    .trim()
-                    .split(" ", limit = 2)
-                    .mapNotNull { it.firstOrNull()?.uppercase() }
-                    .joinToString(separator = "")
-                    .takeIf { it.isNotBlank() }
-                    ?: "播客"
-
-                if (!artworkUrl.isNullOrBlank()) {
-                    OptimizedAsyncImage(
-                        model = artworkUrl,
-                        contentDescription = podcast.name,
-                        displaySize = 120.dp,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        },
-                        error = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    )
-                } else {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
+            PodiumImageWithInitials(
+                imageUrl = feed?.artworkUrl ?: podcast.artworkUrl,
+                title = podcast.name,
+                modifier = Modifier.size(120.dp),
+                contentScale = ContentScale.Crop,
+                cornerRadius = 12.dp,
+                contentDescription = podcast.name
+            )
 
             // 名称和订阅按钮
             Column(
@@ -397,51 +358,14 @@ private fun EpisodeListItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 播客封面
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                val initials = podcastTitle
-                    .trim()
-                    .split(" ", limit = 2)
-                    .mapNotNull { it.firstOrNull()?.uppercase() }
-                    .joinToString(separator = "")
-                    .takeIf { it.isNotBlank() }
-                    ?: "播客"
-
-                if (!artworkUrl.isNullOrBlank()) {
-                    OptimizedAsyncImage(
-                        model = artworkUrl,
-                        contentDescription = podcastTitle,
-                        displaySize = 80.dp,
-                        modifier = Modifier.matchParentSize(),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        },
-                        error = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    )
-                } else {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
+            PodiumImageWithInitials(
+                imageUrl = artworkUrl,
+                title = podcastTitle,
+                modifier = Modifier.size(80.dp),
+                contentScale = ContentScale.Crop,
+                cornerRadius = 16.dp,
+                contentDescription = podcastTitle
+            )
 
             Column(
                 modifier = Modifier.weight(1f),

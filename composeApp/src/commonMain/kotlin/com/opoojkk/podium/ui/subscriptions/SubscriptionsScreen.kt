@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.SubcomposeAsyncImage
 import com.opoojkk.podium.ui.components.ArtworkWithPlaceholder
-import com.opoojkk.podium.ui.components.OptimizedAsyncImage
 import com.opoojkk.podium.util.Logger
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add

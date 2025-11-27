@@ -55,7 +55,7 @@ import com.opoojkk.podium.presentation.ProfileCachedItem
 import com.opoojkk.podium.presentation.ProfileDownloadItem
 import com.opoojkk.podium.presentation.ProfileUiState
 import com.opoojkk.podium.platform.BackHandler
-import com.opoojkk.podium.ui.components.OptimizedAsyncImage
+import com.opoojkk.podium.ui.components.PodiumImageWithInitials
 import kotlin.math.roundToInt
 
 private sealed interface CacheManagementViewState {
@@ -661,46 +661,12 @@ private fun PodcastArtwork(
     podcastTitle: String,
     modifier: Modifier = Modifier
 ) {
-    val initials = podcastTitle.trim().split(" ", limit = 2)
-        .mapNotNull { it.firstOrNull()?.uppercase() }
-        .joinToString(separator = "")
-        .takeIf { it.isNotBlank() }
-        ?: "P"
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!artworkUrl.isNullOrBlank()) {
-            OptimizedAsyncImage(
-                model = artworkUrl,
-                contentDescription = podcastTitle,
-                displaySize = 56.dp,
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Crop,
-                loading = {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                },
-                error = {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            )
-        } else {
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-    }
+    PodiumImageWithInitials(
+        imageUrl = artworkUrl,
+        title = podcastTitle,
+        modifier = modifier,
+        contentScale = ContentScale.Crop,
+        cornerRadius = 12.dp,
+        contentDescription = podcastTitle
+    )
 }

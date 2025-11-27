@@ -49,7 +49,7 @@ import com.opoojkk.podium.data.model.DownloadStatus
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.Podcast
-import com.opoojkk.podium.ui.components.OptimizedAsyncImage
+import com.opoojkk.podium.ui.components.PodiumImageWithInitials
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
 import com.opoojkk.podium.platform.BackHandler
 import kotlinx.coroutines.delay
@@ -293,53 +293,14 @@ private fun SubscribedPodcastHeader(
             modifier = Modifier.fillMaxWidth()
         ) {
             // 封面
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                val artworkUrl = podcast.artworkUrl
-                val initials = podcast.title
-                    .trim()
-                    .split(" ", limit = 2)
-                    .mapNotNull { it.firstOrNull()?.uppercase() }
-                    .joinToString(separator = "")
-                    .takeIf { it.isNotBlank() }
-                    ?: "播客"
-
-                if (!artworkUrl.isNullOrBlank()) {
-                    OptimizedAsyncImage(
-                        model = artworkUrl,
-                        contentDescription = podcast.title,
-                        displaySize = 120.dp,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        },
-                        error = {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    )
-                } else {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
+            PodiumImageWithInitials(
+                imageUrl = podcast.artworkUrl,
+                title = podcast.title,
+                modifier = Modifier.size(120.dp),
+                contentScale = ContentScale.Crop,
+                cornerRadius = 12.dp,
+                contentDescription = podcast.title
+            )
 
             // 名称和取消订阅按钮
             Column(
