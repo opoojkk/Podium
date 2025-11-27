@@ -236,6 +236,7 @@ private fun ViewMoreContent(
     controller: com.opoojkk.podium.presentation.PodiumController,
     playbackState: PlaybackState,
     onPlayEpisode: (Episode) -> Unit,
+    onPodcastClick: (Podcast) -> Unit,
 ) {
     if (showViewMore.value != null) {
         val viewMoreType = showViewMore.value!!
@@ -261,6 +262,7 @@ private fun ViewMoreContent(
             onAddToPlaylist = { episodeId ->
                 controller.addToPlaylist(episodeId)
             },
+            onPodcastClick = onPodcastClick,
         )
     }
 }
@@ -1030,6 +1032,7 @@ private fun DesktopLayout(
                                 controller = controller,
                                 playbackState = playbackState,
                                 onPlayEpisode = onPlayEpisode,
+                                onPodcastClick = onPodcastClick,
                             )
                         }
                         else -> {
@@ -1300,6 +1303,7 @@ private fun MobileLayout(
                             controller = controller,
                             playbackState = playbackState,
                             onPlayEpisode = onPlayEpisode,
+                            onPodcastClick = onPodcastClick,
                         )
                     }
 

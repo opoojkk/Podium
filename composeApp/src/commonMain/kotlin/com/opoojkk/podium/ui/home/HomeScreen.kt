@@ -202,6 +202,7 @@ fun HomeScreen(
                                         }
                                     },
                                     onClick = { onEpisodeClick(item.episode) },
+                                    onPodcastClick = { onPodcastClick(item.podcast) },
                                     onAddToPlaylist = { onAddToPlaylist(item.episode.id) },
                                     modifier = Modifier.padding(horizontal = 16.dp),
                                     isCurrentlyPlaying = isCurrentEpisode && isPlaying,
@@ -407,6 +408,7 @@ fun HomeScreen(
                                             }
                                         },
                                         onClick = { onEpisodeClick(item.episode) },
+                                        onPodcastClick = { onPodcastClick(item.podcast) },
                                         onAddToPlaylist = { onAddToPlaylist(item.episode.id) },
                                         modifier = Modifier.padding(horizontal = 16.dp),
                                         compact = true,

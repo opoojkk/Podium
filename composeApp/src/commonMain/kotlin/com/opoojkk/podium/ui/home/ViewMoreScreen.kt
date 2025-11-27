@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
+import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.ui.components.PodcastEpisodeCard
 import com.opoojkk.podium.platform.BackHandler
 
@@ -40,6 +41,7 @@ fun ViewMoreScreen(
     isBuffering: Boolean = false,
     onPauseResume: () -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
+    onPodcastClick: (Podcast) -> Unit = {},
 ) {
     // 处理系统返回按钮
     BackHandler(onBack = onBack)
@@ -95,6 +97,7 @@ fun ViewMoreScreen(
                                 onPlayEpisode(episodeWithPodcast.episode)
                             }
                         },
+                        onPodcastClick = { onPodcastClick(episodeWithPodcast.podcast) },
                         onAddToPlaylist = { onAddToPlaylist(episodeWithPodcast.episode.id) },
                         isCurrentlyPlaying = isCurrentEpisode && isPlaying,
                         isBuffering = isCurrentEpisode && isBuffering,

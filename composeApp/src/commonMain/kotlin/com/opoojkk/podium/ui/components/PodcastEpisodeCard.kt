@@ -37,6 +37,7 @@ fun PodcastEpisodeCard(
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onPodcastClick: (() -> Unit)? = null,
     downloadStatus: DownloadStatus? = null,
     onDownloadClick: () -> Unit = {},
     onAddToPlaylist: () -> Unit = {},
@@ -124,9 +125,10 @@ fun PodcastEpisodeCard(
                 Text(
                     text = episodeWithPodcast.podcast.title,
                     style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (onPodcastClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = if (onPodcastClick != null) Modifier.clickable { onPodcastClick() } else Modifier
                 )
                 // 显示描述
                 if (showDescription && !compact && episodeWithPodcast.episode.description.isNotBlank()) {
