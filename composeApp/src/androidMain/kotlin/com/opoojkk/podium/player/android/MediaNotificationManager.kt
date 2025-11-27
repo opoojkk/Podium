@@ -128,18 +128,7 @@ class MediaNotificationManager(
         )
 
         // 创建控制按钮的PendingIntent
-        // 当加载时，播放/暂停按钮不应响应点击
-        val playPauseIntent = if (isBuffering) {
-            // 使用一个空的PendingIntent来禁用点击
-            PendingIntent.getBroadcast(
-                context,
-                0,
-                Intent(),
-                PendingIntent.FLAG_IMMUTABLE
-            )
-        } else {
-            createActionIntent(ACTION_PLAY_PAUSE)
-        }
+        val playPauseIntent = createActionIntent(ACTION_PLAY_PAUSE)
         val seekForwardIntent = createActionIntent(ACTION_SEEK_FORWARD)
         val seekBackwardIntent = createActionIntent(ACTION_SEEK_BACKWARD)
         val stopIntent = createActionIntent(ACTION_STOP)
@@ -149,7 +138,6 @@ class MediaNotificationManager(
             .setContentTitle(episode.title)
             .setContentText(episode.podcastTitle)
             .setSubText("Podium")
-            .setLargeIcon(artwork)
             .setContentIntent(openAppPendingIntent)
             .setDeleteIntent(stopIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -159,6 +147,9 @@ class MediaNotificationManager(
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             // 设置通知颜色为Material主题色
             .setColorized(false)
+
+        // 如果有封面图，设置为large icon（展开状态显示在左侧）
+        artwork?.let { builder.setLargeIcon(it) }
 
         // 添加进度条（不确定模式用于加载状态）
         if (isBuffering) {
