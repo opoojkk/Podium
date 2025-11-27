@@ -25,6 +25,9 @@ import com.opoojkk.podium.platform.BackHandler
 import com.opoojkk.podium.ui.components.DownloadButton
 import com.opoojkk.podium.ui.components.ChapterProgressBar
 import com.opoojkk.podium.ui.components.TimestampText
+import com.opoojkk.podium.ui.components.BottomSheetHeader
+import com.opoojkk.podium.ui.components.BottomSheetMenuItem
+import com.opoojkk.podium.ui.components.BottomSheetDivider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -367,40 +370,23 @@ fun PlayerDetailScreen(
                     .padding(bottom = 16.dp)
             ) {
                 // 标题区域
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = episode.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = episode.podcastTitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                BottomSheetHeader(
+                    title = episode.title,
+                    subtitle = episode.podcastTitle
+                )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                BottomSheetDivider()
 
                 // 菜单选项
-                NavigationDrawerItem(
+                BottomSheetMenuItem(
                     icon = { Icon(Icons.Outlined.CheckCircle, contentDescription = null) },
                     label = { Text("标记完成") },
-                    selected = false,
                     onClick = {
                         showBottomSheet = false
                         onMarkCompleted()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                    }
                 )
-                NavigationDrawerItem(
+                BottomSheetMenuItem(
                     icon = {
                         when (downloadStatus) {
                             is DownloadStatus.Completed -> Icon(Icons.Outlined.CheckCircle, contentDescription = null)
@@ -415,27 +401,22 @@ fun PlayerDetailScreen(
                             else -> "下载"
                         })
                     },
-                    selected = false,
                     onClick = {
                         showBottomSheet = false
                         onDownloadClick()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                    }
                 )
-                NavigationDrawerItem(
+                BottomSheetMenuItem(
                     icon = { Icon(Icons.Outlined.Share, contentDescription = null) },
                     label = { Text("分享") },
-                    selected = false,
                     onClick = {
                         showBottomSheet = false
                         onShareClick()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                    }
                 )
-                NavigationDrawerItem(
+                BottomSheetMenuItem(
                     icon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
                     label = { Text("移除") },
-                    selected = false,
                     onClick = {
                         showBottomSheet = false
                         onRemoveFromPlaylist()
@@ -443,8 +424,7 @@ fun PlayerDetailScreen(
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedIconColor = MaterialTheme.colorScheme.error,
                         unselectedTextColor = MaterialTheme.colorScheme.error,
-                    ),
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                    )
                 )
             }
         }

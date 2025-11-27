@@ -10,6 +10,7 @@ import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.Podcast
 import com.opoojkk.podium.data.model.PlaybackState
+import com.opoojkk.podium.data.model.buildShareText
 import com.opoojkk.podium.navigation.PodiumDestination
 import com.opoojkk.podium.presentation.rememberPodiumAppState
 import com.opoojkk.podium.platform.PlatformType
@@ -418,16 +419,7 @@ private fun PlaylistContent(
             controller.enqueueDownload(episode)
         },
         onShare = { episode ->
-            // 分享: 播客名称 + 单集名称 + 链接
-            val shareText = buildString {
-                append(episode.podcastTitle)
-                append(" - ")
-                append(episode.title)
-                append("\n\n")
-                append("链接：")
-                append(episode.audioUrl)
-            }
-            shareText(platformContext, shareText, title = "分享节目")
+            shareText(platformContext, episode.buildShareText(), title = "分享节目")
         },
         onBack = {
             showPlaylist.value = false
@@ -1458,15 +1450,7 @@ private fun MobileLayout(
                 },
                 onShareClick = {
                     playbackState.episode?.let { episode ->
-                        val shareText = buildString {
-                            append(episode.podcastTitle)
-                            append(" - ")
-                            append(episode.title)
-                            append("\n\n")
-                            append("链接：")
-                            append(episode.audioUrl)
-                        }
-                        shareText(platformContext, shareText, title = "分享节目")
+                        shareText(platformContext, episode.buildShareText(), title = "分享节目")
                     }
                 },
                 playbackSpeed = playbackState.playbackSpeed,
