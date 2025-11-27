@@ -209,12 +209,29 @@ android {
     namespace = "com.opoojkk.podium"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
-    // Load signing configuration from keystore.properties
-    val keystorePropertiesFile = rootProject.file("keystore.properties")
-    val keystoreProperties = java.util.Properties()
-    val hasKeystoreConfig = keystorePropertiesFile.exists()
+    // Load signing configuration from multiple possible locations
+    // Priority: 1. signing/keystore.properties (submodule)
+    //          2. keystore.properties (project root)
+    //          3. Environment variables (CI/CD)
+    val keystorePropertiesFile = when {
+        rootProject.file("signing/keystore.properties").exists() -> {
+            println("📦 Using signing configuration from submodule: signing/keystore.properties")
+            rootProject.file("signing/keystore.properties")
+        }
+        rootProject.file("keystore.properties").exists() -> {
+            println("📦 Using signing configuration from project root: keystore.properties")
+            rootProject.file("keystore.properties")
+        }
+        else -> {
+            println("⚠️  No keystore.properties found. Using debug signing.")
+            null
+        }
+    }
 
-    if (hasKeystoreConfig) {
+    val keystoreProperties = java.util.Properties()
+    val hasKeystoreConfig = keystorePropertiesFile?.exists() == true
+
+    if (hasKeystoreConfig && keystorePropertiesFile != null) {
         keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
     }
 

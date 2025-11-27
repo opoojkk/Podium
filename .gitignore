@@ -23,3 +23,8 @@ node_modules/
 *.keystore
 keystore.properties
 release/
+
+# Signing submodule (private repository)
+# Note: The signing/ directory is a Git submodule for private signing configuration
+# Other users can clone the project without this submodule
+signing/
