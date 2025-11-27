@@ -6,6 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
+import coil3.compose.LocalPlatformContext
+import coil3.compose.setSingletonImageLoaderFactory
 import com.opoojkk.podium.data.model.Episode
 import com.opoojkk.podium.data.model.EpisodeWithPodcast
 import com.opoojkk.podium.data.model.PlaybackState
@@ -26,6 +28,7 @@ import com.opoojkk.podium.ui.home.ViewMoreScreen
 import com.opoojkk.podium.ui.player.DesktopPlayerDetailScreen
 import com.opoojkk.podium.ui.player.PlaybackSpeedDialog
 import com.opoojkk.podium.ui.player.PlayerDetailScreen
+import com.opoojkk.podium.ui.components.ImageLoaderConfig
 import com.opoojkk.podium.ui.profile.*
 import com.opoojkk.podium.ui.subscriptions.PodcastEpisodesScreen
 import com.opoojkk.podium.ui.subscriptions.SubscriptionsScreen
@@ -436,6 +439,12 @@ fun PodiumApp(
     showPlayerDetailFromNotification: androidx.compose.runtime.MutableState<Boolean>? = null,
     onExitApp: (() -> Unit)? = null
 ) {
+    // 配置三级缓存的ImageLoader
+    val context = LocalPlatformContext.current
+    setSingletonImageLoaderFactory { ctx ->
+        ImageLoaderConfig.createImageLoader(ctx)
+    }
+
     val appState = rememberPodiumAppState(environment)
     val controller = appState.controller
     val scope = rememberCoroutineScope()
