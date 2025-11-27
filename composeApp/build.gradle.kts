@@ -209,23 +209,106 @@ android {
     namespace = "com.opoojkk.podium"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    // Load signing configuration from keystore.properties
+    val keystorePropertiesFile = rootProject.file("keystore.properties")
+    val keystoreProperties = java.util.Properties()
+    val hasKeystoreConfig = keystorePropertiesFile.exists()
+
+    if (hasKeystoreConfig) {
+        keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+    }
+
     defaultConfig {
         applicationId = "com.opoojkk.podium"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+
+        // Enable NDK filter for specific ABIs
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        }
     }
+
+    // Signing configurations
+    signingConfigs {
+        if (hasKeystoreConfig) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+
+                // Enable V1 and V2 signing
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
     buildTypes {
-        getByName("release") {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
             isMinifyEnabled = false
+            isShrinkResources = false
+        }
+
+        getByName("release") {
+            // Enable code minification and resource shrinking
+            isMinifyEnabled = true
+            isShrinkResources = true
+
+            // ProGuard rules
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
+            // Use release signing config if available
+            if (hasKeystoreConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
+
+    // Split APKs by ABI for smaller download sizes
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true  // Also generate a universal APK
+        }
+    }
+
+    // Map ABI to version code for automatic version management
+    val abiCodes = mapOf(
+        "armeabi-v7a" to 1,
+        "arm64-v8a" to 2,
+        "x86" to 3,
+        "x86_64" to 4
+    )
+
+    // Automatically set version codes for split APKs
+    androidComponents {
+        onVariants { variant ->
+            variant.outputs.forEach { output ->
+                val abiName = output.filters.find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }?.identifier
+                if (abiName != null) {
+                    output.versionCode.set((variant.versionCode.get() ?: 1) * 10 + (abiCodes[abiName] ?: 0))
+                }
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

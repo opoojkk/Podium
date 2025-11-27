@@ -28,3 +28,51 @@
     volatile <fields>;
 }
 
+# Keep Compose runtime
+-keep class androidx.compose.** { *; }
+-keep class androidx.compose.runtime.** { *; }
+-keep class androidx.compose.ui.** { *; }
+-dontwarn androidx.compose.**
+
+# Keep all @Composable functions
+-keep @androidx.compose.runtime.Composable public class * {
+    *;
+}
+
+# Keep SQLDelight classes
+-keep class app.cash.sqldelight.** { *; }
+-keep class com.opoojkk.podium.db.** { *; }
+-keepclassmembers class com.opoojkk.podium.db.** { *; }
+
+# Keep Rust JNI native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Keep data classes and serializable classes
+-keep @kotlinx.serialization.Serializable class com.opoojkk.podium.data.model.** { *; }
+-keepclassmembers class com.opoojkk.podium.data.model.** {
+    <init>(...);
+    <fields>;
+}
+
+# Keep Android Media classes
+-keep class androidx.media.** { *; }
+-keep class androidx.media3.** { *; }
+-dontwarn androidx.media.**
+-dontwarn androidx.media3.**
+
+# Remove logging in release
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+# Optimization
+-optimizationpasses 5
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-dontpreverify
+-verbose
+
