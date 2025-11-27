@@ -167,6 +167,7 @@ kotlin {
             implementation(libs.androidx.media)
             implementation(libs.androidx.media3.session)
             implementation(libs.androidx.media3.ui)
+            implementation(libs.slf4j.simple)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -212,12 +213,17 @@ android {
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     // Load signing configuration from multiple possible locations
-    // Priority: 1. signing/keystore.properties (submodule)
-    //          2. keystore.properties (project root)
-    //          3. Environment variables (CI/CD)
+    // Priority: 1. jkk-signing/keystore.properties (private repo / submodule)
+    //          2. signing/keystore.properties (legacy path)
+    //          3. keystore.properties (project root)
+    //          4. Environment variables (CI/CD)
     val keystorePropertiesFile = when {
+        rootProject.file("jkk-signing/keystore.properties").exists() -> {
+            println("📦 Using signing configuration from jkk-signing/keystore.properties")
+            rootProject.file("jkk-signing/keystore.properties")
+        }
         rootProject.file("signing/keystore.properties").exists() -> {
-            println("📦 Using signing configuration from submodule: signing/keystore.properties")
+            println("📦 Using signing configuration from signing/keystore.properties")
             rootProject.file("signing/keystore.properties")
         }
         rootProject.file("keystore.properties").exists() -> {
@@ -236,6 +242,13 @@ android {
     if (hasKeystoreConfig && keystorePropertiesFile != null) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
+    val resolvedStoreFile = if (hasKeystoreConfig && keystorePropertiesFile != null) {
+        val storeFilePath = keystoreProperties.getProperty("storeFile")
+        storeFilePath?.let { path ->
+            keystorePropertiesFile.parentFile?.resolve(path)?.takeIf { it.exists() }
+                ?: rootProject.file(path)
+        }
+    } else null
 
     defaultConfig {
         applicationId = "com.opoojkk.podium"
@@ -254,7 +267,7 @@ android {
     signingConfigs {
         if (hasKeystoreConfig) {
             create("release") {
-                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                resolvedStoreFile?.let { storeFile = it }
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")

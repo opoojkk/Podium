@@ -28,3 +28,4 @@ release/
 # Note: The signing/ directory is a Git submodule for private signing configuration
 # Other users can clone the project without this submodule
 signing/
+/jkk-signing/

@@ -23,6 +23,7 @@ kotlinx-datetime = "0.6.1"
 vlcj = "4.8.2"
 jlayer = "1.0.1.4"
 coil = "3.0.4"
+slf4j = "2.0.13"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -60,6 +61,7 @@ vlcj-core = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
 jlayer = { module = "com.googlecode.soundlibs:jlayer", version.ref = "jlayer" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
