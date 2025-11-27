@@ -1,9 +1,5 @@
 package com.opoojkk.podium
 
-import coil3.ImageLoader
-import coil3.PlatformContext
-import coil3.annotation.ExperimentalCoilApi
-import coil3.setSingletonImageLoaderFactory
 import com.opoojkk.podium.data.local.PodcastDao
 import com.opoojkk.podium.data.repository.ApplePodcastSearchRepository
 import com.opoojkk.podium.data.repository.PodcastRepository
@@ -14,7 +10,6 @@ import com.opoojkk.podium.download.PodcastDownloadManager
 import com.opoojkk.podium.platform.*
 import com.opoojkk.podium.player.PodcastPlayer
 import com.opoojkk.podium.presentation.PodiumController
-import com.opoojkk.podium.ui.components.ImageLoaderConfig
 import io.ktor.client.*
 import kotlinx.coroutines.*
 
@@ -35,13 +30,7 @@ class PodiumEnvironment internal constructor(
     }
 }
 
-@OptIn(ExperimentalCoilApi::class)
 fun createPodiumEnvironment(context: PlatformContext): PodiumEnvironment {
-    // 初始化全局ImageLoader - 配置三级缓存策略
-    setSingletonImageLoaderFactory { ctx ->
-        ImageLoaderConfig.createImageLoader(ctx, debug = false)
-    }
-
     val httpClient = createPlatformHttpClient()
     val driverFactory = provideDatabaseDriverFactory(context)
     val database = PodcastDatabase(driverFactory.createDriver())

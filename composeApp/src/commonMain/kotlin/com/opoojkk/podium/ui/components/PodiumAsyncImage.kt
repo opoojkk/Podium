@@ -1,5 +1,6 @@
 package com.opoojkk.podium.ui.components
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
@@ -63,7 +64,7 @@ fun PodiumAsyncImage(
         } else if (showLoadingPlaceholder) {
             {
                 ImagePlaceholder.Loading(
-                    modifier = Modifier.matchParentSize(),
+                    modifier = Modifier.fillMaxSize(),
                     cornerRadius = cornerRadius
                 )
             }
@@ -73,7 +74,7 @@ fun PodiumAsyncImage(
         } else if (showErrorPlaceholder) {
             {
                 ImagePlaceholder.Error(
-                    modifier = Modifier.matchParentSize(),
+                    modifier = Modifier.fillMaxSize(),
                     cornerRadius = cornerRadius
                 )
             }
@@ -119,7 +120,7 @@ fun PodiumImageWithInitials(
             error = {
                 ImagePlaceholder.Initials(
                     initials = initials,
-                    modifier = Modifier.matchParentSize(),
+                    modifier = Modifier.fillMaxSize(),
                     cornerRadius = cornerRadius
                 )
             }

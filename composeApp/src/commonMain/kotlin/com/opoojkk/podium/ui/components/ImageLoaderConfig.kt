@@ -45,16 +45,8 @@ object ImageLoaderConfig {
             .diskCache {
                 newDiskCache(context)
             }
-            // 网络配置：启用缓存头和重试机制
-            .respectCacheHeaders(true)
             // 启用淡入动画，提升用户体验
             .crossfade(true)
-            // 调试模式
-            .apply {
-                if (debug) {
-                    logger(DebugLogger())
-                }
-            }
             .build()
     }
 
