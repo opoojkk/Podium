@@ -204,7 +204,7 @@ class MediaNotificationManager(
     }
 
     /**
-     * 创建默认图标（播客麦克风图标）
+     * 创建默认图标（Podium P字母logo）
      */
     private fun createDefaultIcon(): Image {
         // 创建一个简单的彩色方块作为默认图标
@@ -227,43 +227,55 @@ class MediaNotificationManager(
             java.awt.RenderingHints.KEY_RENDERING,
             java.awt.RenderingHints.VALUE_RENDER_QUALITY
         )
-
-        // Material 主题色 - 使用渐变效果
-        val gradient = java.awt.GradientPaint(
-            0f, 0f, java.awt.Color(98, 0, 234),  // Material Purple 700
-            size.toFloat(), size.toFloat(), java.awt.Color(103, 58, 183)  // Material Deep Purple 500
+        g.setRenderingHint(
+            java.awt.RenderingHints.KEY_STROKE_CONTROL,
+            java.awt.RenderingHints.VALUE_STROKE_PURE
         )
-        g.paint = gradient
 
-        // 绘制圆角矩形背景
-        g.fillRoundRect(0, 0, size, size, size / 3, size / 3)
+        // Podium橙色背景
+        g.color = java.awt.Color(255, 119, 51)  // Podium Orange
+        g.fillRoundRect(0, 0, size, size, size / 4, size / 4)
 
-        // 绘制播客麦克风图标
+        // 绘制白色P字母
         g.color = java.awt.Color.WHITE
+        val strokeWidth = size / 10f
+        g.stroke = java.awt.BasicStroke(strokeWidth, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND)
 
-        val centerX = size / 2
-        val centerY = size / 2
-        val iconSize = size / 2
+        val path = java.awt.geom.Path2D.Float()
 
-        // 麦克风主体（椭圆）
-        val micWidth = iconSize / 3
-        val micHeight = iconSize / 2
-        val micX = centerX - micWidth / 2
-        val micY = centerY - micHeight / 2 - iconSize / 6
-        g.fillRoundRect(micX, micY, micWidth, micHeight, micWidth / 2, micWidth / 2)
+        // P字母路径 - 基于Android vector drawable的设计
+        val scale = size / 24f
+        val offsetX = size * 0.1f
+        val offsetY = size * 0.05f
 
-        // 麦克风支架（U形）
-        g.stroke = java.awt.BasicStroke(size / 12f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND)
-        val arcWidth = iconSize / 2
-        val arcHeight = iconSize / 2
-        val arcX = centerX - arcWidth / 2
-        val arcY = centerY - iconSize / 6
-        g.drawArc(arcX, arcY, arcWidth, arcHeight, 0, -180)
+        // 起点 - 底部
+        path.moveTo(10 * scale + offsetX, 19 * scale + offsetY)
+        // 竖直线到顶部
+        path.lineTo(10 * scale + offsetX, 7 * scale + offsetY)
+        // 顶部圆角转折
+        path.quadTo(10 * scale + offsetX, 6.5f * scale + offsetY, 10.5f * scale + offsetX, 6.5f * scale + offsetY)
+        // 水平线到圆环起点
+        path.lineTo(14 * scale + offsetX, 6.5f * scale + offsetY)
+        // 圆环 - 使用cubicCurveTo模拟圆弧
+        val radius = 3f * scale
+        val cx = 14f * scale + offsetX
+        val cy = 9.5f * scale + offsetY
+        // 上半圆
+        path.curveTo(
+            cx + radius, cy - radius,  // 控制点1
+            cx + radius, cy + radius,  // 控制点2
+            cx, cy + radius            // 结束点
+        )
+        // 下半圆回到中间
+        path.curveTo(
+            cx - radius, cy + radius,  // 控制点1
+            cx - radius, cy - radius,  // 控制点2
+            cx, cy - radius            // 结束点 (回到起点)
+        )
+        // 水平线回到主干
+        path.lineTo(10 * scale + offsetX, 12.5f * scale + offsetY)
 
-        // 麦克风底座
-        val baseY = centerY + iconSize / 3
-        g.fillRect(centerX - iconSize / 6, baseY, iconSize / 3, size / 12)
-
+        g.draw(path)
         g.dispose()
         return image
     }
