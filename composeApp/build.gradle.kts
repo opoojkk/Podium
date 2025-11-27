@@ -1,5 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -228,11 +230,11 @@ android {
         }
     }
 
-    val keystoreProperties = java.util.Properties()
+    val keystoreProperties = Properties()
     val hasKeystoreConfig = keystorePropertiesFile?.exists() == true
 
     if (hasKeystoreConfig && keystorePropertiesFile != null) {
-        keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
 
     defaultConfig {
@@ -303,26 +305,6 @@ android {
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
             isUniversalApk = true  // Also generate a universal APK
-        }
-    }
-
-    // Map ABI to version code for automatic version management
-    val abiCodes = mapOf(
-        "armeabi-v7a" to 1,
-        "arm64-v8a" to 2,
-        "x86" to 3,
-        "x86_64" to 4
-    )
-
-    // Automatically set version codes for split APKs
-    androidComponents {
-        onVariants { variant ->
-            variant.outputs.forEach { output ->
-                val abiName = output.filters.find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }?.identifier
-                if (abiName != null) {
-                    output.versionCode.set((variant.versionCode.get() ?: 1) * 10 + (abiCodes[abiName] ?: 0))
-                }
-            }
         }
     }
 
