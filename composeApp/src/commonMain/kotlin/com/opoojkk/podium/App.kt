@@ -524,9 +524,11 @@ fun PodiumApp(
     val allRecentUpdates by controller.allRecentUpdates.collectAsState(emptyList())
     val downloads by controller.downloads.collectAsState()
 
-    // Debug: Monitor playback state changes
-    LaunchedEffect(playbackState.episode) {
-        Logger.d("App") { "🎵 PlaybackState changed - episode=${playbackState.episode?.title}, isPlaying=${playbackState.isPlaying}, position=${playbackState.positionMs}ms" }
+    // Debug: Monitor playback state changes (using episodeId to avoid object comparison issues)
+    LaunchedEffect(playbackState.episode?.id, playbackState.isPlaying) {
+        if (playbackState.episode != null) {
+            Logger.d("App") { "🎵 PlaybackState changed - episode=${playbackState.episode?.title}, isPlaying=${playbackState.isPlaying}, position=${playbackState.positionMs}ms" }
+        }
     }
 
     // 睡眠定时器对话框状态
