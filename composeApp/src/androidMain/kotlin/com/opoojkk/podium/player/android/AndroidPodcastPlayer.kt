@@ -240,7 +240,19 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
         if (mediaPlayer == null && currentEpisode != null) {
             val episode = currentEpisode!!
             val startPos = _state.value.positionMs
-            println("🎵 Android Player: MediaPlayer not initialized, starting playback from ${startPos}ms")
+            com.opoojkk.podium.util.Logger.d("AndroidPodcastPlayer") { "🎵 MediaPlayer not initialized, re-initializing from ${startPos}ms" }
+
+            // 立即更新状态为缓冲中，给用户即时反馈
+            _state.value = PlaybackState(
+                episode = episode,
+                positionMs = startPos,
+                isPlaying = false,
+                durationMs = episode.duration,
+                isBuffering = true,
+                playbackSpeed = currentPlaybackSpeed,
+            )
+
+            // 异步重新初始化播放器
             CoroutineScope(Dispatchers.Main).launch {
                 play(episode, startPos)
             }
@@ -248,7 +260,7 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
             mediaPlayer?.let { player ->
                 if (!player.isPlaying) {
                     if (!requestAudioFocus()) {
-                        println("❌ Android Player: Failed to regain audio focus on resume")
+                        com.opoojkk.podium.util.Logger.w("AndroidPodcastPlayer") { "❌ Failed to regain audio focus on resume" }
                         return@let
                     }
                     player.setVolume(1f, 1f)
