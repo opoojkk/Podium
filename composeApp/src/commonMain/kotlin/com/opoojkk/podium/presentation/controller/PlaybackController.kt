@@ -128,11 +128,20 @@ class PlaybackController(
 
     /**
      * Play an episode from the beginning or from saved progress.
+     * Ensures the episode exists in the database before saving playback state.
      */
     fun playEpisode(episode: Episode) {
         Logger.d("PlaybackController") { "🎵 playEpisode called for: ${episode.title}" }
         Logger.d("PlaybackController") { "🎵 Audio URL: ${episode.audioUrl}" }
         scope.launch {
+            // Ensure episode exists in database to satisfy foreign key constraint
+            kotlin.runCatching {
+                repository.ensureEpisodeExists(episode)
+                Logger.d("PlaybackController") { "🎵 Episode ensured in database: ${episode.id}" }
+            }.onFailure { error ->
+                Logger.e("PlaybackController", "Failed to ensure episode exists in database", error)
+            }
+
             val (episodeToPlay, cachePath) = resolvePlaybackEpisode(episode)
             if (cachePath != null) {
                 Logger.d("PlaybackController") { "🎵 Playing cached file at $cachePath" }
@@ -141,14 +150,20 @@ class PlaybackController(
             val startPosition = progress?.positionMs ?: 0L
             Logger.d("PlaybackController") { "🎵 Starting playback at position: $startPosition" }
             player.play(episodeToPlay, startPosition)
-            repository.savePlayback(
-                PlaybackProgress(
+
+            // Save initial playback record (now safe because episode exists in DB)
+            kotlin.runCatching {
+                val initialProgress = PlaybackProgress(
                     episodeId = episode.id,
                     positionMs = startPosition,
                     durationMs = episode.duration,
                     updatedAt = Clock.System.now(),
-                ),
-            )
+                )
+                repository.savePlayback(initialProgress)
+                Logger.d("PlaybackController") { "🎵 Saved initial playback record: episodeId=${episode.id}, position=${startPosition}ms, addedToPlaylist=${initialProgress.addedToPlaylist}" }
+            }.onFailure { error ->
+                Logger.e("PlaybackController", "Failed to save initial playback record", error)
+            }
         }
     }
 

@@ -273,6 +273,16 @@ SELECT id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload
 FROM podcasts
 WHERE feedUrl = ?;
 
+selectPodcastById:
+SELECT id, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload
+FROM podcasts
+WHERE id = ?;
+
+selectEpisodeById:
+SELECT id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters
+FROM episodes
+WHERE id = ?;
+
 -- App settings queries
 getSetting:
 SELECT value FROM app_settings WHERE key = ?;

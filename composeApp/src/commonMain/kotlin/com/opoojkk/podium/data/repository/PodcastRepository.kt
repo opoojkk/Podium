@@ -313,6 +313,33 @@ class PodcastRepository(
         return exportSubscriptions(ExportFormat.OPML)
     }
 
+    /**
+     * Ensure an episode exists in the database before saving playback state.
+     * This is necessary because playback_state table has a foreign key constraint on episodes table.
+     * For non-subscribed podcasts (e.g., from XYZRank), we create minimal podcast/episode records.
+     */
+    suspend fun ensureEpisodeExists(episode: Episode) {
+        // Check if podcast exists, if not create a minimal record
+        val existingPodcast = dao.getPodcastById(episode.podcastId)
+        if (existingPodcast == null) {
+            dao.insertPodcast(
+                id = episode.podcastId,
+                title = episode.podcastTitle,
+                description = "", // Minimal record for non-subscribed podcast
+                artworkUrl = episode.imageUrl,
+                feedUrl = "temp://unsubscribed/${episode.podcastId}", // Placeholder feed URL
+                lastUpdated = Clock.System.now(),
+                autoDownload = false // Don't auto-download for temporary podcasts
+            )
+        }
+
+        // Check if episode exists, if not create it
+        val existingEpisode = dao.getEpisodeById(episode.id)
+        if (existingEpisode == null) {
+            dao.insertEpisode(episode)
+        }
+    }
+
     suspend fun savePlayback(progress: PlaybackProgress) {
         dao.updatePlayback(progress)
     }

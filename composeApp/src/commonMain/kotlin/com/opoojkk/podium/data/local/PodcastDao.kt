@@ -103,6 +103,44 @@ class PodcastDao(private val database: PodcastDatabase) {
             .mapToList(Dispatchers.Default)
             .map { list -> list.map { it.first } }
 
+    suspend fun getPodcastById(id: String): Podcast? {
+        return queries.selectPodcastById(id) { podcastId, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload ->
+            mapPodcast(podcastId, title, description, artworkUrl, feedUrl, lastUpdated, autoDownload)
+        }.executeAsOneOrNull()
+    }
+
+    suspend fun getEpisodeById(id: String): Episode? {
+        return queries.selectEpisodeById(id) { episodeId, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters ->
+            mapEpisode(episodeId, podcastId, "", title, description, audioUrl, publishDate, duration, imageUrl, chapters)
+        }.executeAsOneOrNull()
+    }
+
+    suspend fun insertPodcast(id: String, title: String, description: String, artworkUrl: String?, feedUrl: String, lastUpdated: Instant, autoDownload: Boolean) {
+        queries.upsertPodcast(
+            id = id,
+            title = title,
+            description = description,
+            artworkUrl = artworkUrl,
+            feedUrl = feedUrl,
+            lastUpdated = lastUpdated.toEpochMilliseconds(),
+            autoDownload = if (autoDownload) 1 else 0,
+        )
+    }
+
+    suspend fun insertEpisode(episode: Episode) {
+        queries.upsertEpisode(
+            id = episode.id,
+            podcastId = episode.podcastId,
+            title = episode.title,
+            description = episode.description,
+            audioUrl = episode.audioUrl,
+            publishDate = episode.publishDate.toEpochMilliseconds(),
+            duration = episode.duration,
+            imageUrl = episode.imageUrl,
+            chapters = ChapterSerializer.serialize(episode.chapters),
+        )
+    }
+
     suspend fun upsertPodcast(podcast: Podcast) {
         queries.upsertPodcast(
             id = podcast.id,
@@ -151,6 +189,7 @@ class PodcastDao(private val database: PodcastDatabase) {
     }
 
     suspend fun updatePlayback(progress: PlaybackProgress) {
+        com.opoojkk.podium.util.Logger.d("PodcastDao") { "💾 Saving playback: episodeId=${progress.episodeId}, position=${progress.positionMs}ms, addedToPlaylist=${progress.addedToPlaylist}" }
         queries.upsertPlayback(
             episodeId = progress.episodeId,
             positionMs = progress.positionMs,
@@ -159,6 +198,7 @@ class PodcastDao(private val database: PodcastDatabase) {
             isCompleted = if (progress.isCompleted) 1 else 0,
             addedToPlaylist = if (progress.addedToPlaylist) 1 else 0,
         )
+        com.opoojkk.podium.util.Logger.d("PodcastDao") { "💾 Playback saved successfully" }
     }
 
     suspend fun updateAutoDownload(podcastId: String, enabled: Boolean) {
@@ -217,13 +257,22 @@ class PodcastDao(private val database: PodcastDatabase) {
     }
 
     suspend fun getLastPlayedEpisode(): Pair<Episode, PlaybackProgress>? {
-        return queries.selectRecentPlayback(1) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
+        com.opoojkk.podium.util.Logger.d("PodcastDao") { "📖 Loading last played episode from database..." }
+        val result = queries.selectRecentPlayback(1) { id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist ->
             mapPlaybackWithEpisode(id, podcastId, title, description, audioUrl, publishDate, duration, imageUrl, chapters, podcastId_, podcastTitle, podcastDescription, podcastArtwork, podcastFeed, podcastLastUpdated, podcastAutoDownload, positionMs, durationMs, updatedAt, isCompleted, addedToPlaylist)
         }
             .executeAsOneOrNull()
             ?.let { (episodeWithPodcast, progress) ->
                 episodeWithPodcast.episode to progress
             }
+
+        if (result != null) {
+            com.opoojkk.podium.util.Logger.d("PodcastDao") { "📖 Found last played: ${result.first.title}, position=${result.second.positionMs}ms, addedToPlaylist=${result.second.addedToPlaylist}" }
+        } else {
+            com.opoojkk.podium.util.Logger.d("PodcastDao") { "📖 No playback record found in database" }
+        }
+
+        return result
     }
 
     suspend fun deletePodcast(podcastId: String) {
