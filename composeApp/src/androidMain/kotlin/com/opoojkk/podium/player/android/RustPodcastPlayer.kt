@@ -187,7 +187,8 @@ class RustPodcastPlayer(
             // If player is in Idle state but we have an episode, reload it
             Log.i(TAG, "Player is in Idle state, reloading audio and resuming from position: ${_state.value.positionMs}")
 
-            coroutineScope.launch {
+            // Heavy reload work should not run on the main thread after an app relaunch
+            coroutineScope.launch(Dispatchers.Default) {
                 try {
                     // Reload the episode from the last known position
                     play(episode, _state.value.positionMs)
