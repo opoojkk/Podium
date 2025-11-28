@@ -338,8 +338,9 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 	}
 
 	override fun restorePlaybackState(episode: Episode, positionMs: Long) {
+		println("🎵 AndroidPodcastPlayer: restorePlaybackState called - episode=${episode.title}, positionMs=${positionMs}")
 		currentEpisode = episode
-		_state.value = PlaybackState(
+		val newState = PlaybackState(
 			episode = episode,
 			positionMs = positionMs,
 			isPlaying = false,
@@ -347,6 +348,8 @@ class AndroidPodcastPlayer(private val context: Context) : PodcastPlayer {
 			isBuffering = false,
 			playbackSpeed = currentPlaybackSpeed,
 		)
+		_state.value = newState
+		println("🎵 AndroidPodcastPlayer: state updated - episode=${_state.value.episode?.title}")
 	}
 
     private fun requestAudioFocus(): Boolean {

@@ -54,11 +54,15 @@ class PlaybackController(
     init {
         // Load last played episode
         scope.launch {
+            Logger.d("PlaybackController") { "🎵 Loading last played episode from database..." }
             val lastPlayed = repository.getLastPlayedEpisode()
             if (lastPlayed != null) {
                 val (episode, progress) = lastPlayed
-                Logger.d("PlaybackController") { "🎵 Restoring last played episode: ${episode.title} at ${progress.positionMs}ms" }
+                Logger.d("PlaybackController") { "🎵 Found last played episode: ${episode.title} at ${progress.positionMs}ms" }
                 player.restorePlaybackState(episode, progress.positionMs)
+                Logger.d("PlaybackController") { "🎵 Playback state restored successfully" }
+            } else {
+                Logger.d("PlaybackController") { "🎵 No last played episode found in database" }
             }
         }
 
@@ -154,14 +158,48 @@ class PlaybackController(
     fun resume() = player.resume()
 
     /**
-     * Pause playback.
+     * Pause playback and save current progress.
      */
-    fun pause() = player.pause()
+    fun pause() {
+        player.pause()
+        // Immediately save progress when pausing
+        scope.launch {
+            val currentState = player.state.value
+            if (currentState.episode != null) {
+                repository.savePlayback(
+                    PlaybackProgress(
+                        episodeId = currentState.episode.id,
+                        positionMs = currentState.positionMs,
+                        durationMs = currentState.durationMs ?: currentState.episode.duration,
+                        updatedAt = Clock.System.now(),
+                    ),
+                )
+                Logger.d("PlaybackController") { "🎵 Saved playback progress on pause: ${currentState.positionMs}ms" }
+            }
+        }
+    }
 
     /**
-     * Stop playback.
+     * Stop playback and save current progress.
      */
-    fun stop() = player.stop()
+    fun stop() {
+        // Save progress before stopping
+        scope.launch {
+            val currentState = player.state.value
+            if (currentState.episode != null) {
+                repository.savePlayback(
+                    PlaybackProgress(
+                        episodeId = currentState.episode.id,
+                        positionMs = currentState.positionMs,
+                        durationMs = currentState.durationMs ?: currentState.episode.duration,
+                        updatedAt = Clock.System.now(),
+                    ),
+                )
+                Logger.d("PlaybackController") { "🎵 Saved playback progress on stop: ${currentState.positionMs}ms" }
+            }
+        }
+        player.stop()
+    }
 
     /**
      * Seek to a specific position in milliseconds.
