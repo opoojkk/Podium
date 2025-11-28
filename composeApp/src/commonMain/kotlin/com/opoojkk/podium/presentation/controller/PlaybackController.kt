@@ -162,43 +162,39 @@ class PlaybackController(
      */
     fun pause() {
         player.pause()
-        // Immediately save progress when pausing
-        scope.launch {
-            val currentState = player.state.value
-            if (currentState.episode != null) {
-                repository.savePlayback(
-                    PlaybackProgress(
-                        episodeId = currentState.episode.id,
-                        positionMs = currentState.positionMs,
-                        durationMs = currentState.durationMs ?: currentState.episode.duration,
-                        updatedAt = Clock.System.now(),
-                    ),
-                )
-                Logger.d("PlaybackController") { "🎵 Saved playback progress on pause: ${currentState.positionMs}ms" }
-            }
-        }
+        saveCurrentProgress("pause")
     }
 
     /**
      * Stop playback and save current progress.
      */
     fun stop() {
-        // Save progress before stopping
+        saveCurrentProgress("stop")
+        player.stop()
+    }
+
+    /**
+     * Save current playback progress to database.
+     */
+    private fun saveCurrentProgress(reason: String) {
         scope.launch {
             val currentState = player.state.value
             if (currentState.episode != null) {
-                repository.savePlayback(
-                    PlaybackProgress(
-                        episodeId = currentState.episode.id,
-                        positionMs = currentState.positionMs,
-                        durationMs = currentState.durationMs ?: currentState.episode.duration,
-                        updatedAt = Clock.System.now(),
-                    ),
-                )
-                Logger.d("PlaybackController") { "🎵 Saved playback progress on stop: ${currentState.positionMs}ms" }
+                kotlin.runCatching {
+                    repository.savePlayback(
+                        PlaybackProgress(
+                            episodeId = currentState.episode.id,
+                            positionMs = currentState.positionMs,
+                            durationMs = currentState.durationMs ?: currentState.episode.duration,
+                            updatedAt = Clock.System.now(),
+                        ),
+                    )
+                    Logger.d("PlaybackController") { "🎵 Saved playback progress on $reason: ${currentState.positionMs}ms" }
+                }.onFailure { error ->
+                    Logger.e("PlaybackController", "Failed to save playback progress on $reason", error)
+                }
             }
         }
-        player.stop()
     }
 
     /**
@@ -262,23 +258,9 @@ class PlaybackController(
     }
 
     private fun onTimerComplete() {
-        // Stop playback
+        // Pause playback and save progress
         player.pause()
-
-        // Save current progress
-        scope.launch {
-            val currentState = player.state.value
-            if (currentState.episode != null) {
-                repository.savePlayback(
-                    PlaybackProgress(
-                        episodeId = currentState.episode.id,
-                        positionMs = currentState.positionMs,
-                        durationMs = currentState.durationMs ?: currentState.episode.duration,
-                        updatedAt = Clock.System.now(),
-                    ),
-                )
-            }
-        }
+        saveCurrentProgress("sleep_timer")
 
         // Reset timer state
         _sleepTimerState.value = SleepTimerState()
