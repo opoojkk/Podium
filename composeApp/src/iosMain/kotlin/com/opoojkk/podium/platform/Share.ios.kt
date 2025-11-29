@@ -2,6 +2,7 @@ package com.opoojkk.podium.platform
 
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
+import platform.UIKit.UIWindow
 
 actual fun shareText(context: PlatformContext, text: String, title: String?): Boolean =
     runCatching {
@@ -15,7 +16,7 @@ actual fun shareText(context: PlatformContext, text: String, title: String?): Bo
         // Get the root view controller from connected scenes (iOS 13+)
         val windowScene = UIApplication.sharedApplication.connectedScenes
             .firstOrNull() as? platform.UIKit.UIWindowScene
-        val rootViewController = windowScene?.windows?.firstOrNull()?.rootViewController
+        val rootViewController = (windowScene?.windows?.firstOrNull() as? UIWindow)?.rootViewController
 
         rootViewController?.presentViewController(
             viewControllerToPresent = activityViewController,
