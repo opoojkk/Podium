@@ -2,7 +2,7 @@
 // For Fast Start files: direct HTTP streaming (minimal memory)
 // For non-Fast Start: virtual Fast Start (runtime moov relocation)
 
-use crate::error::{AudioError, Result};
+use crate::error::Result;
 use crate::streaming_http_source::HttpStreamingSource;
 use crate::m4a_virtual_faststart::VirtualFastStartSource;
 use std::io::{Read, Seek, SeekFrom};

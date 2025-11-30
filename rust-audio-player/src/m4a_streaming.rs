@@ -4,7 +4,7 @@
 
 use crate::error::{AudioError, Result};
 use parking_lot::{Condvar, Mutex};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -102,7 +102,7 @@ impl M4AStreamingSource {
         log::info!("M4A file size: {} bytes ({:.2} MB)", total_size, total_size as f64 / 1024.0 / 1024.0);
 
         // Initialize buffer with zeros
-        let mut buffer = vec![0u8; total_size as usize];
+        let buffer = vec![0u8; total_size as usize];
 
         let state = Arc::new(Mutex::new(M4AStreamingState {
             buffer,

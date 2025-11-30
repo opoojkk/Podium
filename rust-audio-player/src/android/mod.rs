@@ -9,10 +9,10 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
+use oboe::{AudioStream, AudioStreamBase};
 use oboe::{
     AudioStreamBuilder,
     AudioStreamAsync,
-    AudioStream,
     AudioOutputStream,
     Output,
     DataCallbackResult,
@@ -93,6 +93,7 @@ pub struct AndroidAudioPlayer {
     ring_buffer: Arc<Mutex<AudioRingBuffer>>,
     is_playing: Arc<AtomicBool>,
     sample_count: Arc<Mutex<u64>>,
+    output_sample_rate: Arc<Mutex<u32>>,
     decoder_thread: Option<thread::JoinHandle<()>>,
     stop_decoder: Arc<AtomicBool>,
     decoder: Arc<Mutex<Option<AudioDecoder>>>,
@@ -111,6 +112,7 @@ impl AndroidAudioPlayer {
             ring_buffer: Arc::new(Mutex::new(AudioRingBuffer::new(RING_BUFFER_SIZE))),
             is_playing: Arc::new(AtomicBool::new(false)),
             sample_count: Arc::new(Mutex::new(0)),
+            output_sample_rate: Arc::new(Mutex::new(48_000)), // default; updated per stream
             decoder_thread: None,
             stop_decoder: Arc::new(AtomicBool::new(false)),
             decoder: Arc::new(Mutex::new(None)),
@@ -156,6 +158,20 @@ impl AndroidAudioPlayer {
             .open_stream()
             .map_err(|e| AudioError::InitializationError(format!("Failed to open audio stream: {:?}", e)))?;
 
+        let actual_sample_rate = stream.get_sample_rate();
+        let resolved_rate = if actual_sample_rate > 0 { actual_sample_rate as u32 } else { sample_rate };
+        {
+            let mut rate = self.output_sample_rate.lock();
+            *rate = resolved_rate;
+        }
+        if resolved_rate != sample_rate {
+            log::warn!(
+                "Requested sample rate {}Hz, got {}Hz from audio device; will resample to match output",
+                sample_rate,
+                resolved_rate
+            );
+        }
+
         self.audio_stream = Some(stream);
 
         log::info!("Audio stream initialized successfully");
@@ -171,6 +187,7 @@ impl AndroidAudioPlayer {
         let is_playing = self.is_playing.clone();
         let stop_decoder = self.stop_decoder.clone();
         let sample_count = self.sample_count.clone();
+        let output_sample_rate = self.output_sample_rate.clone();
         let callback_manager = self.callback_manager.clone();
         let volume = self.volume.clone();
         let state_container = self.state_container.clone();
@@ -229,11 +246,19 @@ impl AndroidAudioPlayer {
 
                 match decode_result {
                     Some((samples, sample_rate, duration_ms)) => {
+                        let target_sample_rate = *output_sample_rate.lock();
+                        let (processed_samples, rate_for_position) = if target_sample_rate > 0 && target_sample_rate != sample_rate {
+                            let resampled = Self::resample_stereo(&samples, sample_rate, target_sample_rate);
+                            (resampled, target_sample_rate)
+                        } else {
+                            (samples, sample_rate)
+                        };
+
                         // Write to ring buffer (decoder lock already released)
                         let mut buffer = ring_buffer.lock();
                         let mut written = 0;
-                        while written < samples.len() {
-                            let w = buffer.write(&samples[written..]);
+                        while written < processed_samples.len() {
+                            let w = buffer.write(&processed_samples[written..]);
                             if w == 0 {
                                 // Buffer is full - sleep based on fullness
                                 let fullness = buffer.fullness();
@@ -258,7 +283,8 @@ impl AndroidAudioPlayer {
                         // Update position periodically
                         if last_position_update.elapsed().as_millis() >= POSITION_UPDATE_INTERVAL_MS as u128 {
                             let count = *sample_count.lock();
-                            let position_ms = (count * 1000) / sample_rate as u64;
+                            let effective_rate = if rate_for_position > 0 { rate_for_position } else { sample_rate };
+                            let position_ms = (count * 1000) / effective_rate as u64;
                             callback_manager.dispatch_event(CallbackEvent::PositionChanged {
                                 position_ms,
                                 duration_ms,
@@ -615,11 +641,13 @@ impl AudioPlayer for AndroidAudioPlayer {
         drop(decoder_lock);
 
         let sample_count = *self.sample_count.lock();
-        let sample_rate = if let Some(ref dec) = *self.decoder.lock() {
+        let decoder_rate = if let Some(ref dec) = *self.decoder.lock() {
             dec.format.sample_rate
         } else {
-            48000 // Default
+            48_000 // Default
         };
+        let output_rate = *self.output_sample_rate.lock();
+        let sample_rate = if output_rate > 0 { output_rate } else { decoder_rate };
 
         let position_ms = (sample_count * 1000) / sample_rate as u64;
 
@@ -666,6 +694,42 @@ impl AndroidAudioPlayer {
     /// This is Android-specific and not part of the AudioPlayer trait
     pub fn get_decoder(&self) -> Option<parking_lot::MutexGuard<Option<AudioDecoder>>> {
         Some(self.decoder.lock())
+    }
+
+    /// Simple linear resampler for stereo interleaved samples.
+    fn resample_stereo(samples: &[f32], input_rate: u32, output_rate: u32) -> Vec<f32> {
+        if input_rate == 0 || output_rate == 0 || samples.is_empty() {
+            return samples.to_vec();
+        }
+
+        let channels = 2usize;
+        let in_frames = samples.len() / channels;
+        if in_frames == 0 {
+            return samples.to_vec();
+        }
+
+        let ratio = output_rate as f64 / input_rate as f64;
+        let out_frames = ((in_frames as f64) * ratio).ceil() as usize;
+        let mut output = Vec::with_capacity(out_frames * channels);
+        let mut pos = 0.0f64;
+        let in_frames_minus_one = in_frames.saturating_sub(1);
+
+        for _ in 0..out_frames {
+            let idx = pos.floor() as usize;
+            let frac = (pos - idx as f64) as f32;
+            let next_idx = (idx + 1).min(in_frames_minus_one);
+
+            for ch in 0..channels {
+                let s1 = samples[idx * channels + ch];
+                let s2 = samples[next_idx * channels + ch];
+                // Linear interpolation
+                output.push(s1 + (s2 - s1) * frac);
+            }
+
+            pos += 1.0 / ratio;
+        }
+
+        output
     }
 }
 

@@ -16,6 +16,9 @@ import kotlinx.datetime.Instant
 import com.opoojkk.podium.util.Logger
 
 class PodcastDao(private val database: PodcastDatabase) {
+    companion object {
+        internal const val TEMP_UNSUBSCRIBED_PREFIX = "temp://unsubscribed/"
+    }
 
     private val queries = database.podcastQueries
 
@@ -28,6 +31,8 @@ class PodcastDao(private val database: PodcastDatabase) {
         }
             .asFlow()
             .mapToList(Dispatchers.Default)
+            // Temporary/unsubscribed placeholders use a temp:// feed URL; exclude them from subscription views
+            .map { podcasts -> podcasts.filterNot { it.feedUrl.startsWith(TEMP_UNSUBSCRIBED_PREFIX) } }
 
     fun observeEpisodes(podcastId: String): Flow<List<Episode>> =
         queries.selectEpisodesByPodcast(podcastId) { id, podcastId, podcastTitle, title, description, audioUrl, publishDate, duration, imageUrl, chapters ->

@@ -10,7 +10,7 @@ use parking_lot::Mutex;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, Host, Stream, StreamConfig};
+use cpal::{Device, Host, Stream, StreamConfig, SampleRate};
 
 /// Default ring buffer size (in samples) - used at initialization
 /// Will be optimized based on audio duration when loading
@@ -83,12 +83,8 @@ impl IOSAudioPlayer {
         let device = self.device.as_ref()
             .ok_or_else(|| AudioError::DeviceError("No audio device".to_string()))?;
 
-        // Configure stream
-        let config = StreamConfig {
-            channels: channels,
-            sample_rate: cpal::SampleRate(sample_rate),
-            buffer_size: cpal::BufferSize::Default,
-        };
+        // Configure stream with a sample rate supported by the device (clamp if necessary)
+        let config = self.pick_stream_config(device, sample_rate, channels);
 
         log::debug!("Stream config: {:?}", config);
 
@@ -140,6 +136,69 @@ impl IOSAudioPlayer {
 
         log::info!("Audio stream initialized successfully");
         Ok(())
+    }
+
+    /// Pick a stream config that best matches the decoder output while being supported by the device.
+    fn pick_stream_config(&self, device: &Device, decoder_sample_rate: u32, channels: u16) -> StreamConfig {
+        // Default to decoder sample rate
+        let default_config = StreamConfig {
+            channels,
+            sample_rate: SampleRate(decoder_sample_rate),
+            buffer_size: cpal::BufferSize::Default,
+        };
+
+        // Try to find a supported range that matches the channel count
+        match device.supported_output_configs() {
+            Ok(mut configs) => {
+                let mut chosen: Option<StreamConfig> = None;
+                while let Some(cfg_range) = configs.next() {
+                    if cfg_range.channels() != channels {
+                        continue;
+                    }
+
+                    let min = cfg_range.min_sample_rate().0;
+                    let max = cfg_range.max_sample_rate().0;
+                    let target = decoder_sample_rate.clamp(min, max);
+
+                    let stream_cfg = cfg_range
+                        .with_sample_rate(SampleRate(target))
+                        .config();
+
+                    chosen = Some(stream_cfg);
+
+                    // Prefer exact match
+                    if target == decoder_sample_rate {
+                        break;
+                    }
+                }
+
+                if let Some(cfg) = chosen {
+                    if cfg.sample_rate.0 != decoder_sample_rate {
+                        log::warn!(
+                            "Decoder sample rate {}Hz not supported; using closest supported {}Hz",
+                            decoder_sample_rate,
+                            cfg.sample_rate.0
+                        );
+                    }
+                    cfg
+                } else {
+                    log::warn!(
+                        "No supported config found for {} channels; using decoder sample rate {}Hz",
+                        channels,
+                        decoder_sample_rate
+                    );
+                    default_config
+                }
+            }
+            Err(err) => {
+                log::warn!(
+                    "Failed to query supported output configs ({}); using decoder sample rate {}Hz",
+                    err,
+                    decoder_sample_rate
+                );
+                default_config
+            }
+        }
     }
 
     fn start_decoder_thread(&mut self) {

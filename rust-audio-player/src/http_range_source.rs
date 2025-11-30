@@ -52,15 +52,24 @@ impl HttpRangeState {
             return Ok(());
         }
 
-        let response = self
-            .agent
-            .head(&self.url)
-            .call()
-            .map_err(|e| AudioError::NetworkError(format!("HEAD request failed: {}", e)))?;
-
-        self.total_size = response
-            .header("Content-Length")
-            .and_then(|s| s.parse::<u64>().ok());
+        // Try HEAD first
+        match self.agent.head(&self.url).call() {
+            Ok(response) => {
+                self.total_size = response
+                    .header("Content-Length")
+                    .and_then(|s| s.parse::<u64>().ok());
+            }
+            Err(head_err) => {
+                log::warn!("HEAD request failed ({}), falling back to Range GET", head_err);
+                self.total_size = self.try_get_size_with_range_request()?;
+                if self.total_size.is_none() {
+                    return Err(AudioError::NetworkError(format!(
+                        "Failed to determine content length: HEAD error={}, Range GET returned no size",
+                        head_err
+                    )));
+                }
+            }
+        }
 
         if let Some(size) = self.total_size {
             log::info!(
@@ -73,6 +82,44 @@ impl HttpRangeState {
         }
 
         Ok(())
+    }
+
+    /// Fallback: fetch a 0-0 range to derive total size when HEAD fails or lacks Content-Length.
+    fn try_get_size_with_range_request(&self) -> Result<Option<u64>> {
+        let mut response = self
+            .agent
+            .get(&self.url)
+            .set("Range", "bytes=0-0")
+            .call()
+            .map_err(|e| AudioError::NetworkError(format!("Range request (fallback) failed: {}", e)))?;
+
+        // Capture headers before consuming the body
+        let content_range_header = response
+            .header("Content-Range")
+            .map(|s| s.to_string());
+        let content_length_header = response
+            .header("Content-Length")
+            .and_then(|s| s.parse::<u64>().ok());
+
+        // Ensure body is consumed so connection can be reused
+        let mut sink = Vec::new();
+        if let Err(e) = response.into_reader().read_to_end(&mut sink) {
+            log::warn!("Failed to read fallback range body: {}", e);
+        }
+
+        // Try Content-Range first, then Content-Length
+        if let Some(range) = content_range_header.as_deref() {
+            if let Some(total) = Self::parse_total_from_content_range(range) {
+                return Ok(Some(total));
+            }
+        }
+
+        Ok(content_length_header)
+    }
+
+    /// Parse Content-Range header to extract total size, e.g., "bytes 0-0/12345"
+    fn parse_total_from_content_range(header: &str) -> Option<u64> {
+        header.split('/').last()?.parse::<u64>().ok()
     }
 
     /// Check if data is in cache

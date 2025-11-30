@@ -328,7 +328,7 @@ class PodcastRepository(
                 title = episode.podcastTitle,
                 description = "", // Minimal record for non-subscribed podcast
                 artworkUrl = episode.imageUrl,
-                feedUrl = "temp://unsubscribed/${episode.podcastId}", // Placeholder feed URL
+                feedUrl = "${PodcastDao.TEMP_UNSUBSCRIBED_PREFIX}${episode.podcastId}", // Placeholder feed URL
                 lastUpdated = Clock.System.now(),
                 autoDownload = false // Don't auto-download for temporary podcasts
             )
