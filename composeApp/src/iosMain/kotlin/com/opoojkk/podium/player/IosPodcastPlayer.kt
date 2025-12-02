@@ -64,6 +64,9 @@ class IosPodcastPlayer : PodcastPlayer {
                 }
 
                 val item = AVPlayerItem.playerItemWithURL(url)
+                // Align with Android's fix for unexpected fast playback by forcing
+                // time-pitch processing to preserve natural speed (avoids chipmunk effect)
+                item.audioTimePitchAlgorithm = AVAudioTimePitchAlgorithmTimeDomain
                 player.replaceCurrentItemWithPlayerItem(item)
                 val seekTime = CMTimeMakeWithSeconds(startPositionMs.toDouble() / 1000.0, 1000)
                 // Emit buffering state while preparing/seek
@@ -143,6 +146,7 @@ class IosPodcastPlayer : PodcastPlayer {
         currentPlaybackSpeed = speed.coerceIn(0.5f, 2.0f)
 
         // 设置 AVPlayer 的播放速率
+        player.currentItem?.audioTimePitchAlgorithm = AVAudioTimePitchAlgorithmTimeDomain
         player.rate = if (player.timeControlStatus == AVPlayerTimeControlStatusPlaying) {
             currentPlaybackSpeed
         } else {

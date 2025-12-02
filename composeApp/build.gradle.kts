@@ -203,6 +203,7 @@ kotlin {
             implementation(libs.ktor.client.cio)
             implementation(libs.sqldelight.jvm)
             implementation(libs.ktor.serialization.kotlinx.xml)
+            implementation(libs.coil.network.okhttp)
             implementation(libs.jlayer)
         }
     }

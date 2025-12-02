@@ -23,6 +23,7 @@ mod streaming_http_source;
 mod m4a_smart_source;
 mod m4a_virtual_faststart;
 mod http_range_source;
+mod output_rate;
 
 // Re-exports
 pub use player::{AudioPlayer, PlayerState, PlaybackStatus};
