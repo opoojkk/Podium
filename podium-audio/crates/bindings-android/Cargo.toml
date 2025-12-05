@@ -25,13 +25,22 @@ parking_lot = "0.12"
 once_cell = "1.19"
 log = "0.4"
 
-[target.'cfg(target_os = "android")'.dependencies]
-# Android-specific dependencies
-podium-renderer-android = { path = "../renderer-android" }
-android_logger = "0.14"
-ndk-context = "0.1"
+# Include both renderers, select at compile time via cfg
+podium-renderer-android = { path = "../renderer-android", optional = true }
+podium-renderer-ios = { path = "../renderer-ios", optional = true }
 
-[target.'cfg(not(target_os = "android"))'.dependencies]
-# Desktop JVM uses cpal renderer (cross-platform)
-podium-renderer-ios = { path = "../renderer-ios" }
-env_logger = "0.11"
+# Logging backends
+android_logger = { version = "0.14", optional = true }
+env_logger = { version = "0.11", optional = true }
+ndk-context = { version = "0.1", optional = true }
+
+[features]
+default = []
+android = ["podium-renderer-android", "android_logger", "ndk-context"]
+desktop = ["podium-renderer-ios", "env_logger"]
+
+[target.'cfg(target_os = "android")'.features]
+default = ["android"]
+
+[target.'cfg(not(target_os = "android"))'.features]
+default = ["desktop"]
