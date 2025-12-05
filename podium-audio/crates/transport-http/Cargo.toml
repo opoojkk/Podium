@@ -1,0 +1,13 @@
+[package]
+name = "podium-transport-http"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+podium-core = { path = "../core" }
+log.workspace = true
+ureq.workspace = true
+parking_lot.workspace = true
+symphonia.workspace = true
