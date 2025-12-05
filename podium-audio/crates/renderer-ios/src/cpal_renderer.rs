@@ -1,7 +1,7 @@
 // cpal-based audio renderer for iOS/macOS
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, Stream, StreamConfig};
+use cpal::{Stream, StreamConfig};
 use parking_lot::Mutex;
 use podium_core::{AudioError, Result};
 use podium_renderer_api::{AudioRenderer, AudioSpec};
@@ -87,6 +87,12 @@ impl CpalRenderer {
         &self.ring_buffer
     }
 }
+
+// SAFETY: cpal::Stream on CoreAudio is !Send/!Sync due to its internal callback wrapper,
+// but we create/control it from a single thread and mutations require &mut self.
+// Remaining fields are thread-safe (Arc/Atomic/Mutex), so cross-thread access is safe.
+unsafe impl Send for CpalRenderer {}
+unsafe impl Sync for CpalRenderer {}
 
 impl AudioRenderer for CpalRenderer {
     fn start(&mut self) -> Result<()> {

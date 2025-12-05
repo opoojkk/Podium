@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 podium-core = { path = "../core" }
