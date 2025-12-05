@@ -45,9 +45,37 @@ fn init_logging() {
     #[cfg(feature = "desktop")]
     {
         // Initialize env_logger for Desktop JVM (only once)
+        use env_logger::fmt::Color;
+        use std::io::Write;
+
         let _ = env_logger::builder()
             .filter_level(log::LevelFilter::Debug)
+            .format(|buf, record| {
+                let mut style = buf.style();
+                let level_color = match record.level() {
+                    log::Level::Error => Color::Red,
+                    log::Level::Warn => Color::Yellow,
+                    log::Level::Info => Color::Green,
+                    log::Level::Debug => Color::Blue,
+                    log::Level::Trace => Color::Cyan,
+                };
+                style.set_color(level_color).set_bold(true);
+
+                writeln!(
+                    buf,
+                    "[{} {} {}:{}] {}",
+                    buf.timestamp_millis(),
+                    style.value(record.level()),
+                    record.file().unwrap_or("unknown"),
+                    record.line().unwrap_or(0),
+                    record.args()
+                )
+            })
+            .write_style(env_logger::WriteStyle::Always)
             .try_init();
+
+        // Print startup message to confirm logging is working
+        eprintln!("🎵 Podium Audio Desktop logging initialized");
     }
 }
 

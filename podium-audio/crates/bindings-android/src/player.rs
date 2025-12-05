@@ -130,22 +130,35 @@ impl PodiumPlayer {
         self.decode_thread = Some(decode_thread);
 
         // Wait for prebuffer
-        log::info!("Waiting for prebuffer...");
+        log::info!("⏳ Waiting for prebuffer... (need {} samples)", PREBUFFER_SIZE);
         let mut attempts = 0;
         while attempts < 100 {  // 10 seconds timeout
             {
                 let buffer = self.ring_buffer.lock();
-                if buffer.available_read() >= PREBUFFER_SIZE {
-                    log::info!("Prebuffer complete: {} samples", buffer.available_read());
+                let available = buffer.available_read();
+                if available >= PREBUFFER_SIZE {
+                    log::info!("✅ Prebuffer complete: {} samples available", available);
                     break;
+                }
+                if attempts % 10 == 0 {  // Log every second
+                    log::debug!("📊 Buffering progress: {}/{} samples ({:.1}%)",
+                        available, PREBUFFER_SIZE,
+                        (available as f32 / PREBUFFER_SIZE as f32) * 100.0);
                 }
             }
             thread::sleep(std::time::Duration::from_millis(100));
             attempts += 1;
         }
 
+        // Check if we actually got enough data
+        let final_available = self.ring_buffer.lock().available_read();
+        if final_available < PREBUFFER_SIZE {
+            log::warn!("⚠️  Prebuffer timeout! Only {} samples available (need {})",
+                final_available, PREBUFFER_SIZE);
+        }
+
         self.set_state(PlayerState::Ready);
-        log::info!("URL loaded and ready to play");
+        log::info!("✅ URL loaded and ready to play");
         Ok(())
     }
 
@@ -160,31 +173,70 @@ impl PodiumPlayer {
         should_stop: Arc<AtomicBool>,
         duration_ms: Arc<Mutex<u64>>,
     ) -> Result<()> {
-        log::info!("Decode thread started for URL: {}", url);
+        log::info!("🧵 Decode thread started for URL: {}", url);
 
         // Create network source
-        let source = NetworkSource::from_http_range(url.clone())?;
+        log::debug!("📡 Creating network source...");
+        let source = match NetworkSource::from_http_range(url.clone()) {
+            Ok(s) => {
+                log::info!("✅ Network source created successfully");
+                s
+            }
+            Err(e) => {
+                log::error!("❌ Failed to create network source: {:?}", e);
+                return Err(e);
+            }
+        };
 
         // Create hint from URL
         let hint = Demuxer::create_hint_from_path(&url);
+        log::debug!("🔍 File hint created from URL");
 
         // Create demuxer
-        let mut demuxer = Demuxer::from_media_source(Box::new(source), hint)?;
+        log::debug!("🎬 Creating demuxer...");
+        let mut demuxer = match Demuxer::from_media_source(Box::new(source), hint) {
+            Ok(d) => {
+                log::info!("✅ Demuxer created successfully");
+                d
+            }
+            Err(e) => {
+                log::error!("❌ Failed to create demuxer: {:?}", e);
+                return Err(e);
+            }
+        };
 
         // Get audio info
-        let track_info = demuxer.get_track_info()?;
-        log::info!("Track info: sample_rate={}, channels={}, duration={}ms",
-            track_info.sample_rate, track_info.channels, track_info.duration_ms);
+        let track_info = match demuxer.get_track_info() {
+            Ok(info) => {
+                log::info!("📊 Track info: sample_rate={}Hz, channels={}, duration={}ms",
+                    info.sample_rate, info.channels, info.duration_ms);
+                info
+            }
+            Err(e) => {
+                log::error!("❌ Failed to get track info: {:?}", e);
+                return Err(e);
+            }
+        };
 
         // Set duration
         *duration_ms.lock() = track_info.duration_ms;
 
         // Create decoder
-        let mut decoder = AudioDecoder::from_demuxer(&demuxer)?;
+        log::debug!("🎵 Creating audio decoder...");
+        let mut decoder = match AudioDecoder::from_demuxer(&demuxer) {
+            Ok(d) => {
+                log::info!("✅ Decoder created successfully");
+                d
+            }
+            Err(e) => {
+                log::error!("❌ Failed to create decoder: {:?}", e);
+                return Err(e);
+            }
+        };
 
         // Create resampler if needed
         let resampler = if track_info.sample_rate != 48000 || track_info.channels != 2 {
-            log::info!("Creating resampler: {}Hz {}ch -> 48000Hz 2ch",
+            log::info!("🔄 Creating resampler: {}Hz {}ch -> 48000Hz 2ch",
                 track_info.sample_rate, track_info.channels);
             Some(Resampler::new(
                 track_info.sample_rate,
@@ -193,13 +245,18 @@ impl PodiumPlayer {
                 2,
             ))
         } else {
+            log::debug!("✅ No resampling needed (already 48kHz stereo)");
             None
         };
 
         // Decode loop
+        log::info!("🔄 Starting decode loop...");
+        let mut packet_count = 0;
+        let mut total_samples = 0;
+
         loop {
             if should_stop.load(Ordering::SeqCst) {
-                log::info!("Decode thread stopping (requested)");
+                log::info!("⏹️  Decode thread stopping (requested)");
                 break;
             }
 
@@ -207,16 +264,19 @@ impl PodiumPlayer {
             let packet = match demuxer.next_packet() {
                 Ok(packet) => packet,
                 Err(e) => {
-                    log::info!("End of stream or error: {:?}", e);
+                    log::info!("📭 End of stream reached: {:?}", e);
+                    log::info!("📈 Total packets decoded: {}, total samples: {}", packet_count, total_samples);
                     break;
                 }
             };
+
+            packet_count += 1;
 
             // Decode packet
             let decoded_audio = match decoder.decode(&packet) {
                 Ok(audio) => audio,
                 Err(e) => {
-                    log::warn!("Failed to decode packet: {:?}", e);
+                    log::warn!("⚠️  Failed to decode packet #{}: {:?}", packet_count, e);
                     continue;
                 }
             };
@@ -228,7 +288,17 @@ impl PodiumPlayer {
                 decoded_audio
             };
 
+            total_samples += samples.len();
+
+            // Log progress every 100 packets
+            if packet_count % 100 == 0 {
+                let buffer_status = ring_buffer.lock().available_read();
+                log::debug!("🎵 Decoded {} packets, {} samples, buffer: {} samples",
+                    packet_count, total_samples, buffer_status);
+            }
+
             // Write to ring buffer (with backpressure)
+            let mut retry_count = 0;
             loop {
                 {
                     let mut buffer = ring_buffer.lock();
@@ -236,18 +306,24 @@ impl PodiumPlayer {
                     if written == samples.len() {
                         break;
                     }
+
+                    // Log if buffer is full
+                    if retry_count == 0 {
+                        log::debug!("🔄 Ring buffer full, waiting... (packet #{})", packet_count);
+                    }
+                    retry_count += 1;
                 }
 
                 // Buffer full, wait a bit
                 if should_stop.load(Ordering::SeqCst) {
-                    log::info!("Decode thread stopping (buffer write interrupted)");
+                    log::info!("⏹️  Decode thread stopping (buffer write interrupted)");
                     return Ok(());
                 }
                 thread::sleep(std::time::Duration::from_millis(10));
             }
         }
 
-        log::info!("Decode thread finished");
+        log::info!("✅ Decode thread finished - {} packets, {} samples total", packet_count, total_samples);
         Ok(())
     }
 
