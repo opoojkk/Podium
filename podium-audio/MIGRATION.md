@@ -207,6 +207,24 @@ A: Yes! The new architecture fixes multiple critical issues causing file corrupt
 
 ## 技术细节 / Technical Details
 
+### Cargo Features
+
+The `bindings-android` crate uses Cargo features to select platform-specific dependencies:
+
+- **android** feature: Enables `podium-renderer-android` (Oboe), `android_logger`, and `ndk-context`
+- **desktop** feature: Enables `podium-renderer-ios` (cpal) and `env_logger`
+
+Manual builds:
+```bash
+# Build for Android
+cargo build --release --target aarch64-linux-android -p podium-bindings-android --features android
+
+# Build for Desktop (Linux/macOS/Windows)
+cargo build --release -p podium-bindings-android --features desktop
+```
+
+The `build.sh` script automatically passes the correct features.
+
 ### 音频管道流程 / Audio Pipeline Flow
 
 ```
