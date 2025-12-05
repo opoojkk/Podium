@@ -149,16 +149,44 @@ impl HttpRangeState {
             .read_to_end(&mut data)
             .map_err(|e| AudioError::NetworkError(format!("Failed to read response: {}", e)))?;
 
-        // Add to cache
+        let data_size = data.len();
+
+        // Add to cache with intelligent eviction
         self.cache.push(CacheEntry {
             offset,
             data: data.clone(),
         });
 
-        // Limit cache size
-        let total_cache_size: usize = self.cache.iter().map(|e| e.data.len()).sum();
-        if total_cache_size > MAX_CACHE_SIZE {
-            self.cache.remove(0);
+        // Smart cache management:
+        // If a single entry exceeds MAX_CACHE_SIZE (e.g., server ignored Range and sent full file),
+        // keep only this entry and clear all others to avoid immediate re-eviction.
+        // Otherwise, use FIFO eviction until total size is under the limit.
+        if data_size > MAX_CACHE_SIZE {
+            log::warn!(
+                "Single cache entry ({} bytes) exceeds MAX_CACHE_SIZE ({} bytes). \
+                This likely means the server doesn't support Range requests. \
+                Keeping only the latest entry.",
+                data_size,
+                MAX_CACHE_SIZE
+            );
+            // Keep only the last entry (the one we just added)
+            let last_entry = self.cache.pop().unwrap();
+            self.cache.clear();
+            self.cache.push(last_entry);
+        } else {
+            // Normal FIFO eviction: remove oldest entries until we're under the limit
+            let mut total_cache_size: usize = self.cache.iter().map(|e| e.data.len()).sum();
+            while total_cache_size > MAX_CACHE_SIZE && self.cache.len() > 1 {
+                // Remove the oldest entry (but keep at least the newest one)
+                let removed = self.cache.remove(0);
+                total_cache_size -= removed.data.len();
+                log::debug!(
+                    "Evicted cache entry (offset: {}, size: {} bytes). New total: {} bytes",
+                    removed.offset,
+                    removed.data.len(),
+                    total_cache_size
+                );
+            }
         }
 
         // Return only the requested size, not the entire chunk
