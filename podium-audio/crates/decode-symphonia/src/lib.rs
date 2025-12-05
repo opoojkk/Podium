@@ -60,70 +60,102 @@ impl AudioDecoder {
 
 /// Convert Symphonia AudioBufferRef to interleaved f32 samples
 fn convert_audio_buffer_to_f32(buffer: AudioBufferRef) -> Vec<f32> {
+    let num_channels = buffer.spec().channels.count();
+    let num_frames = buffer.frames();
+    let mut output = Vec::with_capacity(num_frames * num_channels);
+
     match buffer {
         AudioBufferRef::F32(buf) => {
-            let num_channels = buf.spec().channels.count();
-            let num_frames = buf.frames();
-            let mut output = Vec::with_capacity(num_frames * num_channels);
-
-            // Interleave channels
+            // F32: Direct copy and interleave
             for frame_idx in 0..num_frames {
                 for ch_idx in 0..num_channels {
                     output.push(buf.chan(ch_idx)[frame_idx]);
                 }
             }
-
-            output
+        }
+        AudioBufferRef::F64(buf) => {
+            // F64: Convert to f32 and interleave
+            for frame_idx in 0..num_frames {
+                for ch_idx in 0..num_channels {
+                    output.push(buf.chan(ch_idx)[frame_idx] as f32);
+                }
+            }
+        }
+        AudioBufferRef::S8(buf) => {
+            // S8: Convert to f32 [-1.0, 1.0] and interleave
+            for frame_idx in 0..num_frames {
+                for ch_idx in 0..num_channels {
+                    let sample = buf.chan(ch_idx)[frame_idx];
+                    output.push(sample as f32 / 128.0);
+                }
+            }
         }
         AudioBufferRef::S16(buf) => {
-            let num_channels = buf.spec().channels.count();
-            let num_frames = buf.frames();
-            let mut output = Vec::with_capacity(num_frames * num_channels);
-
-            // Convert i16 to f32 and interleave
+            // S16: Convert to f32 [-1.0, 1.0] and interleave
             for frame_idx in 0..num_frames {
                 for ch_idx in 0..num_channels {
                     let sample = buf.chan(ch_idx)[frame_idx];
                     output.push(sample as f32 / 32768.0);
                 }
             }
-
-            output
         }
-        AudioBufferRef::S32(buf) => {
-            let num_channels = buf.spec().channels.count();
-            let num_frames = buf.frames();
-            let mut output = Vec::with_capacity(num_frames * num_channels);
-
-            // Convert i32 to f32 and interleave
+        AudioBufferRef::S24(buf) => {
+            // S24: Stored as i32, convert to f32 [-1.0, 1.0] and interleave
             for frame_idx in 0..num_frames {
                 for ch_idx in 0..num_channels {
                     let sample = buf.chan(ch_idx)[frame_idx];
-                    output.push(sample as f32 / 2147483648.0);
+                    // S24 is a newtype around i32, use inner() to get the i32 value
+                    output.push(sample.inner() as f32 / 8388608.0); // 2^23
                 }
             }
-
-            output
+        }
+        AudioBufferRef::S32(buf) => {
+            // S32: Convert to f32 [-1.0, 1.0] and interleave
+            for frame_idx in 0..num_frames {
+                for ch_idx in 0..num_channels {
+                    let sample = buf.chan(ch_idx)[frame_idx];
+                    output.push(sample as f32 / 2147483648.0); // 2^31
+                }
+            }
         }
         AudioBufferRef::U8(buf) => {
-            let num_channels = buf.spec().channels.count();
-            let num_frames = buf.frames();
-            let mut output = Vec::with_capacity(num_frames * num_channels);
-
-            // Convert u8 to f32 and interleave
+            // U8: Convert to f32 [-1.0, 1.0] and interleave
             for frame_idx in 0..num_frames {
                 for ch_idx in 0..num_channels {
                     let sample = buf.chan(ch_idx)[frame_idx];
                     output.push((sample as f32 - 128.0) / 128.0);
                 }
             }
-
-            output
         }
-        _ => {
-            // Handle other formats by converting to f32
-            log::warn!("Unoptimized audio format conversion");
-            Vec::new()
+        AudioBufferRef::U16(buf) => {
+            // U16: Convert to f32 [-1.0, 1.0] and interleave
+            for frame_idx in 0..num_frames {
+                for ch_idx in 0..num_channels {
+                    let sample = buf.chan(ch_idx)[frame_idx];
+                    output.push((sample as f32 - 32768.0) / 32768.0);
+                }
+            }
+        }
+        AudioBufferRef::U24(buf) => {
+            // U24: Stored as u32, convert to f32 [-1.0, 1.0] and interleave
+            for frame_idx in 0..num_frames {
+                for ch_idx in 0..num_channels {
+                    let sample = buf.chan(ch_idx)[frame_idx];
+                    // U24 is a newtype around u32, use inner() to get the u32 value
+                    output.push((sample.inner() as f32 - 8388608.0) / 8388608.0); // 2^23
+                }
+            }
+        }
+        AudioBufferRef::U32(buf) => {
+            // U32: Convert to f32 [-1.0, 1.0] and interleave
+            for frame_idx in 0..num_frames {
+                for ch_idx in 0..num_channels {
+                    let sample = buf.chan(ch_idx)[frame_idx];
+                    output.push((sample as f32 - 2147483648.0) / 2147483648.0); // 2^31
+                }
+            }
         }
     }
+
+    output
 }
