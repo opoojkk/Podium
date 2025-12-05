@@ -105,14 +105,36 @@ impl HttpRangeState {
             return Ok(data);
         }
 
+        // Check if we're trying to read past EOF
+        if let Some(total) = self.total_size {
+            if offset >= total {
+                // At or past EOF, return empty
+                return Ok(Vec::new());
+            }
+        }
+
+        // Fetch a chunk (at least CHUNK_SIZE or the requested size, whichever is larger)
+        // But don't go past the known file size
         let chunk_size = size.max(CHUNK_SIZE);
         let end = if let Some(total) = self.total_size {
-            (offset + chunk_size as u64 - 1).min(total - 1)
+            // Ensure we don't request past EOF
+            let max_end = total.saturating_sub(1);
+            (offset + chunk_size as u64).saturating_sub(1).min(max_end)
         } else {
             offset + chunk_size as u64 - 1
         };
 
-        log::debug!("Fetching range: {}-{}", offset, end);
+        // Validate that start <= end
+        if offset > end {
+            log::warn!(
+                "Invalid range: offset {} > end {}. Returning empty data.",
+                offset,
+                end
+            );
+            return Ok(Vec::new());
+        }
+
+        log::debug!("Fetching range: bytes={}-{}", offset, end);
 
         let response = self
             .agent
@@ -139,6 +161,7 @@ impl HttpRangeState {
             self.cache.remove(0);
         }
 
+        // Return only the requested size, not the entire chunk
         Ok(data[..size.min(data.len())].to_vec())
     }
 }
@@ -167,6 +190,15 @@ impl Read for HttpRangeSource {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let mut state = self.state.lock();
         let offset = state.current_position;
+
+        // Check if we're at EOF when total size is known
+        if let Some(total) = state.total_size {
+            if offset >= total {
+                // Already at or past EOF
+                return Ok(0);
+            }
+        }
+
         let size = buf.len();
 
         match state.fetch_range(offset, size) {
