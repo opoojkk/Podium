@@ -1,0 +1,27 @@
+# Cargo configuration for cross-platform builds
+
+# Android targets require NDK linkers
+# The linker paths will be automatically detected by cargo-ndk or can be set via ANDROID_NDK_HOME
+
+[target.aarch64-linux-android]
+# Uncomment and set if cargo cannot find NDK automatically:
+# linker = "/path/to/ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android21-clang"
+
+[target.x86_64-linux-android]
+# Uncomment and set if cargo cannot find NDK automatically:
+# linker = "/path/to/ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/x86_64-linux-android21-clang"
+
+[target.armv7-linux-androideabi]
+# Uncomment and set if cargo cannot find NDK automatically:
+# linker = "/path/to/ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin/armv7a-linux-androideabi21-clang"
+
+# iOS targets use xcode toolchain (automatically configured)
+[target.aarch64-apple-ios]
+[target.aarch64-apple-ios-sim]
+[target.x86_64-apple-ios]
+
+# Desktop targets use system defaults
+[target.x86_64-apple-darwin]
+[target.aarch64-apple-darwin]
+[target.x86_64-unknown-linux-gnu]
+[target.x86_64-pc-windows-msvc]
