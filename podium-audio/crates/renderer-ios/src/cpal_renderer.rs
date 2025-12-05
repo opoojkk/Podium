@@ -52,11 +52,16 @@ impl CpalRenderer {
                     }
 
                     // Call user callback if set
-                    if let Some(ref mut callback) = *user_callback_clone.lock() {
-                        callback(data);
+                    let samples_written = if let Some(ref mut callback) = *user_callback_clone.lock() {
+                        callback(data)
                     } else {
                         // Fallback: read from ring buffer
-                        ring_buffer_clone.read(data);
+                        ring_buffer_clone.read(data)
+                    };
+
+                    // Zero-fill any unwritten samples to prevent playing stale data
+                    if samples_written < data.len() {
+                        data[samples_written..].fill(0.0);
                     }
                 },
                 |err| {
