@@ -15,5 +15,6 @@ podium-ringbuffer = { path = "../ringbuffer" }
 log.workspace = true
 parking_lot.workspace = true
 
-[target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
+# cpal is available on all desktop platforms (macOS, Windows, Linux) and iOS
+[target.'cfg(not(target_os = "android"))'.dependencies]
 cpal.workspace = true
