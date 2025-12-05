@@ -5,10 +5,10 @@ use podium_core::{AudioError, PlayerState, Result};
 use podium_renderer_api::{AudioRenderer, AudioSpec};
 
 // Platform-specific renderer imports
-#[cfg(target_os = "android")]
+#[cfg(feature = "android")]
 use podium_renderer_android::OboeRenderer;
 
-#[cfg(not(target_os = "android"))]
+#[cfg(feature = "desktop")]
 use podium_renderer_ios::CpalRenderer;
 
 pub struct PodiumPlayer {
@@ -60,14 +60,14 @@ impl PodiumPlayer {
             buffer_size: 1024,
         };
 
-        #[cfg(target_os = "android")]
+        #[cfg(feature = "android")]
         {
             log::info!("Using Oboe renderer for Android");
             let renderer = OboeRenderer::new(spec)?;
             self.renderer = Some(Box::new(renderer));
         }
 
-        #[cfg(not(target_os = "android"))]
+        #[cfg(feature = "desktop")]
         {
             log::info!("Using cpal renderer for Desktop");
             let renderer = CpalRenderer::new(spec)?;

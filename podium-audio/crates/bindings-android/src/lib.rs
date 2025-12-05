@@ -29,7 +29,7 @@ static NEXT_PLAYER_ID: Lazy<Mutex<i64>> = Lazy::new(|| Mutex::new(1));
 // ============================================================================
 
 fn init_logging() {
-    #[cfg(target_os = "android")]
+    #[cfg(feature = "android")]
     {
         use android_logger::Config;
         use log::LevelFilter;
@@ -42,7 +42,7 @@ fn init_logging() {
         );
     }
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(feature = "desktop")]
     {
         // Initialize env_logger for Desktop JVM (only once)
         let _ = env_logger::builder()

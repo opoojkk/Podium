@@ -129,10 +129,10 @@ if [ "$BUILD_ANDROID" = true ]; then
     setup_android_ndk
 
     # Android ARM64
-    cargo build --release --target aarch64-linux-android -p podium-bindings-android
+    cargo build --release --target aarch64-linux-android -p podium-bindings-android --features android
 
     # Android x86_64 (for emulator)
-    cargo build --release --target x86_64-linux-android -p podium-bindings-android
+    cargo build --release --target x86_64-linux-android -p podium-bindings-android --features android
 
     # Copy libraries to output
     mkdir -p target/outputs/android/arm64-v8a
@@ -192,25 +192,25 @@ if [ "$BUILD_DESKTOP" = true ]; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS (use JNI bindings with cpal renderer)
         if [ "$(uname -m)" = "arm64" ]; then
-            cargo build --release --target aarch64-apple-darwin -p podium-bindings-android
+            cargo build --release --target aarch64-apple-darwin -p podium-bindings-android --features desktop
             mkdir -p target/outputs/desktop/darwin-aarch64
             cp target/aarch64-apple-darwin/release/libpodium_bindings_android.dylib \
                target/outputs/desktop/darwin-aarch64/librust_audio_player.dylib 2>/dev/null || true
         else
-            cargo build --release --target x86_64-apple-darwin -p podium-bindings-android
+            cargo build --release --target x86_64-apple-darwin -p podium-bindings-android --features desktop
             mkdir -p target/outputs/desktop/darwin-x86_64
             cp target/x86_64-apple-darwin/release/libpodium_bindings_android.dylib \
                target/outputs/desktop/darwin-x86_64/librust_audio_player.dylib 2>/dev/null || true
         fi
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
         # Linux (use JNI bindings with cpal renderer)
-        cargo build --release -p podium-bindings-android
+        cargo build --release -p podium-bindings-android --features desktop
         mkdir -p target/outputs/desktop/linux-x86_64
         cp target/release/libpodium_bindings_android.so \
            target/outputs/desktop/linux-x86_64/librust_audio_player.so 2>/dev/null || true
     elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
         # Windows (use JNI bindings with cpal renderer)
-        cargo build --release --target x86_64-pc-windows-msvc -p podium-bindings-android
+        cargo build --release --target x86_64-pc-windows-msvc -p podium-bindings-android --features desktop
         mkdir -p target/outputs/desktop/windows-x86_64
         cp target/x86_64-pc-windows-msvc/release/podium_bindings_android.dll \
            target/outputs/desktop/windows-x86_64/rust_audio_player.dll 2>/dev/null || true

@@ -38,9 +38,3 @@ ndk-context = { version = "0.1", optional = true }
 default = []
 android = ["podium-renderer-android", "android_logger", "ndk-context"]
 desktop = ["podium-renderer-ios", "env_logger"]
-
-[target.'cfg(target_os = "android")'.features]
-default = ["android"]
-
-[target.'cfg(not(target_os = "android"))'.features]
-default = ["desktop"]
