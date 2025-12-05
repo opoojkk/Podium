@@ -125,6 +125,44 @@ fn continue_download_in_background(url: String, dest_path: String, start_from: u
         .call()
     {
         Ok(response) => {
+            // Validate that server actually honored the Range request
+            let status = response.status();
+            let content_range = response.header("Content-Range");
+
+            if status != 206 {
+                log::error!(
+                    "Background download failed: Server returned {} instead of 206 Partial Content. \
+                    Range requests not supported. This would corrupt the file.",
+                    status
+                );
+                log::warn!(
+                    "Falling back: You may need to restart the full download or implement fallback logic."
+                );
+                return;
+            }
+
+            if content_range.is_none() {
+                log::error!(
+                    "Background download failed: Server returned 206 but no Content-Range header. \
+                    Cannot verify correct range."
+                );
+                return;
+            }
+
+            // Verify Content-Range starts at the expected position
+            if let Some(range_header) = content_range {
+                if !range_header.starts_with(&format!("bytes {}-", start_from)) {
+                    log::error!(
+                        "Background download failed: Content-Range '{}' doesn't match requested start position {}",
+                        range_header,
+                        start_from
+                    );
+                    return;
+                }
+            }
+
+            log::info!("Range request validated, continuing download from byte {}", start_from);
+
             let mut reader = response.into_reader();
             match std::fs::OpenOptions::new().append(true).open(&dest_path) {
                 Ok(mut file) => {
