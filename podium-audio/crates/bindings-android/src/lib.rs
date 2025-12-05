@@ -41,6 +41,14 @@ fn init_logging() {
                 .with_tag("PodiumAudio")
         );
     }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        // Initialize env_logger for Desktop JVM (only once)
+        let _ = env_logger::builder()
+            .filter_level(log::LevelFilter::Debug)
+            .try_init();
+    }
 }
 
 // ============================================================================

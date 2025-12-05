@@ -13,7 +13,13 @@ use podium_decode_symphonia::SymphoniaDecoder;
 use podium_resampler::Resampler;
 use podium_ringbuffer::RingBuffer;
 use podium_renderer_api::{AudioRenderer, AudioSpec};
+
+// Platform-specific renderer imports
+#[cfg(target_os = "android")]
 use podium_renderer_android::OboeRenderer;
+
+#[cfg(not(target_os = "android"))]
+use podium_renderer_ios::CpalRenderer;
 
 pub struct PodiumPlayer {
     state: PlayerState,
@@ -128,7 +134,14 @@ impl PodiumPlayer {
             channels: channels as u16,
             buffer_size: 1024,
         };
+
+        // Use platform-specific renderer
+        #[cfg(target_os = "android")]
         let mut renderer = OboeRenderer::new(spec)
+            .map_err(|e| AudioError::InitializationError(format!("Failed to create renderer: {:?}", e)))?;
+
+        #[cfg(not(target_os = "android"))]
+        let mut renderer = CpalRenderer::new(spec)
             .map_err(|e| AudioError::InitializationError(format!("Failed to create renderer: {:?}", e)))?;
 
         // Set up audio callback to read from ring buffer

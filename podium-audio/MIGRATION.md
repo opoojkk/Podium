@@ -32,10 +32,33 @@ podium-audio/
 │   ├── ringbuffer/              # 环形缓冲区 / Ring buffer
 │   ├── renderer-api/            # 渲染器 API / Renderer API
 │   ├── renderer-android/        # Android (Oboe) 渲染器 / Android renderer
-│   ├── renderer-ios/            # iOS (cpal) 渲染器 / iOS renderer
-│   ├── bindings-android/        # JNI 绑定 / JNI bindings
-│   └── bindings-ios/            # C FFI 绑定 / C FFI bindings
+│   ├── renderer-ios/            # iOS/Desktop (cpal) 渲染器 / iOS/Desktop renderer
+│   ├── bindings-android/        # JNI 绑定 (Android + JVM Desktop) / JNI bindings
+│   └── bindings-ios/            # C FFI 绑定 (iOS) / C FFI bindings
 └── Cargo.toml
+```
+
+## 平台支持 / Platform Support
+
+### Android 📱
+- **接口**: JNI (bindings-android)
+- **渲染器**: Oboe (renderer-android)
+- **优势**: Google 官方推荐，最佳性能和延迟
+
+### iOS 🍎
+- **接口**: C FFI (bindings-ios)
+- **渲染器**: cpal (renderer-ios)
+- **优势**: 原生 iOS 音频支持
+
+### JVM Desktop 🖥️
+- **接口**: JNI (bindings-android，复用 Android 绑定)
+- **渲染器**: cpal (renderer-ios，通过条件编译)
+- **平台**: Windows, macOS, Linux
+- **优势**: 跨平台统一接口，代码复用
+
+**架构智能化**：`bindings-android` 根据编译目标自动选择渲染器：
+- Android → Oboe
+- 其他平台 → cpal
 ```
 
 ## 优势 / Benefits
