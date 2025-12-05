@@ -94,7 +94,7 @@ impl OboeRenderer {
             user_callback: user_callback.clone(),
         };
 
-        let stream = AudioStreamBuilder::default()
+        let mut stream = AudioStreamBuilder::default()
             .set_performance_mode(PerformanceMode::LowLatency)
             .set_sharing_mode(SharingMode::Exclusive)
             .set_format::<f32>()
