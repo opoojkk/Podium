@@ -5,8 +5,8 @@ use podium_core::{AudioError, PlayerState, Result};
 use podium_renderer_api::{AudioRenderer, AudioSpec};
 use podium_ringbuffer::AudioRingBuffer;
 use podium_source_buffer::NetworkSource;
-use podium_demux_symphonia::SymphoniaDemuxer;
-use podium_decode_symphonia::SymphoniaDecoder;
+use podium_demux_symphonia::Demuxer;
+use podium_decode_symphonia::AudioDecoder;
 use podium_resampler::Resampler;
 
 use parking_lot::Mutex;
@@ -163,36 +163,35 @@ impl PodiumPlayer {
         log::info!("Decode thread started for URL: {}", url);
 
         // Create network source
-        let source = NetworkSource::from_http_range(url)?;
+        let source = NetworkSource::from_http_range(url.clone())?;
+
+        // Create hint from URL
+        let hint = Demuxer::create_hint_from_path(&url);
 
         // Create demuxer
-        let mut demuxer = SymphoniaDemuxer::new(Box::new(source))?;
+        let mut demuxer = Demuxer::from_media_source(Box::new(source), hint)?;
 
         // Get audio info
-        let track_info = demuxer.get_default_track()?;
-        log::info!("Track info: sample_rate={}, channels={}",
-            track_info.sample_rate, track_info.channels);
+        let track_info = demuxer.get_track_info()?;
+        log::info!("Track info: sample_rate={}, channels={}, duration={}ms",
+            track_info.sample_rate, track_info.channels, track_info.duration_ms);
 
-        // Calculate duration if available
-        if let Some(n_frames) = track_info.n_frames {
-            let dur_ms = (n_frames as f64 * 1000.0 / track_info.sample_rate as f64) as u64;
-            *duration_ms.lock() = dur_ms;
-            log::info!("Duration: {} ms", dur_ms);
-        }
+        // Set duration
+        *duration_ms.lock() = track_info.duration_ms;
 
         // Create decoder
-        let mut decoder = SymphoniaDecoder::new(track_info.codec_params.clone())?;
+        let mut decoder = AudioDecoder::from_demuxer(&demuxer)?;
 
         // Create resampler if needed
-        let mut resampler = if track_info.sample_rate != 48000 || track_info.channels != 2 {
+        let resampler = if track_info.sample_rate != 48000 || track_info.channels != 2 {
             log::info!("Creating resampler: {}Hz {}ch -> 48000Hz 2ch",
                 track_info.sample_rate, track_info.channels);
             Some(Resampler::new(
                 track_info.sample_rate,
                 48000,
-                track_info.channels as usize,
+                track_info.channels,
                 2,
-            )?)
+            ))
         } else {
             None
         };
@@ -206,13 +205,9 @@ impl PodiumPlayer {
 
             // Read next packet
             let packet = match demuxer.next_packet() {
-                Ok(Some(packet)) => packet,
-                Ok(None) => {
-                    log::info!("End of stream reached");
-                    break;
-                }
+                Ok(packet) => packet,
                 Err(e) => {
-                    log::error!("Failed to read packet: {:?}", e);
+                    log::info!("End of stream or error: {:?}", e);
                     break;
                 }
             };
@@ -227,8 +222,8 @@ impl PodiumPlayer {
             };
 
             // Resample if needed
-            let samples = if let Some(ref mut resampler) = resampler {
-                resampler.resample(&decoded_audio)?
+            let samples = if let Some(ref resampler) = resampler {
+                resampler.process(&decoded_audio)
             } else {
                 decoded_audio
             };
@@ -324,7 +319,7 @@ impl PodiumPlayer {
 
     pub fn seek(&mut self, position_ms: u64) -> Result<()> {
         log::info!("Seek to {} ms (not implemented)", position_ms);
-        // TODO: Implement seeking
+        // TODO: Implement seeking using demuxer.seek()
         Err(AudioError::Other("Seek not yet implemented".to_string()))
     }
 
