@@ -10,6 +10,85 @@ echo "Building podium-audio..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Auto-detect Android NDK if not set
+if [ -z "$ANDROID_NDK_HOME" ]; then
+    # Try common NDK locations
+    if [ -d "$HOME/Library/Android/sdk/ndk" ]; then
+        # macOS
+        NDK_VERSION=$(ls -1 "$HOME/Library/Android/sdk/ndk" | sort -V | tail -n 1)
+        if [ -n "$NDK_VERSION" ]; then
+            export ANDROID_NDK_HOME="$HOME/Library/Android/sdk/ndk/$NDK_VERSION"
+            echo "Auto-detected Android NDK: $ANDROID_NDK_HOME"
+        fi
+    elif [ -d "$HOME/Android/Sdk/ndk" ]; then
+        # Linux
+        NDK_VERSION=$(ls -1 "$HOME/Android/Sdk/ndk" | sort -V | tail -n 1)
+        if [ -n "$NDK_VERSION" ]; then
+            export ANDROID_NDK_HOME="$HOME/Android/Sdk/ndk/$NDK_VERSION"
+            echo "Auto-detected Android NDK: $ANDROID_NDK_HOME"
+        fi
+    elif [ -d "$LOCALAPPDATA/Android/Sdk/ndk" ]; then
+        # Windows
+        NDK_VERSION=$(ls -1 "$LOCALAPPDATA/Android/Sdk/ndk" | sort -V | tail -n 1)
+        if [ -n "$NDK_VERSION" ]; then
+            export ANDROID_NDK_HOME="$LOCALAPPDATA/Android/Sdk/ndk/$NDK_VERSION"
+            echo "Auto-detected Android NDK: $ANDROID_NDK_HOME"
+        fi
+    fi
+fi
+
+# Set up Android NDK linkers if building for Android
+setup_android_ndk() {
+    if [ -z "$ANDROID_NDK_HOME" ]; then
+        echo "ERROR: ANDROID_NDK_HOME not set and could not auto-detect NDK"
+        echo "Please install Android NDK or set ANDROID_NDK_HOME environment variable"
+        echo "See BUILD_REQUIREMENTS.md for details"
+        exit 1
+    fi
+
+    # Detect NDK host platform
+    case "$(uname -s)" in
+        Darwin*)
+            if [ "$(uname -m)" = "arm64" ]; then
+                NDK_HOST="darwin-x86_64"  # NDK still uses x86_64 on Apple Silicon
+            else
+                NDK_HOST="darwin-x86_64"
+            fi
+            ;;
+        Linux*)
+            NDK_HOST="linux-x86_64"
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            NDK_HOST="windows-x86_64"
+            ;;
+        *)
+            echo "ERROR: Unknown host platform"
+            exit 1
+            ;;
+    esac
+
+    # Set linker environment variables for cargo
+    NDK_TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NDK_HOST/bin"
+
+    if [ ! -d "$NDK_TOOLCHAIN" ]; then
+        echo "ERROR: NDK toolchain not found at: $NDK_TOOLCHAIN"
+        echo "Please verify ANDROID_NDK_HOME is correct: $ANDROID_NDK_HOME"
+        exit 1
+    fi
+
+    export CC_aarch64_linux_android="$NDK_TOOLCHAIN/aarch64-linux-android21-clang"
+    export CXX_aarch64_linux_android="$NDK_TOOLCHAIN/aarch64-linux-android21-clang++"
+    export AR_aarch64_linux_android="$NDK_TOOLCHAIN/llvm-ar"
+    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_TOOLCHAIN/aarch64-linux-android21-clang"
+
+    export CC_x86_64_linux_android="$NDK_TOOLCHAIN/x86_64-linux-android21-clang"
+    export CXX_x86_64_linux_android="$NDK_TOOLCHAIN/x86_64-linux-android21-clang++"
+    export AR_x86_64_linux_android="$NDK_TOOLCHAIN/llvm-ar"
+    export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$NDK_TOOLCHAIN/x86_64-linux-android21-clang"
+
+    echo "Android NDK configured: $ANDROID_NDK_HOME"
+}
+
 # Parse command line arguments
 BUILD_ANDROID=false
 BUILD_IOS=false
@@ -45,6 +124,9 @@ mkdir -p target/outputs/desktop
 # Build for Android
 if [ "$BUILD_ANDROID" = true ]; then
     echo "Building for Android..."
+
+    # Set up Android NDK environment
+    setup_android_ndk
 
     # Android ARM64
     cargo build --release --target aarch64-linux-android -p podium-bindings-android
