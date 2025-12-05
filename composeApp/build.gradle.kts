@@ -56,15 +56,15 @@ val buildRustRssParser by tasks.registering(Exec::class) {
     outputs.dir("src/jvmMain/resources/darwin-x86_64")
 }
 
-// Task to build Rust Audio Player (modular podium-audio architecture)
-val buildRustAudioPlayer by tasks.registering(Exec::class) {
+// Task to build Rust Audio Player for Android
+val buildRustAudioPlayerAndroid by tasks.registering(Exec::class) {
     val scriptFile = project.file("../podium-audio/build.sh")
 
     // Set working directory
     workingDir(project.file("../podium-audio"))
 
-    // Run the build script with bash (bash handles permissions)
-    commandLine("bash", scriptFile.absolutePath)
+    // Run the build script with bash for Android only
+    commandLine("bash", scriptFile.absolutePath, "android")
 
     // Define inputs so Gradle can track changes
     inputs.file(scriptFile)
@@ -72,31 +72,90 @@ val buildRustAudioPlayer by tasks.registering(Exec::class) {
     inputs.file("../podium-audio/Cargo.toml")
 
     // Define outputs so Gradle can cache and track changes
-    outputs.dir("../podium-audio/target/outputs")
+    outputs.dir("../podium-audio/target/outputs/android")
     outputs.dir("src/androidMain/jniLibs")
-    outputs.dir("src/jvmMain/resources/darwin-aarch64")
-    outputs.dir("src/jvmMain/resources/darwin-x86_64")
+}
+
+// Task to build Rust Audio Player for iOS
+val buildRustAudioPlayerIOS by tasks.registering(Exec::class) {
+    val scriptFile = project.file("../podium-audio/build.sh")
+
+    // Set working directory
+    workingDir(project.file("../podium-audio"))
+
+    // Run the build script with bash for iOS only
+    commandLine("bash", scriptFile.absolutePath, "ios")
+
+    // Define inputs so Gradle can track changes
+    inputs.file(scriptFile)
+    inputs.dir("../podium-audio/crates")
+    inputs.file("../podium-audio/Cargo.toml")
+
+    // Define outputs so Gradle can cache and track changes
     outputs.dir("../podium-audio/target/aarch64-apple-ios/release")
     outputs.dir("../podium-audio/target/aarch64-apple-ios-sim/release")
 }
 
-// Make Kotlin compilation and cinterop depend on Rust builds
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+// Task to build Rust Audio Player for JVM Desktop
+val buildRustAudioPlayerDesktop by tasks.registering(Exec::class) {
+    val scriptFile = project.file("../podium-audio/build.sh")
+
+    // Set working directory
+    workingDir(project.file("../podium-audio"))
+
+    // Run the build script with bash for Desktop only
+    commandLine("bash", scriptFile.absolutePath, "desktop")
+
+    // Define inputs so Gradle can track changes
+    inputs.file(scriptFile)
+    inputs.dir("../podium-audio/crates")
+    inputs.file("../podium-audio/Cargo.toml")
+
+    // Define outputs so Gradle can cache and track changes
+    outputs.dir("../podium-audio/target/outputs/desktop")
+    outputs.dir("src/jvmMain/resources/darwin-aarch64")
+    outputs.dir("src/jvmMain/resources/darwin-x86_64")
+}
+
+// Make Kotlin compilation depend on Rust builds
+// Android targets depend on Android Rust builds
+tasks.matching {
+    it is org.jetbrains.kotlin.gradle.tasks.KotlinCompile &&
+    it.name.contains("Android", ignoreCase = true)
+}.configureEach {
     dependsOn(buildRustRssParser)
-    dependsOn(buildRustAudioPlayer)
+    dependsOn(buildRustAudioPlayerAndroid)
 }
 
-// Make cinterop tasks depend on Rust audio player build
+// iOS targets depend on iOS Rust builds
+tasks.matching {
+    it is org.jetbrains.kotlin.gradle.tasks.KotlinCompile &&
+    it.name.contains("Ios", ignoreCase = true)
+}.configureEach {
+    dependsOn(buildRustRssParser)
+    dependsOn(buildRustAudioPlayerIOS)
+}
+
+// JVM targets depend on Desktop Rust builds
+tasks.matching {
+    it is org.jetbrains.kotlin.gradle.tasks.KotlinCompile &&
+    it.name.contains("Jvm", ignoreCase = true)
+}.configureEach {
+    dependsOn(buildRustRssParser)
+    dependsOn(buildRustAudioPlayerDesktop)
+}
+
+// Make cinterop tasks depend on Rust audio player iOS build
 tasks.matching { it.name.contains("cinterop") && it.name.contains("RustAudioPlayer") }.configureEach {
-    dependsOn(buildRustAudioPlayer)
+    dependsOn(buildRustAudioPlayerIOS)
 }
 
-// For Android, also ensure preBuild depends on Rust builds
-tasks.findByName("preBuild")?.dependsOn(buildRustRssParser, buildRustAudioPlayer)
+// For Android, ensure preBuild depends on Android Rust builds
+tasks.findByName("preBuild")?.dependsOn(buildRustRssParser, buildRustAudioPlayerAndroid)
 
-// For JVM, ensure jvmProcessResources depends on Rust builds
+// For JVM, ensure jvmProcessResources depends on Desktop Rust builds
 tasks.matching { it.name == "jvmProcessResources" }.configureEach {
-    dependsOn(buildRustRssParser, buildRustAudioPlayer)
+    dependsOn(buildRustRssParser, buildRustAudioPlayerDesktop)
 }
 
 kotlin {
