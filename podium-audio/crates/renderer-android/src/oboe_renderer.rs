@@ -2,7 +2,7 @@
 
 use oboe::{
     AudioOutputStream, AudioStream, AudioStreamAsync, AudioStreamBase, AudioStreamBuilder,
-    DataCallbackResult, Output, PerformanceMode, SharingMode, Stereo,
+    AudioStreamSafe, DataCallbackResult, Output, PerformanceMode, SharingMode, Stereo,
 };
 use parking_lot::Mutex;
 use podium_core::{AudioError, Result};
@@ -98,7 +98,7 @@ impl OboeRenderer {
             .set_performance_mode(PerformanceMode::LowLatency)
             .set_sharing_mode(SharingMode::Exclusive)
             .set_format::<f32>()
-            .set_channel_count(spec.channels as i32)
+            .set_channel_count::<Stereo>()
             .set_sample_rate(spec.sample_rate as i32)
             .set_callback(callback)
             .open_stream()
