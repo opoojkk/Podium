@@ -56,28 +56,28 @@ val buildRustRssParser by tasks.registering(Exec::class) {
     outputs.dir("src/jvmMain/resources/darwin-x86_64")
 }
 
-// Task to build Rust Audio Player
+// Task to build Rust Audio Player (modular podium-audio architecture)
 val buildRustAudioPlayer by tasks.registering(Exec::class) {
-    val scriptFile = project.file("../rust-audio-player/build.sh")
+    val scriptFile = project.file("../podium-audio/build.sh")
 
     // Set working directory
-    workingDir(project.file("../rust-audio-player"))
+    workingDir(project.file("../podium-audio"))
 
     // Run the build script with bash (bash handles permissions)
     commandLine("bash", scriptFile.absolutePath)
 
     // Define inputs so Gradle can track changes
     inputs.file(scriptFile)
-    inputs.dir("../rust-audio-player/src")
-    inputs.file("../rust-audio-player/Cargo.toml")
+    inputs.dir("../podium-audio/crates")
+    inputs.file("../podium-audio/Cargo.toml")
 
     // Define outputs so Gradle can cache and track changes
-    outputs.dir("../rust-audio-player/target/outputs")
+    outputs.dir("../podium-audio/target/outputs")
     outputs.dir("src/androidMain/jniLibs")
     outputs.dir("src/jvmMain/resources/darwin-aarch64")
     outputs.dir("src/jvmMain/resources/darwin-x86_64")
-    outputs.dir("../rust-audio-player/target/aarch64-apple-ios/release")
-    outputs.dir("../rust-audio-player/target/aarch64-apple-ios-sim/release")
+    outputs.dir("../podium-audio/target/aarch64-apple-ios/release")
+    outputs.dir("../podium-audio/target/aarch64-apple-ios-sim/release")
 }
 
 // Make Kotlin compilation and cinterop depend on Rust builds
@@ -120,9 +120,9 @@ kotlin {
             "iosSimulatorArm64" -> "aarch64-apple-ios-sim"
             else -> "aarch64-apple-ios"
         }
-        val libPath = project.file("../rust-audio-player/target/$targetName/release").absolutePath
+        val libPath = project.file("../podium-audio/target/$targetName/release").absolutePath
 
-        // Link Rust audio player library
+        // Link Rust audio player library (modular podium-audio architecture)
         iosTarget.compilations.getByName("main") {
             val rustAudioPlayer by cinterops.creating {
                 defFile(project.file("src/nativeInterop/cinterop/rustAudioPlayer.def"))
@@ -134,9 +134,9 @@ kotlin {
         iosTarget.binaries.all {
             linkerOpts(
                 "-L$libPath",
-                "-lrust_audio_player",
+                "-lpodium_bindings_ios",
                 // Force load to avoid stripping unused symbols in static framework
-                "-force_load", "$libPath/librust_audio_player.a",
+                "-force_load", "$libPath/libpodium_bindings_ios.a",
                 "-framework", "CoreAudio",
                 "-framework", "AudioToolbox",
                 "-framework", "Security",

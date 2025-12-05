@@ -11,6 +11,8 @@ members = [
     "crates/renderer-api",
     "crates/renderer-android",
     "crates/renderer-ios",
+    "crates/bindings-android",
+    "crates/bindings-ios",
 ]
 
 [workspace.package]

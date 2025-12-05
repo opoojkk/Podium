@@ -1,0 +1,31 @@
+[package]
+name = "podium-bindings-ios"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+# Our modular crates
+podium-core = { path = "../core" }
+podium-transport-http = { path = "../transport-http" }
+podium-source-buffer = { path = "../source-buffer" }
+podium-demux-symphonia = { path = "../demux-symphonia" }
+podium-decode-symphonia = { path = "../decode-symphonia" }
+podium-resampler = { path = "../resampler" }
+podium-ringbuffer = { path = "../ringbuffer" }
+podium-renderer-api = { path = "../renderer-api" }
+podium-renderer-ios = { path = "../renderer-ios" }
+
+# Synchronization and utilities
+parking_lot = "0.12"
+once_cell = "1.19"
+log = "0.4"
+
+# C string handling
+libc = "0.2"
+
+[target.'cfg(target_os = "ios")'.dependencies]
+# iOS-specific logging
+oslog = "0.2"
