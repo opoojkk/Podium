@@ -63,20 +63,25 @@ impl PodiumPlayer {
             }
         }
 
-        // Stop old engine
+        // Stop old engine completely before starting new one
         if let Some(mut eng) = self.engine.take() {
+            log::info!("[engine] stopping old engine before starting new one");
             eng.stop();
+            // Engine is now fully stopped (stream paused, thread joined)
+            drop(eng);
+            log::info!("[engine] old engine stopped and dropped");
         }
 
         let desc = match &source {
             SourceKind::Http(u) => format!("http {}", u),
             SourceKind::File(p) => format!("file {}", p),
         };
-        log::info!("[engine] start {}", desc);
+        log::info!("[engine] starting new engine: {}", desc);
         self.last_source = Some(source.clone());
         let mut engine = PlaybackEngine::new(source, self.state.clone())?;
         engine.seek_to(start_position_ms)?;
         self.engine = Some(engine);
+        log::info!("[engine] new engine started successfully");
         Ok(())
     }
 }
@@ -306,6 +311,8 @@ struct PlaybackEngine {
     stop_flag: Arc<AtomicBool>,
     seek_request: Arc<AtomicU64>,
     _render_thread: Option<thread::JoinHandle<()>>,
+    // Store the audio stream so we can properly stop it
+    audio_stream: Arc<Mutex<Option<cpal::Stream>>>,
 }
 
 impl PlaybackEngine {
@@ -317,6 +324,7 @@ impl PlaybackEngine {
         let playing = Arc::new(AtomicBool::new(false));
         let stop_flag = Arc::new(AtomicBool::new(false));
         let seek_request = Arc::new(AtomicU64::new(0));
+        let audio_stream = Arc::new(Mutex::new(None));
 
         // Decoder thread
         let ring_clone = ring.clone();
@@ -325,6 +333,7 @@ impl PlaybackEngine {
         let play_flag = playing.clone();
         let stop = stop_flag.clone();
         let seek = seek_request.clone();
+        let stream_holder = audio_stream.clone();
 
         let handle = thread::spawn(move || {
             if let Err(e) = Self::decode_loop(
@@ -336,6 +345,7 @@ impl PlaybackEngine {
                 stop,
                 seek,
                 state,
+                stream_holder,
             ) {
                 log::error!("decode loop error: {}", e);
             }
@@ -349,15 +359,34 @@ impl PlaybackEngine {
             stop_flag,
             seek_request,
             _render_thread: Some(handle),
+            audio_stream,
         })
     }
 
     fn stop(&mut self) {
+        log::info!("[engine] stopping playback engine");
+
+        // Stop playback flag first
         self.playing.store(false, Ordering::SeqCst);
+
+        // Explicitly pause and drop the audio stream to prevent it from continuing to play
+        if let Some(stream) = self.audio_stream.lock().take() {
+            log::info!("[engine] pausing and dropping audio stream");
+            // The stream will be paused and dropped when it goes out of scope
+            let _ = stream.pause();
+            drop(stream);
+        }
+
+        // Signal the decoder thread to stop
         self.stop_flag.store(true, Ordering::SeqCst);
+
+        // Wait for decoder thread to finish
         if let Some(handle) = self._render_thread.take() {
+            log::info!("[engine] waiting for decoder thread to finish");
             let _ = handle.join();
         }
+
+        log::info!("[engine] playback engine stopped");
     }
 
     fn pause(&mut self) {
@@ -384,6 +413,7 @@ impl PlaybackEngine {
         stop_flag: Arc<AtomicBool>,
         seek_request: Arc<AtomicU64>,
         state: PlayerStateContainer,
+        stream_holder: Arc<Mutex<Option<cpal::Stream>>>,
     ) -> Result<()> {
         // Build MediaSource
         let hint_path = match &source {
@@ -478,6 +508,10 @@ impl PlaybackEngine {
             .play()
             .map_err(|e| AudioError::PlaybackError(format!("stream play: {}", e)))?;
 
+        // Store the stream so it can be properly stopped later
+        *stream_holder.lock() = Some(stream);
+        log::info!("[engine] audio stream created and stored");
+
         playing.store(false, Ordering::SeqCst); // start paused; play() will toggle
         state.set_state(PlayerState::Ready);
 
@@ -539,6 +573,14 @@ impl PlaybackEngine {
                     break;
                 }
             }
+        }
+
+        // Clean up the audio stream when decode loop exits
+        log::info!("[engine] decode loop finished, cleaning up audio stream");
+        if let Some(stream) = stream_holder.lock().take() {
+            let _ = stream.pause();
+            drop(stream);
+            log::info!("[engine] audio stream cleaned up");
         }
 
         state.set_state(PlayerState::Stopped);
