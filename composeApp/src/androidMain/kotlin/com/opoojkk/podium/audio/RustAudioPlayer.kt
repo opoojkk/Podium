@@ -25,12 +25,12 @@ class RustAudioPlayer {
                     Log.w(TAG, "Could not load c++_shared, will try to continue: ${e.message}")
                 }
 
-                // Load our Rust audio player library
-                System.loadLibrary("rust_audio_player")
+                // Load our Rust audio player library (podium-audio FFI)
+                System.loadLibrary("podium_audio_player")
                 Log.i(TAG, "Native library loaded successfully")
             } catch (e: UnsatisfiedLinkError) {
                 Log.e(TAG, "Failed to load native library", e)
-                Log.e(TAG, "Make sure you have run: cd rust-audio-player && ./build.sh")
+                Log.e(TAG, "Make sure you have run: cd podium-audio && ./build.sh")
                 throw e
             }
         }

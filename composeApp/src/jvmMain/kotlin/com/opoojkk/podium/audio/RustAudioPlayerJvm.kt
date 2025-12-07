@@ -35,20 +35,20 @@ class RustAudioPlayerJvm {
                 osName.contains("mac") || osName.contains("darwin") -> {
                     when {
                         osArch.contains("aarch64") || osArch.contains("arm") ->
-                            "darwin-aarch64/librust_audio_player.dylib"
+                            "darwin-aarch64/libpodium_audio_player.dylib"
                         else ->
-                            "darwin-x86_64/librust_audio_player.dylib"
+                            "darwin-x86_64/libpodium_audio_player.dylib"
                     }
                 }
                 osName.contains("windows") -> {
-                    "windows-x86_64/rust_audio_player.dll"
+                    "windows-x86_64/podium_audio_player.dll"
                 }
                 osName.contains("linux") -> {
                     when {
                         osArch.contains("aarch64") || osArch.contains("arm") ->
-                            "linux-aarch64/librust_audio_player.so"
+                            "linux-aarch64/libpodium_audio_player.so"
                         else ->
-                            "linux-x86_64/librust_audio_player.so"
+                            "linux-x86_64/libpodium_audio_player.so"
                     }
                 }
                 else -> throw UnsatisfiedLinkError("Unsupported OS: $osName")
@@ -58,7 +58,7 @@ class RustAudioPlayerJvm {
             val inputStream = RustAudioPlayerJvm::class.java.classLoader.getResourceAsStream(libraryPath)
                 ?: throw UnsatisfiedLinkError("Library not found in resources: $libraryPath")
 
-            val tempFile = Files.createTempFile("librust_audio_player", getLibraryExtension()).toFile()
+            val tempFile = Files.createTempFile("libpodium_audio_player", getLibraryExtension()).toFile()
             tempFile.deleteOnExit()
 
             inputStream.use { input ->

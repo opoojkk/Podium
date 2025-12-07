@@ -1,0 +1,12 @@
+[package]
+name = "podium-decode"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+podium-core = { path = "../core" }
+podium-demux = { path = "../demux" }
+log.workspace = true
+symphonia.workspace = true

@@ -50,17 +50,34 @@ impl HttpRangeState {
                 self.total_size = response
                     .header("Content-Length")
                     .and_then(|s| s.parse::<u64>().ok());
+                log::info!(
+                    "[range] HEAD ok content-length={:?} url={}",
+                    self.total_size,
+                    self.url
+                );
             }
             Err(_) => {
                 // Fallback: try a small range request
                 if let Ok(size) = self.try_get_size_with_range_request() {
                     self.total_size = size;
+                    log::info!(
+                        "[range] fallback size via Range={:?} url={}",
+                        self.total_size,
+                        self.url
+                    );
                 }
             }
         }
 
         if let Some(size) = self.total_size {
-            log::info!("HTTP Range source initialized: {} bytes ({:.2} MB)", size, size as f64 / 1024.0 / 1024.0);
+            log::info!(
+                "[range] initialized size={} bytes ({:.2} MB) url={}",
+                size,
+                size as f64 / 1024.0 / 1024.0,
+                self.url
+            );
+        } else {
+            log::warn!("[range] initialized with unknown size url={}", self.url);
         }
 
         Ok(())
@@ -94,9 +111,17 @@ impl HttpRangeState {
             if offset >= entry.offset && offset + size as u64 <= entry.offset + entry.data.len() as u64 {
                 let start = (offset - entry.offset) as usize;
                 let end = start + size;
+                log::debug!(
+                    "[range] cache hit offset={} size={} entry_offset={} entry_size={}",
+                    offset,
+                    size,
+                    entry.offset,
+                    entry.data.len()
+                );
                 return Some(entry.data[start..end].to_vec());
             }
         }
+        log::debug!("[range] cache miss offset={} size={}", offset, size);
         None
     }
 
@@ -134,7 +159,13 @@ impl HttpRangeState {
             return Ok(Vec::new());
         }
 
-        log::debug!("Fetching range: bytes={}-{}", offset, end);
+        log::info!(
+            "[range] fetch bytes={}-{} (requested size={}, chunk_size={})",
+            offset,
+            end,
+            size,
+            chunk_size
+        );
 
         let response = self
             .agent
@@ -163,9 +194,7 @@ impl HttpRangeState {
         // Otherwise, use FIFO eviction until total size is under the limit.
         if data_size > MAX_CACHE_SIZE {
             log::warn!(
-                "Single cache entry ({} bytes) exceeds MAX_CACHE_SIZE ({} bytes). \
-                This likely means the server doesn't support Range requests. \
-                Keeping only the latest entry.",
+                "[range] single entry {} > MAX_CACHE_SIZE {} (server may not support Range); keep only latest",
                 data_size,
                 MAX_CACHE_SIZE
             );
@@ -181,12 +210,17 @@ impl HttpRangeState {
                 let removed = self.cache.remove(0);
                 total_cache_size -= removed.data.len();
                 log::debug!(
-                    "Evicted cache entry (offset: {}, size: {} bytes). New total: {} bytes",
+                    "[range] evict offset={} size={} -> total_cache_size={}",
                     removed.offset,
                     removed.data.len(),
                     total_cache_size
                 );
             }
+            log::debug!(
+                "[range] cache_size={} bytes entries={}",
+                total_cache_size,
+                self.cache.len()
+            );
         }
 
         // Return only the requested size, not the entire chunk
@@ -270,6 +304,12 @@ impl Seek for HttpRangeSource {
             }
         };
 
+        log::info!(
+            "[range] seek from={} to={} (len={:?})",
+            state.current_position,
+            new_pos,
+            state.total_size
+        );
         state.current_position = new_pos;
         Ok(new_pos)
     }

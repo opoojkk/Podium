@@ -1,0 +1,32 @@
+[package]
+name = "podium-player-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "podium_audio_player"
+crate-type = ["cdylib", "staticlib"]
+
+[features]
+default = []
+android = ["jni"]
+desktop = ["jni"]
+ios = []
+
+[dependencies]
+log.workspace = true
+once_cell = "1.19"
+parking_lot.workspace = true
+podium-core = { path = "../core" }
+env_logger = "0.11"
+jni = { workspace = true, optional = true }
+cpal = { workspace = true }
+podium-transport-http = { path = "../transport-http" }
+podium-source-buffer = { path = "../source-buffer" }
+podium-demux = { path = "../demux" }
+podium-decode = { path = "../decode" }
+podium-ringbuffer = { path = "../ringbuffer" }
+podium-resampler = { path = "../resampler" }
+symphonia.workspace = true

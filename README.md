@@ -49,7 +49,7 @@ Podium 是一个使用 Kotlin Multiplatform 和 Compose Multiplatform 技术构�
 - 高性能 XML/RSS/Atom 解析
 - 零拷贝设计，低内存占用
 
-**音频播放器 (`rust-audio-player`)**
+**音频播放器 (Podium Audio)**
 - 跨平台音频解码（MP3, AAC, OGG, FLAC 等）
 - 平台优化：Android (OpenSL ES/AAudio) | iOS (AVAudioEngine) | Desktop (cpal)
 

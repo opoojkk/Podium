@@ -4,13 +4,14 @@ members = [
     "crates/core",
     "crates/transport-http",
     "crates/source-buffer",
-    "crates/demux-symphonia",
-    "crates/decode-symphonia",
+    "crates/demux",
+    "crates/decode",
     "crates/resampler",
     "crates/ringbuffer",
-    "crates/renderer-api",
-    "crates/renderer-android",
-    "crates/renderer-ios",
+    "crates/renderer",
+    "crates/renderer/android",
+    "crates/renderer/ios",
+    "crates/player-ffi",
 ]
 
 [workspace.package]

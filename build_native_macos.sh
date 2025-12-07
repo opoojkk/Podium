@@ -3,7 +3,7 @@
 
 set -e
 
-echo "Building Rust audio player for macOS..."
+echo "Building Podium audio FFI for macOS..."
 
 # Determine architecture
 ARCH=$(uname -m)
@@ -22,15 +22,15 @@ echo "Architecture: $ARCH"
 echo "Rust target: $TARGET"
 echo "Resource directory: $RESOURCE_DIR"
 
-# Build Rust audio player
-cd rust-audio-player
-cargo build --release --target=$TARGET
+# Build Rust audio player (podium-player-ffi)
+cd podium-audio
+cargo build -p podium-player-ffi --release --target=$TARGET --features desktop
 cd ..
 
 # Copy the built library to resources
 DEST_DIR="composeApp/src/jvmMain/resources/$RESOURCE_DIR"
 mkdir -p "$DEST_DIR"
-cp "rust-audio-player/target/$TARGET/release/librust_audio_player.dylib" "$DEST_DIR/"
+cp "podium-audio/target/$TARGET/release/libpodium_audio_player.dylib" "$DEST_DIR/"
 
 echo "✅ Native library built and copied to $DEST_DIR"
 echo ""

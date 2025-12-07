@@ -41,6 +41,7 @@ class JvmRustPodcastPlayer : PodcastPlayer {
                 currentEpisode = episode
 
                 updateState(episode = episode, isBuffering = true, isPlaying = false)
+                println("$TAG: Start play -> episodeId=${episode.id}, startPositionMs=$startPositionMs, cached=${getDownloadedFile(episode)?.exists() == true}")
 
                 // Get audio path (URL or local file)
                 val audioPath = getAudioFilePath(episode)
@@ -63,7 +64,7 @@ class JvmRustPodcastPlayer : PodcastPlayer {
                 delay(100)
 
                 val duration = rustPlayer.getDuration()
-                println("$TAG: Audio loaded, duration: $duration ms")
+                println("$TAG: Audio loaded, duration: $duration ms (path=$audioPath)")
 
                 // Seek to start position if needed
                 if (startPositionMs > 0) {
@@ -170,6 +171,7 @@ class JvmRustPodcastPlayer : PodcastPlayer {
                 currentEpisode = episode
 
                 updateState(episode = episode, isBuffering = true, isPlaying = false)
+                println("$TAG: Restore -> episodeId=${episode.id}, cached=${getDownloadedFile(episode)?.exists() == true}")
 
                 // Get audio path (URL or local file)
                 val audioPath = getAudioFilePath(episode)
@@ -192,7 +194,7 @@ class JvmRustPodcastPlayer : PodcastPlayer {
                 delay(100)
 
                 val duration = rustPlayer.getDuration()
-                println("$TAG: Audio loaded, duration: $duration ms")
+                println("$TAG: Audio loaded, duration: $duration ms (restore)")
 
                 // Seek to the restore position
                 if (positionMs > 0) {
@@ -261,7 +263,7 @@ class JvmRustPodcastPlayer : PodcastPlayer {
         isBuffering: Boolean = _state.value.isBuffering,
         playbackSpeed: Float = this.playbackSpeed
     ) {
-        _state.value = PlaybackState(
+        val newState = PlaybackState(
             episode = episode,
             positionMs = positionMs,
             durationMs = durationMs,
@@ -269,6 +271,8 @@ class JvmRustPodcastPlayer : PodcastPlayer {
             isBuffering = isBuffering,
             playbackSpeed = playbackSpeed
         )
+        _state.value = newState
+        println("$TAG: State update -> episode=${episode?.id}, pos=${newState.positionMs}, dur=${newState.durationMs}, playing=${newState.isPlaying}, buffering=${newState.isBuffering}, speed=${newState.playbackSpeed}")
     }
 
     /**
@@ -298,12 +302,15 @@ class JvmRustPodcastPlayer : PodcastPlayer {
         val downloadDir = File(userHome, ".podium/downloads")
 
         if (!downloadDir.exists()) {
+            println("$TAG: Download dir not found: ${downloadDir.absolutePath}")
             return null
         }
 
         // Look for file with episode ID
         val possibleFile = File(downloadDir, "${episode.id}.mp3")
-        return if (possibleFile.exists()) possibleFile else null
+        val exists = possibleFile.exists()
+        println("$TAG: Download lookup -> ${possibleFile.absolutePath}, exists=$exists")
+        return if (exists) possibleFile else null
     }
 
     /**

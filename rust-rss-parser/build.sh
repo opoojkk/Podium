@@ -115,11 +115,10 @@ install_targets() {
 build_android() {
     print_info "Building for Android platforms..."
 
-    # Detect NDK
-    NDK_PATH=$(detect_android_ndk)
-    if [ $? -ne 0 ]; then
-        print_error "Skipping Android build - NDK not found"
-        return 1
+    # Detect NDK (avoid set -e exit on failure)
+    if ! NDK_PATH=$(detect_android_ndk); then
+        print_warning "Skipping Android build - NDK not found"
+        return 0
     fi
 
     print_success "Using Android NDK: $NDK_PATH"
@@ -142,8 +141,8 @@ build_android() {
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         HOST_TAG="darwin-x86_64"
     else
-        print_error "Unsupported host OS for Android build: $OSTYPE"
-        return 1
+        print_warning "Skipping Android build - unsupported host OS for Android toolchain: $OSTYPE"
+        return 0
     fi
 
     # Android API level
@@ -208,27 +207,24 @@ build_android() {
 
 # Build for Windows
 build_windows() {
-    print_info "Building for Windows..."
+    print_info "Building for Windows (msvc)..."
 
-    # Check if we can cross-compile for Windows
-    if command -v x86_64-w64-mingw32-gcc &> /dev/null; then
-        export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
-        export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
-        export AR_x86_64_pc_windows_gnu=x86_64-w64-mingw32-ar
+    cargo build --release --target x86_64-pc-windows-msvc
 
-        cargo build --release --target x86_64-pc-windows-gnu
+    # Copy to output directory
+    WINDOWS_OUTPUT_DIR="$OUTPUT_DIR/windows/x86_64"
+    mkdir -p "$WINDOWS_OUTPUT_DIR"
+    cp "target/x86_64-pc-windows-msvc/release/rust_rss_parser.dll" "$WINDOWS_OUTPUT_DIR/" || true
 
-        # Copy to output directory
-        WINDOWS_OUTPUT_DIR="$OUTPUT_DIR/windows/x86_64"
-        mkdir -p "$WINDOWS_OUTPUT_DIR"
-        cp "target/x86_64-pc-windows-gnu/release/rust_rss_parser.dll" "$WINDOWS_OUTPUT_DIR/" || \
-        cp "target/x86_64-pc-windows-gnu/release/librust_rss_parser.a" "$WINDOWS_OUTPUT_DIR/" || true
-
-        print_success "Built for Windows x86_64"
-    else
-        print_warning "Skipping Windows build - mingw-w64 not found"
-        print_info "To enable Windows builds on Linux, install: sudo apt-get install gcc-mingw-w64-x86-64"
+    # Copy to composeApp resources for JVM
+    JVM_RESOURCES_DIR="$SCRIPT_DIR/../composeApp/src/jvmMain/resources"
+    mkdir -p "$JVM_RESOURCES_DIR/windows-x86_64"
+    if [ -f "$WINDOWS_OUTPUT_DIR/rust_rss_parser.dll" ]; then
+        cp "$WINDOWS_OUTPUT_DIR/rust_rss_parser.dll" "$JVM_RESOURCES_DIR/windows-x86_64/"
+        print_success "Copied Windows DLL to $JVM_RESOURCES_DIR/windows-x86_64/"
     fi
+
+    print_success "Built for Windows x86_64 (msvc)"
 }
 
 # Build for macOS

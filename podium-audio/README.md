@@ -11,13 +11,13 @@ podium-audio/
 ├── crates/
 │   ├── core/                 # Core types, state management, callbacks
 │   ├── ringbuffer/           # Lock-free PCM ring buffer
-│   ├── renderer-api/         # Audio renderer trait abstraction
-│   ├── renderer-android/     # Android implementation (Oboe)
-│   ├── renderer-ios/         # iOS/macOS implementation (cpal)
+│   ├── renderer/             # Renderer API + platform targets
+│   │   ├── android/          # Android implementation (Oboe)
+│   │   └── ios/              # iOS/macOS implementation (cpal)
 │   ├── transport-http/       # HTTP download and streaming
 │   ├── source-buffer/        # Network source adapter for Symphonia
-│   ├── demux-symphonia/      # Format demuxing (MP3, AAC, FLAC, etc.)
-│   ├── decode-symphonia/     # Audio decoding to PCM
+│   ├── demux/                # Format demuxing (MP3, AAC, FLAC, etc.)
+│   ├── decode/               # Audio decoding to PCM
 │   └── resampler/            # Sample rate and channel conversion
 ```
 
@@ -50,12 +50,12 @@ podium-audio/
   - `NetworkSource` for HTTP range streaming
   - `StreamingSource` for progressive buffering
 
-- **podium-demux-symphonia**: Format demuxing
+- **podium-demux**: Format demuxing
   - Wraps Symphonia's format readers
   - Supports MP3, AAC, M4A, FLAC, WAV, OGG, Opus
   - Track selection and seeking
 
-- **podium-decode-symphonia**: Audio decoding
+- **podium-decode**: Audio decoding
   - Converts encoded packets to PCM samples
   - Automatic format conversion to f32
   - Interleaved output
@@ -66,16 +66,16 @@ podium-audio/
 
 ### Rendering Layer
 
-- **podium-renderer-api**: Platform-agnostic renderer trait
+- **podium-renderer**: Platform-agnostic renderer trait
   - `AudioRenderer` trait definition
   - Common audio specification types
 
-- **podium-renderer-android**: Android implementation
+- **podium-renderer-android**: Android implementation (under `crates/renderer/android`)
   - Uses Oboe for low-latency audio
   - AAudio/OpenSL ES backend selection
   - JNI-compatible
 
-- **podium-renderer-ios**: iOS/macOS implementation
+- **podium-renderer-ios**: iOS/macOS implementation (under `crates/renderer/ios`)
   - Uses cpal with CoreAudio backend
   - iOS SDK 18.4+ compatible
   - Low-latency playback
@@ -83,10 +83,10 @@ podium-audio/
 ## Pipeline Flow
 
 ```
-HTTP Download → Source Buffer → Demuxer → Decoder → Resampler → Ring Buffer → Renderer → Output
-     │              │              │          │          │            │           │
-transport-http  source-buffer  demux-    decode-   resampler   ringbuffer   renderer-*
-                              symphonia  symphonia                         (android/ios)
+HTTP Download -> Source Buffer -> Demuxer -> Decoder -> Resampler -> Ring Buffer -> Renderer -> Output
+     |              |              |          |          |            |           |
+transport-http  source-buffer   demux      decode     resampler    ringbuffer   renderer-*
+                                                                            (android/ios)
 ```
 
 ## Key Features
@@ -140,7 +140,7 @@ cargo build --target aarch64-apple-ios --release
 ```rust
 use podium_core::{AudioPlayer, PlayerState};
 use podium_renderer_android::OboeRenderer;
-use podium_renderer_api::AudioSpec;
+use podium_renderer::AudioSpec;
 
 // Create renderer
 let spec = AudioSpec {
@@ -169,10 +169,11 @@ The old monolithic `rust-audio-player` crate has been split into focused modules
 | `decoder.rs` (ring buffer) | `podium-ringbuffer` |
 | `http_*.rs`, `m4a_*.rs` | `podium-transport-http` |
 | `streaming_source.rs` | `podium-source-buffer` |
-| `decoder.rs` (demux) | `podium-demux-symphonia` |
-| `decoder.rs` (decode) | `podium-decode-symphonia` |
-| `android/mod.rs` | `podium-renderer-android` |
-| `ios/mod.rs` | `podium-renderer-ios` |
+| `decoder.rs` (demux) | `podium-demux` |
+| `decoder.rs` (decode) | `podium-decode` |
+| `renderer trait` | `podium-renderer` (`crates/renderer`) |
+| `android/mod.rs` | `podium-renderer-android` (`crates/renderer/android`) |
+| `ios/mod.rs` | `podium-renderer-ios` (`crates/renderer/ios`) |
 
 ## Benefits of New Architecture
 

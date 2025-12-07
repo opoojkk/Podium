@@ -1,0 +1,20 @@
+[package]
+name = "podium-renderer-android"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+podium-core = { path = "../../core" }
+podium-renderer = { path = ".." }
+podium-ringbuffer = { path = "../../ringbuffer" }
+log.workspace = true
+parking_lot.workspace = true
+
+[target.'cfg(target_os = "android")'.dependencies]
+oboe.workspace = true
+jni.workspace = true

@@ -49,7 +49,7 @@ Podium is a **universal podcast player** built with Kotlin Multiplatform and Com
 - High-performance XML/RSS/Atom parsing
 - Zero-copy design with low memory footprint
 
-**Audio Player (`rust-audio-player`)**
+**Audio Player (Podium Audio)**
 - Cross-platform audio decoding (MP3, AAC, OGG, FLAC, etc.)
 - Platform optimizations: Android (OpenSL ES/AAudio) | iOS (AVAudioEngine) | Desktop (cpal)
 

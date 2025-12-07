@@ -58,26 +58,27 @@ val buildRustRssParser by tasks.registering(Exec::class) {
 
 // Task to build Rust Audio Player
 val buildRustAudioPlayer by tasks.registering(Exec::class) {
-    val scriptFile = project.file("../rust-audio-player/build.sh")
+    val scriptFile = project.file("../podium-audio/build.sh")
 
     // Set working directory
-    workingDir(project.file("../rust-audio-player"))
+    workingDir(project.file("../podium-audio"))
 
     // Run the build script with bash (bash handles permissions)
     commandLine("bash", scriptFile.absolutePath)
 
     // Define inputs so Gradle can track changes
     inputs.file(scriptFile)
-    inputs.dir("../rust-audio-player/src")
-    inputs.file("../rust-audio-player/Cargo.toml")
+    inputs.dir("../podium-audio/crates/player-ffi/src")
+    inputs.file("../podium-audio/Cargo.toml")
+    inputs.file("../podium-audio/Cargo.lock")
 
     // Define outputs so Gradle can cache and track changes
-    outputs.dir("../rust-audio-player/target/outputs")
+    outputs.dir("../podium-audio/target/outputs")
     outputs.dir("src/androidMain/jniLibs")
     outputs.dir("src/jvmMain/resources/darwin-aarch64")
     outputs.dir("src/jvmMain/resources/darwin-x86_64")
-    outputs.dir("../rust-audio-player/target/aarch64-apple-ios/release")
-    outputs.dir("../rust-audio-player/target/aarch64-apple-ios-sim/release")
+    outputs.dir("../podium-audio/target/aarch64-apple-ios/release")
+    outputs.dir("../podium-audio/target/aarch64-apple-ios-sim/release")
 }
 
 // Make Kotlin compilation and cinterop depend on Rust builds
@@ -120,7 +121,7 @@ kotlin {
             "iosSimulatorArm64" -> "aarch64-apple-ios-sim"
             else -> "aarch64-apple-ios"
         }
-        val libPath = project.file("../rust-audio-player/target/$targetName/release").absolutePath
+        val libPath = project.file("../podium-audio/target/$targetName/release").absolutePath
 
         // Link Rust audio player library
         iosTarget.compilations.getByName("main") {
@@ -134,9 +135,9 @@ kotlin {
         iosTarget.binaries.all {
             linkerOpts(
                 "-L$libPath",
-                "-lrust_audio_player",
+                "-lpodium_audio_player",
                 // Force load to avoid stripping unused symbols in static framework
-                "-force_load", "$libPath/librust_audio_player.a",
+                "-force_load", "$libPath/libpodium_audio_player.a",
                 "-framework", "CoreAudio",
                 "-framework", "AudioToolbox",
                 "-framework", "Security",

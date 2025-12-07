@@ -14,8 +14,8 @@ echo "Step 1/3: Cleaning previous iOS framework outputs and DerivedData..."
 rm -rf composeApp/build/xcode-frameworks composeApp/build/bin composeApp/build/konan
 rm -rf "$HOME/Library/Developer/Xcode/DerivedData/iosApp-"*
 
-# 3) 先构建 Rust 音频库（Gradle 任务会触发 rust-audio-player/build.sh）
-echo "Step 2/3: Building Rust audio player..."
+# 3) 先构建 Rust 音频库（Gradle 任务会触发 podium-audio/build.sh）
+echo "Step 2/3: Building Podium audio FFI..."
 ./gradlew :composeApp:buildRustAudioPlayer --no-build-cache --rerun-tasks
 
 # 4) 强制重建 iOS 模拟器框架，带上最新的链接选项
