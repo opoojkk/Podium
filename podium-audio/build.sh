@@ -143,8 +143,8 @@ build_android() {
         return 0
     fi
 
-    # Android API level
-    ANDROID_API=24
+    # Android API level (26+ required for AAudio support)
+    ANDROID_API=26
 
     # Create output directory for Android
     ANDROID_OUTPUT_DIR="$OUTPUT_DIR/android"
