@@ -251,34 +251,32 @@ build_android() {
 
 # Build for Windows
 build_windows() {
-    print_info "Building for Windows (msvc)..."
-
-    # Check if Windows MSVC target is installed
-    if ! rustup target list --installed | grep -q "x86_64-pc-windows-msvc"; then
-        print_warning "Skipping Windows build - x86_64-pc-windows-msvc target not installed"
-        print_info "To enable Windows builds, run: rustup target add x86_64-pc-windows-msvc"
+    # Skip Windows build on non-Windows platforms unless explicitly enabled
+    if [[ "$OSTYPE" != "msys"* ]] && [[ "$OSTYPE" != "cygwin"* ]] && [[ "$OSTYPE" != "win32"* ]]; then
+        print_warning "Skipping Windows build - not running on Windows"
+        print_info "Windows builds are only supported when running on Windows"
+        print_info "To cross-compile from macOS/Linux, you would need: rustup target add x86_64-pc-windows-msvc"
         return 0
     fi
 
-    # Attempt to build, but don't fail the entire script if it fails
-    if cargo build -p podium-player-ffi --release --target x86_64-pc-windows-msvc --features desktop; then
-        # Copy to output directory
-        WINDOWS_OUTPUT_DIR="$OUTPUT_DIR/windows/x86_64"
-        mkdir -p "$WINDOWS_OUTPUT_DIR"
-        cp "target/x86_64-pc-windows-msvc/release/podium_audio_player.dll" "$WINDOWS_OUTPUT_DIR/" || true
+    print_info "Building for Windows (msvc)..."
 
-        # Copy to composeApp resources for JVM
-        JVM_RESOURCES_DIR="$SCRIPT_DIR/../composeApp/src/jvmMain/resources"
-        mkdir -p "$JVM_RESOURCES_DIR/windows-x86_64"
-        if [ -f "$WINDOWS_OUTPUT_DIR/podium_audio_player.dll" ]; then
-            cp "$WINDOWS_OUTPUT_DIR/podium_audio_player.dll" "$JVM_RESOURCES_DIR/windows-x86_64/"
-            print_success "Copied Windows DLL to $JVM_RESOURCES_DIR/windows-x86_64/"
-        fi
+    cargo build -p podium-player-ffi --release --target x86_64-pc-windows-msvc --features desktop
 
-        print_success "Built for Windows x86_64 (msvc)"
-    else
-        print_warning "Windows build failed - continuing with other platforms"
+    # Copy to output directory
+    WINDOWS_OUTPUT_DIR="$OUTPUT_DIR/windows/x86_64"
+    mkdir -p "$WINDOWS_OUTPUT_DIR"
+    cp "target/x86_64-pc-windows-msvc/release/podium_audio_player.dll" "$WINDOWS_OUTPUT_DIR/" || true
+
+    # Copy to composeApp resources for JVM
+    JVM_RESOURCES_DIR="$SCRIPT_DIR/../composeApp/src/jvmMain/resources"
+    mkdir -p "$JVM_RESOURCES_DIR/windows-x86_64"
+    if [ -f "$WINDOWS_OUTPUT_DIR/podium_audio_player.dll" ]; then
+        cp "$WINDOWS_OUTPUT_DIR/podium_audio_player.dll" "$JVM_RESOURCES_DIR/windows-x86_64/"
+        print_success "Copied Windows DLL to $JVM_RESOURCES_DIR/windows-x86_64/"
     fi
+
+    print_success "Built for Windows x86_64 (msvc)"
 }
 
 # Build for macOS
